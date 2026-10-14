@@ -72,6 +72,7 @@ low-end phone, a static preview link to send to the provider.
 - One reactivity mechanism: `shell/store.ts` + `useStore` (no signals library).
 - TypeScript 6.0, not 7: typescript-eslint does not support 7 yet.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
+  `README.ru.md` is the team's copy; keep both READMEs in step.
 
 ## Open questions for the provider
 

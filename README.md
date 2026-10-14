@@ -1,5 +1,7 @@
 # High Noon Flip
 
+[Русская версия](README.ru.md)
+
 A western coin flip: pick Sheriff or Outlaw, the revolver fires and flips the coin.
 Two modes: **Instant** (one flip, pays 1.98x) and **Multiply** (each correct pick doubles
 the prize up to 253.44x; cash out at any time).
@@ -35,8 +37,8 @@ src/
 ├─ shell/             parts every game needs; will move to a shared package
 │  ├─ launchParams.ts reading and validating the launch URL
 │  ├─ money.ts        minor units → "€198.00" for any currency and language
-│  └─ assets.ts       asset URLs that work under any CDN path
-│  ├─ store.ts        observable state; useStore.ts connects it to Preact
+│  ├─ assets.ts       asset URLs that work under any CDN path
+│  └─ store.ts        observable state; useStore.ts connects it to Preact
 └─ game/
    ├─ model/          RoundModel: the round state machine, the source of truth
    ├─ director.ts     turns phase changes into animations, reports back when done

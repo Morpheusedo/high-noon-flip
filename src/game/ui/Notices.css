@@ -1,0 +1,110 @@
+.stamp {
+  --ink: #37d466;
+  position: absolute;
+  left: 50%;
+  top: 35.5%;
+  translate: -50% -50%;
+  rotate: -11deg;
+  z-index: 6;
+  padding: 0.6cqmin 3.6cqmin 1cqmin;
+  text-align: center;
+  pointer-events: none;
+  color: var(--ink);
+  border: 0.9cqmin solid var(--ink);
+  border-radius: 1.6cqmin;
+  outline: 0.3cqmin solid var(--ink);
+  outline-offset: 0.7cqmin;
+  background: rgba(10, 6, 8, 0.55);
+  line-height: 1.05;
+  box-shadow:
+    0 0 4cqmin color-mix(in srgb, var(--ink) 45%, transparent),
+    inset 0 0 2cqmin color-mix(in srgb, var(--ink) 22%, transparent);
+  text-shadow: 0 0 1.2cqmin color-mix(in srgb, var(--ink) 60%, transparent);
+  /* slammed down: in from large and tilted, a small squash, then still */
+  animation: slam 260ms cubic-bezier(0.3, 0, 0.4, 1);
+}
+
+.stamp.lose {
+  --ink: #ff4a3d;
+  rotate: 9deg;
+}
+
+.stamp b {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(26px, 11cqmin, 96px);
+  letter-spacing: 0.12em;
+  margin-right: -0.12em;
+}
+
+.stamp span {
+  font-weight: 700;
+  font-size: clamp(12px, 3.8cqmin, 32px);
+  font-variant-numeric: tabular-nums;
+  filter: brightness(1.25);
+}
+
+@keyframes slam {
+  0% {
+    transform: scale(2.6) rotate(-10deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(0.94);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.notice {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  translate: -50% 0;
+  z-index: 7;
+  width: max-content;
+  max-width: 86%;
+  box-sizing: border-box;
+  padding: 1.6cqmin 2.4cqmin;
+  background: var(--bg);
+  border: 1px solid var(--lose);
+  border-radius: 6px;
+  font-size: clamp(11px, 2.8cqmin, 18px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4cqmin;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn {
+  padding: 0.35em 0.9em;
+  background: var(--wood);
+  border: 1px solid var(--brass);
+  border-radius: 4px;
+  color: var(--cream);
+}
+
+.btn:hover {
+  background: var(--wood-hi);
+}
+
+@container stage (max-aspect-ratio: 1/1) {
+  .stamp {
+    top: 33.5%;
+  }
+
+  .notice {
+    font-size: clamp(11px, 3.6cqmin, 18px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp {
+    animation: none;
+  }
+}

@@ -1,0 +1,386 @@
+.plaque {
+  position: absolute;
+  bottom: 4%;
+  z-index: 4;
+  box-sizing: border-box;
+  padding: 1.8cqmin 4cqmin;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2cqmin;
+  text-align: left;
+  border: 0;
+  color: inherit;
+  background: url(./art/plaque.webp) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
+}
+
+.plaque-label {
+  font-size: clamp(9px, 2cqmin, 14px);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.plaque-value {
+  font-weight: 700;
+  font-size: clamp(15px, 4.8cqmin, 36px);
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #fff6e2;
+  text-shadow:
+    0 0.05em 0.08em #000,
+    0 0 0.35em rgba(0, 0, 0, 0.75);
+}
+
+.plaque-value small {
+  font-size: 0.5em;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 0.3em;
+}
+
+.balance {
+  left: 3cqmin;
+  width: 34cqmin;
+  --room: 26cqmin;
+}
+
+/* shrink-to-fit box, so the fit hook can compare the text with the room it has */
+.balance .plaque-value {
+  display: inline-block;
+  max-width: var(--room);
+  font-size: calc(clamp(15px, 4.8cqmin, 36px) * var(--fit, 1));
+  line-height: calc(clamp(15px, 4.8cqmin, 36px) * 1.2);
+}
+
+.plaque.bet {
+  left: 38.5cqmin;
+  min-width: 24cqmin;
+}
+
+.plaque.bet:hover:not(:disabled) {
+  filter: brightness(1.15) drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
+}
+
+.plaque.bet:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* multiply mode: a row of rungs to climb */
+.ladder {
+  position: absolute;
+  left: 50%;
+  bottom: 15.5%;
+  translate: -50% 0;
+  z-index: 4;
+  display: flex;
+  gap: 0.4cqmin;
+  margin: 0;
+  padding: 0.8cqmin 1.6cqmin;
+  list-style: none;
+  border-radius: 3cqmin;
+  background: rgba(12, 6, 9, 0.6);
+}
+
+.rung {
+  min-width: 6.6cqmin;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2cqmin;
+  font-weight: 700;
+  font-size: clamp(9px, 2cqmin, 14px);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.rung::before {
+  content: '';
+  width: 4.6cqmin;
+  aspect-ratio: 1;
+  background: url(./art/bullet-copper.webp) center / 100% 100% no-repeat;
+  opacity: 0.5;
+}
+
+.rung.next {
+  color: var(--cream);
+}
+
+.rung.next::before {
+  opacity: 1;
+}
+
+.rung.on {
+  color: var(--gold);
+}
+
+.rung.on::before {
+  background-image: url(./art/bullet-gold.webp);
+  opacity: 1;
+  filter: drop-shadow(0 0 0.8cqmin rgba(255, 200, 90, 0.9));
+}
+
+/* cash out: a plaque that bobs, with a gold line tracing round it */
+.cashout {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  translate: -50% 0;
+  z-index: 4;
+  padding: 1.7cqmin 5cqmin;
+  border: 0;
+  outline: 0;
+  white-space: nowrap;
+  color: var(--gold);
+  background: url(./art/plaque.webp) center / 100% 100% no-repeat;
+  font-weight: 700;
+  font-size: clamp(15px, 4.4cqmin, 34px);
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    0 0.05em 0.08em #000,
+    0 0 0.35em rgba(0, 0, 0, 0.75);
+  filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.6));
+  animation: bob 2.8s ease-in-out infinite;
+}
+
+.cashout:focus-visible {
+  outline: 2px solid var(--brass-hi);
+}
+
+.cashout .plaque-label {
+  margin-right: 0.7em;
+}
+
+.cashout .plaque-value {
+  font-size: inherit;
+  color: var(--gold);
+}
+
+/* the line starts at the top right corner, runs left along the top, down the left side and
+   back along the bottom, then its tail follows the same way: no fade, no flash */
+.cashout::before {
+  content: '';
+  position: absolute;
+  inset: -0.6cqmin 0 -0.6cqmin -0.6cqmin;
+  pointer-events: none;
+  border: 0.55cqmin solid var(--gold);
+  border-right: 0;
+  border-radius: 1cqmin 0 0 1cqmin;
+  box-shadow: inset 0 0 1cqmin rgba(242, 193, 78, 0.4);
+  animation: trace 3.8s linear infinite;
+}
+
+.cashout:disabled {
+  opacity: 0.55;
+  animation: none;
+  cursor: default;
+}
+
+.cashout:disabled::before {
+  animation: none;
+  visibility: hidden;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(-1.6cqmin);
+  }
+}
+
+@keyframes trace {
+  0% {
+    clip-path: polygon(
+      100% 0,
+      100% 0,
+      100% 1.3cqmin,
+      100% 1.3cqmin,
+      100% 1.3cqmin,
+      100% 1.3cqmin,
+      100% 1.3cqmin,
+      100% 1.3cqmin
+    );
+  }
+  18% {
+    clip-path: polygon(
+      100% 0,
+      0 0,
+      0 1.3cqmin,
+      0 1.3cqmin,
+      0 1.3cqmin,
+      1.3cqmin 1.3cqmin,
+      1.3cqmin 1.3cqmin,
+      100% 1.3cqmin
+    );
+  }
+  31% {
+    clip-path: polygon(
+      100% 0,
+      0 0,
+      0 100%,
+      1.3cqmin 100%,
+      1.3cqmin 100%,
+      1.3cqmin 100%,
+      1.3cqmin 1.3cqmin,
+      100% 1.3cqmin
+    );
+  }
+  50% {
+    clip-path: polygon(
+      100% 0,
+      0 0,
+      0 100%,
+      100% 100%,
+      100% calc(100% - 1.3cqmin),
+      1.3cqmin calc(100% - 1.3cqmin),
+      1.3cqmin 1.3cqmin,
+      100% 1.3cqmin
+    );
+  }
+  68% {
+    clip-path: polygon(
+      0 0,
+      0 0,
+      0 100%,
+      100% 100%,
+      100% calc(100% - 1.3cqmin),
+      1.3cqmin calc(100% - 1.3cqmin),
+      1.3cqmin 1.3cqmin,
+      1.3cqmin 1.3cqmin
+    );
+  }
+  81% {
+    clip-path: polygon(
+      0 calc(100% - 1.3cqmin),
+      0 calc(100% - 1.3cqmin),
+      0 100%,
+      100% 100%,
+      100% calc(100% - 1.3cqmin),
+      1.3cqmin calc(100% - 1.3cqmin),
+      1.3cqmin calc(100% - 1.3cqmin),
+      1.3cqmin calc(100% - 1.3cqmin)
+    );
+  }
+  100% {
+    clip-path: polygon(
+      100% calc(100% - 1.3cqmin),
+      100% calc(100% - 1.3cqmin),
+      100% 100%,
+      100% 100%,
+      100% calc(100% - 1.3cqmin),
+      100% calc(100% - 1.3cqmin),
+      100% calc(100% - 1.3cqmin),
+      100% calc(100% - 1.3cqmin)
+    );
+  }
+}
+
+@container stage (max-aspect-ratio: 1/1) {
+  .plaque-label {
+    font-size: clamp(8px, 2.25cqmin, 14px);
+  }
+
+  .plaque-value {
+    font-size: clamp(13px, 5cqmin, 32px);
+  }
+
+  /* two wooden tabs sliding in from the left edge: total bet on top, balance under it */
+  .plaque.bet,
+  .balance {
+    left: -3cqmin;
+    min-width: 34cqmin;
+    padding: 1.35cqmin 3cqmin 1.5cqmin 5.7cqmin;
+    z-index: 5;
+    align-items: flex-start;
+    filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.6));
+  }
+
+  .plaque.bet {
+    bottom: 13.9%;
+  }
+
+  .balance {
+    bottom: 7%;
+    width: auto;
+    --room: 22.5cqmin;
+  }
+
+  .balance .plaque-value {
+    font-size: calc(clamp(13px, 5cqmin, 32px) * var(--fit, 1));
+    line-height: normal;
+  }
+
+  .chg {
+    display: none;
+  }
+
+  /* the ladder becomes a column down the left side */
+  .ladder {
+    top: 20.5%;
+    bottom: auto;
+    left: 3%;
+    translate: none;
+    flex-direction: column;
+    gap: 0.7cqmin;
+    padding: 1.4cqmin 1.8cqmin 1.4cqmin 1.2cqmin;
+    background: rgba(10, 5, 8, 0.5);
+    border: 0.35cqmin solid var(--brass);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+  }
+
+  .rung {
+    min-width: 0;
+    flex-direction: row;
+    gap: 0.8cqmin;
+    font-size: clamp(9px, 2.8cqmin, 28px);
+    color: var(--cream);
+    text-shadow:
+      0 1px 2px #000,
+      0 0 0.3em rgba(0, 0, 0, 0.8);
+  }
+
+  .rung::before {
+    width: 4.8cqmin;
+    flex: none;
+  }
+
+  /* cash out: a wooden tab from the right edge, mirroring the balance on the left */
+  .cashout {
+    left: auto;
+    right: -3cqmin;
+    bottom: 7%;
+    translate: none;
+    min-width: 34cqmin;
+    box-sizing: border-box;
+    padding: 1.35cqmin 5.7cqmin 1.5cqmin 3cqmin;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2cqmin;
+    text-align: right;
+  }
+
+  .cashout .plaque-label {
+    margin-right: 0;
+  }
+
+  .cashout .plaque-value {
+    font-size: clamp(13px, 5cqmin, 32px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cashout,
+  .cashout::before {
+    animation: none;
+  }
+}

@@ -63,8 +63,13 @@ export interface RoundState {
   readonly jurisdiction: Jurisdiction;
 }
 
-/** Errors after which the client can no longer trust its picture of the session. */
+/**
+ * Errors after which the client can no longer trust its picture of the session.
+ * A server's INSUFFICIENT_FUNDS means the balance changed elsewhere (a withdrawal
+ * in the lobby, a second tab), so it asks again before suggesting a lower bet.
+ */
 const RESYNC_AFTER: readonly ServerErrorCode[] = [
+  'INSUFFICIENT_FUNDS',
   'NETWORK',
   'INTERNAL',
   'ROUND_NOT_FOUND',
@@ -80,6 +85,9 @@ export const canPick = (s: RoundState): boolean =>
 export const canCashOut = (s: RoundState): boolean => isIdle(s) && s.openRun !== null;
 /** Bet and mode are locked while a multiply run is open. */
 export const canChangeSetup = (s: RoundState): boolean => isIdle(s) && s.openRun === null;
+/** The highest bet the balance covers, or null when it covers none. */
+export const affordableBet = (s: RoundState): Minor | null =>
+  s.config.bets.filter((b) => b <= s.balance).at(-1) ?? null;
 
 export class RoundModel {
   readonly store: Store<RoundState>;

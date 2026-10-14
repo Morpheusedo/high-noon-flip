@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { canCashOut, canPick, RoundModel } from '../src/game/model/RoundModel';
+import { affordableBet, canCashOut, canPick, RoundModel } from '../src/game/model/RoundModel';
 import { MockServer } from '../src/server/mockServer';
 
 async function setup(options: ConstructorParameters<typeof MockServer>[0] = {}) {
@@ -62,6 +62,18 @@ describe('instant round', () => {
     expect(model.state.phase).toEqual({ name: 'error', code: 'INSUFFICIENT_FUNDS', fatal: false });
     await model.dismissError();
     expect(model.state.phase.name).toBe('idle');
+  });
+
+  it('learns the real balance when the server refuses a bet the client thought it could cover', async () => {
+    const { server, model } = await setup();
+    server.setBalance(50);
+    model.setBet(500);
+    await model.pick('sheriff');
+    expect(model.state.phase).toMatchObject({ name: 'error', code: 'INSUFFICIENT_FUNDS' });
+    await model.dismissError();
+    expect(model.state.phase.name).toBe('idle');
+    expect(model.state.balance).toBe(50);
+    expect(affordableBet(model.state)).toBeNull();
   });
 
   it('accepts only bets from the config', async () => {

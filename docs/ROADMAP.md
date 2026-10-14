@@ -35,14 +35,13 @@ Then replace the timer director: on `revealing`, cock, fire and fly the coin to
 `jurisdiction.minRoundMs` and `turboAllowed`; respect `prefers-reduced-motion`.
 Positions measured on the art go in a layout config next to the art, not in code.
 
-### 4. Western interface
+### 4. Western interface — done
 
 Replace the test panel with components under `game/ui/`: balance and bet plaques, bet
 dial, Sheriff and Outlaw emblems with keycaps, mode switch, multiply ladder, cash out
 tab, result stamp, last-flips strip, insufficient-funds notice, speed button (hidden
 where turbo is banned), a tap target over the coin that calls `scene.turnCoin()`. Both
 orientations.
-Open design question: the dial has 6 chambers but operators send 10 to 20 bet levels.
 
 ### 5. Sound
 
@@ -89,6 +88,17 @@ low-end phone, a static preview link to send to the provider.
   animations are never slowed.
 - Win effect size: the bet's position among the operator's levels mapped to 0..5; a cash
   out by the run length.
+- The bet dial is an endless drum: one chamber (60°) is one level, each chamber shows the
+  level nearest to it and is relabelled only on the far side, out of view. It stops at
+  the lowest and highest bet, never wraps. Flicks coast at most two levels; longer jumps
+  (Home, End, the bet list) snap. The bet plaque opens every level as a grid.
+- Interface images live in `src/game/ui/art/` so Vite hashes them and CSS paths follow
+  the CDN base; `public/assets/` keeps only what Pixi loads at run time.
+- All interface strings are in `game/ui/text.ts`, ready to move to `locales/` in step 6.
+- A server INSUFFICIENT_FUNDS resyncs the balance: it means the balance changed outside
+  the game. "Lower the bet" picks the highest bet the refreshed balance covers.
+- Arrow keys ignore auto-repeat: a held key must not become autoplay.
+- Errors other than insufficient funds show a plain notice with the code until step 6.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

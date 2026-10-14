@@ -1,65 +1,6 @@
-/* Temporary test panel; replaced by the western interface. */
-.test-panel {
+/* The interface layer fills the stage; every control positions itself inside it. */
+.hud {
   position: absolute;
-  left: 2%;
-  top: 3%;
-  width: min(34%, 420px);
-  box-sizing: border-box;
-  padding: 1.6cqmin 3cqmin;
-  border-radius: 1.6cqmin;
-  background: rgba(18, 9, 14, 0.72);
-  text-align: center;
-  font-size: clamp(12px, 2.4cqmin, 17px);
-}
-
-.test-panel p {
-  margin: 0.5em 0;
-}
-
-.test-panel .row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4em;
-  justify-content: center;
-}
-
-.test-panel button {
-  font: inherit;
-  padding: 0.3em 0.8em;
-  border: 1px solid var(--brass);
-  border-radius: 4px;
-  background: #5b3622;
-  color: var(--cream);
-  cursor: pointer;
-}
-
-.test-panel button[aria-pressed='true'] {
-  background: var(--gold);
-  color: #2a1a02;
-}
-
-.test-panel button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.test-title {
-  margin: 0 0 0.3em;
-  font-family: var(--font-title);
-  font-weight: 400;
-  font-size: clamp(16px, 4.4cqmin, 36px);
-  color: var(--gold);
-}
-
-.test-panel .result {
-  color: var(--gold);
-  font-weight: 700;
-}
-
-.test-panel .error {
-  color: var(--lose);
-}
-
-.test-panel .history {
-  color: var(--muted);
+  inset: 0;
+  font-family: var(--font-body);
 }

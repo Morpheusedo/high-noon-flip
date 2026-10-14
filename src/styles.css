@@ -3,13 +3,33 @@
 :root {
   color-scheme: dark;
   --bg: #120b10;
+  --wood: #5b3622;
+  --wood-hi: #7f4f31;
   --cream: #f7ead0;
   --muted: #d3bd9c;
   --gold: #f2c14e;
   --brass: #c9973f;
+  --brass-hi: #f3d488;
+  --win: #a6dc86;
   --lose: #f59377;
   --font-title: 'Rye', 'Alfa Slab One', Georgia, serif;
+  --font-display: 'Alfa Slab One', Rockwell, Georgia, serif;
   --font-body: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass-hi);
+  outline-offset: 2px;
 }
 
 html,

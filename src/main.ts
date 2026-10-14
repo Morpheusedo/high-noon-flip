@@ -23,7 +23,16 @@ async function boot(): Promise<void> {
   const model = new RoundModel(server, await server.init());
   await scene.mount(byId('scene'));
   startDirector(model, scene, settings);
-  render(h(App, { model, settings, lang: params.lang }), byId('ui'));
+  render(
+    h(App, {
+      model,
+      settings,
+      lang: params.lang,
+      demo: params.mode === 'demo',
+      onTurnCoin: () => scene.turnCoin(),
+    }),
+    byId('ui'),
+  );
 }
 
 function byId(id: string): HTMLElement {

@@ -1,0 +1,112 @@
+.picker {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: radial-gradient(circle at 50% 55%, rgba(8, 4, 6, 0.72), rgba(4, 2, 3, 0.94) 70%);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.picker-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6cqmin;
+  padding: 4cqmin;
+  font-size: clamp(12px, 3cqmin, 20px);
+}
+
+.picker h2 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: clamp(15px, 4.4cqmin, 34px);
+  color: var(--gold);
+  text-shadow:
+    0 0.06em 0 #5a3508,
+    0 0.12em 0.3em #000;
+}
+
+.picker-now {
+  font-weight: 700;
+  font-size: clamp(18px, 5.6cqmin, 42px);
+  color: #fff6e2;
+  text-shadow: 0 0.05em 0.1em #000;
+  font-variant-numeric: tabular-nums;
+}
+
+.picker-now small {
+  font-size: 0.5em;
+  color: var(--muted);
+}
+
+/* bullets in rows of up to six: 20 levels make four rows */
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, auto);
+  gap: 1.4cqmin;
+  cursor: default;
+}
+
+.bullet {
+  width: 12.6cqmin;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: url(./art/bullet-copper.webp) center / 94% 94% no-repeat;
+  color: #fff6e2;
+  font-weight: 700;
+  font-size: min(
+    clamp(12px, 3.6cqmin, 28px),
+    calc(clamp(12px, 3.6cqmin, 28px) * 4 / max(var(--len, 3), 4))
+  );
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    0 0.05em 0.08em #000,
+    0 0 0.3em rgba(0, 0, 0, 0.85);
+}
+
+.bullet:hover {
+  filter: brightness(1.12);
+}
+
+.bullet[aria-pressed='true'] {
+  background-image: url(./art/bullet-gold.webp);
+  color: #2a1a02;
+  text-shadow: 0 0.06em 0 rgba(255, 244, 200, 0.7);
+  box-shadow: 0 0 2.4cqmin rgba(255, 200, 90, 0.85);
+}
+
+.picker-hint {
+  margin: 0;
+  font-size: clamp(11px, 2.6cqmin, 18px);
+  font-weight: 500;
+  color: var(--muted);
+}
+
+@container stage (max-aspect-ratio: 1/1) {
+  .picker-panel {
+    gap: 3cqmin;
+  }
+
+  .picker h2 {
+    font-size: clamp(16px, 6cqmin, 36px);
+  }
+
+  .picker-grid {
+    grid-template-columns: repeat(4, auto);
+    gap: 2.4cqmin;
+  }
+
+  .bullet {
+    width: 17cqmin;
+    font-size: min(
+      clamp(14px, 5cqmin, 30px),
+      calc(clamp(14px, 5cqmin, 30px) * 4 / max(var(--len, 3), 4))
+    );
+  }
+}

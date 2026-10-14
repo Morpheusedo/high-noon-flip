@@ -1,0 +1,289 @@
+/* the two choices are the emblems themselves, silver-plated, with no plate behind them */
+.pick {
+  position: absolute;
+  top: calc(45% + 3px);
+  width: 31.5cqmin;
+  height: 31.5cqmin;
+  padding: 0;
+  border: 0;
+  z-index: 4;
+  background: none;
+  isolation: isolate;
+  animation: hop 1.8s infinite;
+  /* a tight contact shadow, a soft body shadow and a wide ambient one */
+  filter: drop-shadow(0 0.25cqmin 0.3cqmin rgba(0, 0, 0, 0.6))
+    drop-shadow(0 1.3cqmin 1.6cqmin rgba(0, 0, 0, 0.55))
+    drop-shadow(0 3.2cqmin 4.2cqmin rgba(0, 0, 0, 0.38));
+  transition:
+    opacity 0.25s,
+    translate 0.3s cubic-bezier(0.3, 1.3, 0.5, 1),
+    scale 0.12s;
+}
+
+.pick.outlaw {
+  --logo: url(./art/logo-outlaw.webp);
+  left: 2.5%;
+  translate: 0 -50%;
+}
+
+.pick.sheriff {
+  --logo: url(./art/logo-sheriff.webp);
+  right: 2.5%;
+  translate: 0 -50%;
+}
+
+/* the emblem, with a glint that sweeps across the metal while it is in the air */
+.pick::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+        112deg,
+        rgba(255, 255, 255, 0) 42%,
+        rgba(255, 255, 255, 0.85) 50%,
+        rgba(255, 255, 255, 0) 58%
+      )
+      100% 0 / 250% 100% no-repeat,
+    var(--logo) center / contain no-repeat;
+  -webkit-mask: var(--logo) center / contain no-repeat;
+  mask: var(--logo) center / contain no-repeat;
+  animation: glint 1.8s linear infinite;
+}
+
+/* a green outline that lights up only on the emblem in the air */
+.pick::before {
+  content: '';
+  position: absolute;
+  inset: -4.6875%;
+  z-index: -1;
+  background: #6fe37a;
+  -webkit-mask: center / 100% 100% no-repeat;
+  mask: center / 100% 100% no-repeat;
+  filter: blur(0.35cqmin) drop-shadow(0 0 1.6cqmin rgba(90, 230, 110, 0.55));
+  opacity: 0;
+  animation: lit 1.8s ease-in-out infinite;
+}
+
+.pick.outlaw::before {
+  -webkit-mask-image: url(./art/halo-outlaw.webp);
+  mask-image: url(./art/halo-outlaw.webp);
+}
+
+.pick.sheriff::before {
+  -webkit-mask-image: url(./art/halo-sheriff.webp);
+  mask-image: url(./art/halo-sheriff.webp);
+}
+
+/* one slow hop each, taking turns: Sheriff, then Outlaw */
+.pick.sheriff,
+.pick.sheriff::before,
+.pick.sheriff::after {
+  animation-delay: 0s;
+}
+
+.pick.outlaw,
+.pick.outlaw::before,
+.pick.outlaw::after {
+  animation-delay: -0.9s;
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  17% {
+    transform: translateY(-15%) scale(1.16);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.4);
+  }
+  32% {
+    transform: none;
+    animation-timing-function: ease-out;
+  }
+  37% {
+    transform: translateY(-3%) scale(1.02);
+    animation-timing-function: ease-in;
+  }
+  42% {
+    transform: none;
+  }
+}
+
+@keyframes glint {
+  0%,
+  5% {
+    background-position:
+      100% 0,
+      center;
+  }
+  32%,
+  100% {
+    background-position:
+      0% 0,
+      center;
+  }
+}
+
+@keyframes lit {
+  0%,
+  46%,
+  100% {
+    opacity: 0;
+  }
+  19% {
+    opacity: 0.62;
+  }
+}
+
+.pick:hover {
+  scale: 1.05;
+}
+
+.pick:active {
+  scale: 0.95;
+}
+
+/* while a round plays the emblems slide out to the sides */
+.pick:disabled {
+  opacity: 0;
+  animation: none;
+  cursor: default;
+}
+
+.pick.outlaw:disabled {
+  translate: -130% -50%;
+}
+
+.pick.sheriff:disabled {
+  translate: 130% -50%;
+}
+
+/* keyboard hints, desktop only: a brass keycap under each emblem */
+.key {
+  position: absolute;
+  top: calc(45% + 3px + 17.2cqmin);
+  width: 7.4cqmin;
+  height: 6.8cqmin;
+  translate: -50% 0;
+  z-index: 4;
+  padding: 0 0 0.5cqmin;
+  display: grid;
+  place-items: center;
+  color: #3a2606;
+  border: 0;
+  border-radius: 1.3cqmin;
+  background: linear-gradient(#f7dc98, var(--brass) 62%, #a87a2c);
+  box-shadow:
+    inset 0 0.25cqmin 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 0 0.22cqmin rgba(90, 53, 8, 0.55),
+    0 0.75cqmin 0 #5f3f0d,
+    0 0.75cqmin 0 0.22cqmin rgba(20, 10, 4, 0.7),
+    0 1.6cqmin 1.8cqmin rgba(0, 0, 0, 0.6);
+  transition:
+    opacity 0.25s,
+    transform 0.07s,
+    box-shadow 0.07s;
+}
+
+.key svg {
+  width: 54%;
+  height: 54%;
+  filter: drop-shadow(0 1px 0 rgba(255, 240, 190, 0.6));
+}
+
+.key.outlaw {
+  left: calc(2.5% + 15.75cqmin);
+}
+
+.key.sheriff {
+  left: calc(97.5% - 15.75cqmin);
+}
+
+.key:hover {
+  filter: brightness(1.1);
+}
+
+.key:active,
+.key.down {
+  transform: translateY(0.55cqmin);
+  box-shadow:
+    inset 0 0.25cqmin 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 0 0.22cqmin rgba(90, 53, 8, 0.55),
+    0 0.2cqmin 0 #5f3f0d,
+    0 0.2cqmin 0 0.22cqmin rgba(20, 10, 4, 0.7),
+    0 0.6cqmin 0.9cqmin rgba(0, 0, 0, 0.6);
+}
+
+.key:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* touch screens have no arrow keys */
+@media (hover: none) {
+  .key {
+    display: none;
+  }
+}
+
+/* invisible button over the coin */
+.coin-tap {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  width: 33.4cqmin;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  z-index: 3;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+}
+
+.coin-tap:disabled {
+  pointer-events: none;
+}
+
+@container stage (max-aspect-ratio: 1/1) {
+  .pick {
+    top: calc(59.5% + 3px);
+    width: 29.5cqmin;
+    height: 29.5cqmin;
+  }
+
+  .pick.outlaw {
+    left: 3%;
+  }
+
+  .pick.sheriff {
+    right: 3%;
+  }
+
+  .key {
+    display: none;
+  }
+
+  .coin-tap {
+    top: 33.5%;
+    width: 52cqmin;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pick {
+    animation: none;
+    transition: opacity 0.2s;
+  }
+
+  .pick::before {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .pick::after {
+    animation: none;
+  }
+}

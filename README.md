@@ -20,12 +20,13 @@ game should look, sound and feel; it is not part of the build.
 | `npm run lint`      | ESLint                                     |
 | `npm run format`    | Prettier                                   |
 | `npm run build`     | Type check, then a static build in `dist/` |
+| `npm run audio`     | Rebuild the sound sprite and music (macOS) |
 
 Launch parameters go in the URL, as an operator would pass them:
 `?lang=de&mode=demo&debug=1&lobbyUrl=https://casino.example`. With `debug=1` (demo mode
 only) the console has `hnf.server` (the mock server: `hnf.server.forceOutcomes('sheriff')`,
-`hnf.server.failNext('NETWORK')`), `hnf.scene` (`hnf.scene.turnCoin()`, `hnf.scene.win(5)`)
-and `hnf.settings` (`hnf.settings.set({ speed: 4 })`).
+`hnf.server.failNext('NETWORK')`), `hnf.scene` (`hnf.scene.turnCoin()`, `hnf.scene.win(5)`),
+`hnf.settings` (`hnf.settings.set({ ...hnf.settings.get(), speed: 4 })`) and `hnf.audio`.
 
 ## How the client is built
 
@@ -39,12 +40,14 @@ src/
 │  ├─ launchParams.ts reading and validating the launch URL
 │  ├─ money.ts        minor units → "€198.00" for any currency and language
 │  ├─ assets.ts       asset URLs that work under any CDN path
-│  ├─ settings.ts     the player's settings (play speed) and the turbo rule
+│  ├─ settings.ts     the player's settings (speed, sound) and the turbo rule
+│  ├─ audio/          AudioManager: one context, sprite, music layers, volumes, mute
 │  └─ store.ts        observable state; useStore.ts connects it to Preact
 └─ game/
    ├─ model/          RoundModel: the round state machine, the source of truth
    ├─ director.ts     turns phase changes into animations, reports back when done
    ├─ timing.ts       every duration of a round, scaled by speed in one place
+   ├─ sound.ts        this game's sounds and how the music follows the stake
    ├─ scene/          PixiJS: everything drawn on the canvas
    │  ├─ GameScene.ts     the canvas, the layers, the API the director calls
    │  ├─ Background.ts    photo, sun shade, dust, parallax, vignette
@@ -65,8 +68,11 @@ src/
       └─ art/             interface images, bundled and hashed by Vite
 tests/                unit tests for the model, the director, the server mock and the shell
 docs/ROADMAP.md       the plan, what is done, and the decisions taken
-public/assets/        scene images and sounds, loaded by Pixi at run time
-   └─ images/scene-layout.json  positions on the stage and measurements on the art
+public/assets/        scene images and sounds, loaded at run time
+   ├─ images/scene-layout.json  positions on the stage and measurements on the art
+   └─ audio/          built by `npm run audio`: sfx.m4a sprite, music loops, audio.json
+assets-src/audio/     the sound sources the audio build reads; not shipped
+scripts/              build scripts (the audio sprite)
 ```
 
 Rules the code follows:

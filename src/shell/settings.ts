@@ -1,7 +1,7 @@
 /**
  * The player's own settings: what they chose, not what the round is doing.
- *
- * For now only the play speed. Sound and saving between sessions join later.
+ * Kept for this session only; saving them between sessions comes with the
+ * settings screen.
  */
 import { Store } from './store';
 
@@ -12,10 +12,18 @@ export const SPEEDS: readonly Speed[] = [1, 2, 4];
 
 export interface Settings {
   speed: Speed;
+  muted: boolean;
+  /** Sound effects volume, 0 to 100. */
+  sfxVolume: number;
+  /** Music volume, 0 to 100. */
+  musicVolume: number;
 }
 
+/** Quiet by default: a casino lobby is often open next to other games and streams. */
+export const DEFAULT_SETTINGS: Settings = { speed: 1, muted: false, sfxVolume: 15, musicVolume: 6 };
+
 export function createSettings(): Store<Settings> {
-  return new Store<Settings>({ speed: 1 });
+  return new Store<Settings>({ ...DEFAULT_SETTINGS });
 }
 
 /** The speed a market allows: where turbo is banned, only normal speed. */

@@ -22,6 +22,14 @@ export const text = {
   speedName: { 1: 'Normal', 2: 'Fast', 4: 'Turbo' } satisfies Record<Speed, string>,
   speedLabel: (name: string) => `Speed: ${name}. Tap to change.`,
 
+  mute: 'Mute sound',
+  unmute: 'Unmute sound',
+  soundLevels: 'Sound and music levels',
+  sound: 'Sound',
+  soundEffects: 'Sound effects',
+  music: 'Music',
+  musicNote: 'The music gets more intense as the stake goes up.',
+
   balance: 'Balance',
   demoBalance: 'Demo balance',
   totalBet: 'Total bet',

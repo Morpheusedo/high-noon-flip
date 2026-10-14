@@ -43,7 +43,7 @@ tab, result stamp, last-flips strip, insufficient-funds notice, speed button (hi
 where turbo is banned), a tap target over the coin that calls `scene.turnCoin()`. Both
 orientations.
 
-### 5. Sound
+### 5. Sound — done
 
 `shell/audio/`: one audio manager, an audio sprite instead of 20 files, music that
 blends calm and intense by stake, sound and music volumes, mute.
@@ -99,6 +99,23 @@ low-end phone, a static preview link to send to the provider.
   the game. "Lower the bet" picks the highest bet the refreshed balance covers.
 - Arrow keys ignore auto-repeat: a held key must not become autoplay.
 - Errors other than insufficient funds show a plain notice with the code until step 6.
+- Sound: `shell/audio/AudioManager` is shared (one context, unlock on the first touch,
+  silent while the tab is hidden, effects and music buses); `game/sound.ts` is this
+  game's sound design. Sound loads in the background and never holds the game up.
+- The 20 recorded effects are one sprite, built by `npm run audio` from
+  `assets-src/audio/`; the build decodes the result and fails if any clip moved by more
+  than 6 ms. Music stays two loop files: long loops do not belong in a sprite.
+- AAC (.m4a) only for now: macOS afconvert cannot write Ogg or WebM Opus, and the
+  installed ffmpeg is broken. `audio.json` lists files per format, so Opus can be added
+  later without code changes. AAC plays in Chrome, Safari, Firefox and Edge on Windows,
+  macOS, Android and iOS.
+- Shot, ring, landing, win and clicks are still the prototype's synthesized placeholders;
+  a recording added to the sprite under the same cue replaces one. Ask the provider's
+  sound designer for them.
+- Defaults: effects 15, music 6, not muted; for this session only until the settings
+  screen saves them. Raising the music slider unmutes.
+- In portrait the mode switch scales with the stage (no 13 px floor), so it no longer
+  runs under the music button on narrow phones, as it did in the prototype.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

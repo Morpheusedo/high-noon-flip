@@ -107,8 +107,7 @@
   cursor: default;
 }
 
-/* round brass buttons in the corners; speed sits where the prototype has it, left of the
-   sound button that comes with the audio step */
+/* round brass buttons in the corners; speed sits left of the sound button */
 .tool {
   --tool: clamp(34px, 8.4cqmin, 60px);
   position: absolute;
@@ -195,11 +194,15 @@
     translate: -50% 0;
   }
 
+  /* scales with the stage, with no floor, so it always fits between the sound buttons on
+     the left and the speed button on the right */
   .mode-btn {
-    font-size: clamp(13px, 4.1cqmin, 20px);
+    padding: 0.5em 0.95em;
+    font-size: clamp(10px, 3.6cqmin, 20px);
+    letter-spacing: 0.06em;
   }
 
-  /* speed in the top right corner; sound will take the top left */
+  /* speed in the top right corner, sound in the top left */
   .tool {
     --tool: clamp(36px, 10.4cqmin, 80px);
     top: 2%;

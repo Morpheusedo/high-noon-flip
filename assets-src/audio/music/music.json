@@ -1,0 +1,4 @@
+{
+  "calm": { "file": "music-calm.mp4", "loopStart": 0.2, "loopLength": 34.9088 },
+  "hot": { "file": "music-hot.mp4", "loopStart": 0.2, "loopLength": 31.2195 }
+}

@@ -4,7 +4,7 @@
  *
  *   requesting  the hammer goes back while the request is on its way
  *   revealing   the shot, the coin flies and lands on the server's outcome → finishReveal()
- *   result      win or loss effects, then a pause → finishResult()
+ *   result      win or loss effects and sound, then a pause → finishResult()
  *   error       the hammer comes down without a shot
  *
  * It waits for the scene's animations, which run on the scene clock, so a
@@ -15,6 +15,7 @@ import type { Flip, Side } from '../server/protocol';
 import { allowedSpeed, type Settings } from '../shell/settings';
 import type { Store } from '../shell/store';
 import type { Outcome, RoundModel, RoundState } from './model/RoundModel';
+import type { RoundSounds } from './sound';
 import { timingsFor, type HoldKind, type Timings } from './timing';
 
 /** What the director needs from the scene. `GameScene` implements it; tests pass a fake. */
@@ -37,6 +38,7 @@ export const MAX_WIN_LEVEL = 5;
 export function startDirector(
   model: RoundModel,
   scene: Presenter,
+  sounds: RoundSounds,
   settings: Store<Settings>,
   now: () => number = () => performance.now(),
 ): () => void {
@@ -56,14 +58,23 @@ export function startDirector(
     await cocked;
     if (gen !== generation) return;
     scene.fire(timings.spinMs, timings.pace);
+    // the cylinder only spins with full motion, so its sound does too
+    sounds.shot(scene.reducedMotion ? null : timings.spinMs);
     await scene.flip(flip.outcome, timings.flipMs, timings.turns);
-    if (gen === generation) model.finishReveal();
+    if (gen !== generation) return;
+    sounds.land();
+    model.finishReveal();
   }
 
   async function show(gen: number, state: RoundState, outcome: Outcome, flip: Flip | null) {
     const { kind, level } = celebration(state, outcome, flip, stepBefore);
-    if (outcome.kind === 'lose') scene.lose();
-    else scene.win(level);
+    if (outcome.kind === 'lose') {
+      scene.lose();
+      sounds.lose();
+    } else {
+      scene.win(level);
+      sounds.win();
+    }
     // the market's shortest round counts from the bet; any shortfall extends the result
     const shortfall = state.jurisdiction.minRoundMs - (now() - startedAt);
     await scene.wait(Math.max(timings.hold[kind], shortfall));
@@ -79,6 +90,7 @@ export function startDirector(
         startedAt = now();
         stepBefore = state.openRun?.step ?? 0;
         timings = currentTimings();
+        if (phase.pick) sounds.cock();
         cocked = phase.pick ? scene.cock(timings.cockMs) : Promise.resolve();
         break;
       case 'revealing':

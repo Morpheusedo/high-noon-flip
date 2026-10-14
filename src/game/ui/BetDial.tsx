@@ -28,6 +28,13 @@ interface Props {
   /** Short amount printed on a bullet. */
   short(bet: Minor): string;
   onChange(bet: Minor): void;
+  /** Sound cues: one chamber passed the marker, and the drum came to rest after `coasted` levels. */
+  feedback: DialFeedback;
+}
+
+export interface DialFeedback {
+  tick(): void;
+  settle(coasted: number): void;
 }
 
 /** Degrees the drum turns per pixel of finger travel, as a share of its radius. */
@@ -49,7 +56,7 @@ interface Gesture {
   pxPerLevel: number;
 }
 
-export function BetDial({ bets, bet, disabled, label, short, onChange }: Props) {
+export function BetDial({ bets, bet, disabled, label, short, onChange, feedback }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const wheelAt = useRef(0);
@@ -73,9 +80,12 @@ export function BetDial({ bets, bet, disabled, label, short, onChange }: Props) 
   const levels = slotLevels(pos, count);
   const chosen = Math.round(Math.max(0, Math.min(count - 1, pos)));
 
-  const choose = (level: number) => {
+  /** Sets the bet to `level`; true if that changed it. */
+  const choose = (level: number): boolean => {
     const next = bets[Math.max(0, Math.min(count - 1, level))];
-    if (next !== undefined && next !== bet) onChange(next);
+    if (next === undefined || next === bet) return false;
+    onChange(next);
+    return true;
   };
   const along = (e: PointerEvent) => (tall ? -e.clientY : e.clientX);
 
@@ -113,7 +123,7 @@ export function BetDial({ bets, bet, disabled, label, short, onChange }: Props) 
     // turning the drum one way brings the next level up; the bet follows the finger at once
     const raw = g.startPos - travel / g.pxPerLevel;
     setDragPos(withGive(raw, count));
-    choose(Math.round(raw));
+    if (choose(Math.round(raw))) feedback.tick();
   };
 
   const onPointerUp = (e: PointerEvent) => {
@@ -129,12 +139,13 @@ export function BetDial({ bets, bet, disabled, label, short, onChange }: Props) 
     setSpinMs(180 + 50 * Math.min(8, Math.abs(target - from)));
     setDragPos(null);
     choose(target);
+    feedback.settle(Math.abs(target - Math.round(from)));
   };
 
   const onChamber = (level: number | null) => {
     if (disabled || level === null) return;
     setSpinMs(180 + 50 * Math.min(8, Math.abs(level - index)));
-    choose(level);
+    if (choose(level)) feedback.settle(0);
   };
 
   const onWheel = (e: WheelEvent) => {
@@ -144,7 +155,7 @@ export function BetDial({ bets, bet, disabled, label, short, onChange }: Props) 
     if (disabled || Math.abs(d) < 4 || now - wheelAt.current < 70) return;
     wheelAt.current = now;
     setSpinMs(180);
-    choose(index + (d > 0 ? 1 : -1));
+    if (choose(index + (d > 0 ? 1 : -1))) feedback.tick();
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -160,7 +171,7 @@ export function BetDial({ bets, bet, disabled, label, short, onChange }: Props) 
     if (level === undefined || disabled) return;
     e.preventDefault();
     setSpinMs(180);
-    choose(level);
+    if (choose(level)) feedback.tick();
   };
 
   return (

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { celebration, startDirector, type Presenter } from '../src/game/director';
 import { RoundModel } from '../src/game/model/RoundModel';
 import { MockServer, type MockServerOptions } from '../src/server/mockServer';
+import type { RoundSounds } from '../src/game/sound';
 import { createSettings, type Speed } from '../src/shell/settings';
 
 const delay = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
@@ -28,10 +29,18 @@ async function setup(
   const server = new MockServer({ balance: 100_000, ...options.server });
   const model = new RoundModel(server, await server.init());
   const settings = createSettings();
-  settings.set({ speed: options.speed ?? 1 });
+  settings.set({ ...settings.get(), speed: options.speed ?? 1 });
   const { scene, calls } = fakeScene(options.reducedMotion);
-  const stop = startDirector(model, scene, settings, () => Date.now());
-  return { server, model, settings, calls, stop, phase: () => model.state.phase.name };
+  const played: string[] = [];
+  const sounds: RoundSounds = {
+    cock: () => played.push('cock'),
+    shot: (spinMs) => played.push(`shot ${spinMs}`),
+    land: () => played.push('land'),
+    win: () => played.push('win'),
+    lose: () => played.push('lose'),
+  };
+  const stop = startDirector(model, scene, sounds, settings, () => Date.now());
+  return { server, model, settings, calls, played, stop, phase: () => model.state.phase.name };
 }
 
 const advance = (ms: number) => vi.advanceTimersByTimeAsync(ms);
@@ -64,6 +73,24 @@ describe('director', () => {
     expect(phase()).toBe('result');
     await advance(1);
     expect(phase()).toBe('idle');
+  });
+
+  it('plays each sound as its animation starts', async () => {
+    const { server, model, played } = await setup();
+    server.forceOutcomes('sheriff');
+    await model.pick('outlaw');
+    expect(played).toEqual(['cock']);
+    await advance(230);
+    expect(played).toEqual(['cock', 'shot 900']);
+    await advance(1900);
+    expect(played).toEqual(['cock', 'shot 900', 'land', 'lose']);
+  });
+
+  it('keeps the cylinder quiet when it does not spin', async () => {
+    const { model, played } = await setup({ reducedMotion: true });
+    await model.pick('sheriff');
+    await advance(0);
+    expect(played).toContain('shot null');
   });
 
   it('dims and holds a loss for its own time', async () => {
@@ -117,7 +144,7 @@ describe('director', () => {
   it('applies a new speed from the next round', async () => {
     const { model, settings, calls } = await setup();
     await model.pick('sheriff');
-    settings.set({ speed: 2 });
+    settings.set({ ...settings.get(), speed: 2 });
     await advance(230);
     expect(calls.at(-1)).toMatch(/ 1900 6$/);
     await advance(1900 + 1900);

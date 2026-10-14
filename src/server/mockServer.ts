@@ -21,6 +21,9 @@ import {
   type ServerErrorCode,
   type Side,
 } from './protocol';
+import { readJson, writeJson, type KeyValueStore } from '../shell/storage';
+
+export type { KeyValueStore };
 
 /** Payouts in hundredths, so the math stays in whole numbers. 198 = x1.98. */
 const INSTANT_HUNDREDTHS = 198;
@@ -42,9 +45,6 @@ const DEFAULT_JURISDICTION: Jurisdiction = {
   showSessionClock: false,
 };
 
-/** The part of `Storage` the server needs; `localStorage` fits, tests pass a fake. */
-export type KeyValueStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
-
 interface SavedState {
   balance: Minor;
   openRun: OpenRun | null;
@@ -55,7 +55,7 @@ export interface MockServerOptions {
   config?: Partial<GameConfig>;
   jurisdiction?: Partial<Jurisdiction>;
   /** Where the session is kept between reloads. Without it every load starts fresh. */
-  store?: KeyValueStore;
+  store?: KeyValueStore | null;
   storeKey?: string;
   /** Simulated network delay per request, in milliseconds. */
   latencyMs?: number;
@@ -66,7 +66,7 @@ export interface MockServerOptions {
 export class MockServer implements GameServer {
   private readonly config: GameConfig;
   private readonly jurisdiction: Jurisdiction;
-  private readonly store: KeyValueStore | undefined;
+  private readonly store: KeyValueStore | null | undefined;
   private readonly storeKey: string;
   private readonly latencyMs: number;
   private readonly flipCoin: () => Side;
@@ -180,20 +180,11 @@ export class MockServer implements GameServer {
   }
 
   private load(): SavedState | null {
-    try {
-      const raw = this.store?.getItem(this.storeKey);
-      return raw ? (JSON.parse(raw) as SavedState) : null;
-    } catch {
-      return null;
-    }
+    return readJson(this.store, this.storeKey) as SavedState | null;
   }
 
   private save(): void {
-    try {
-      this.store?.setItem(this.storeKey, JSON.stringify(this.state));
-    } catch {
-      // storage can be full or blocked; the session still works for this page load
-    }
+    writeJson(this.store, this.storeKey, this.state);
   }
 }
 

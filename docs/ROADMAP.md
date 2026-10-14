@@ -48,7 +48,7 @@ orientations.
 `shell/audio/`: one audio manager, an audio sprite instead of 20 files, music that
 blends calm and intense by stake, sound and music volumes, mute.
 
-### 6. Shell screens and texts
+### 6. Shell screens and texts — done
 
 Loader with progress; error dialogs per error code; rules screen built from the config
 (RTP, payouts, ladder, max win, game version); settings; all strings in `locales/en.json`
@@ -94,11 +94,27 @@ low-end phone, a static preview link to send to the provider.
   (Home, End, the bet list) snap. The bet plaque opens every level as a grid.
 - Interface images live in `src/game/ui/art/` so Vite hashes them and CSS paths follow
   the CDN base; `public/assets/` keeps only what Pixi loads at run time.
-- All interface strings are in `game/ui/text.ts`, ready to move to `locales/` in step 6.
+- Strings live in `src/locales/*.json`, flat keys (`"rules.bets"`), `{name}` placeholders,
+  plurals as CLDR forms picked by `count`. The key type comes from `en.json`, so a typo is a
+  type error. No HTML in dictionaries: bold words are placeholders the view fills.
+- English is bundled (the base and the loading error's text); other languages are lazy
+  chunks. `lang=pt-BR` tries `pt-BR`, `pt`, any `pt-*`, then English. Numbers and money
+  follow the requested `lang` even when its text falls back to English.
 - A server INSUFFICIENT_FUNDS resyncs the balance: it means the balance changed outside
   the game. "Lower the bet" picks the highest bet the refreshed balance covers.
 - Arrow keys ignore auto-repeat: a held key must not become autoplay.
-- Errors other than insufficient funds show a plain notice with the code until step 6.
+- One dialog per server error code (`shell/errors.ts`), with the code shown for support.
+  NETWORK offers "Try again", the others "Continue"; both resync through `dismissError`.
+  SESSION_EXPIRED is fatal: "Back to the lobby" (top window, falling back to the game's
+  frame) when the operator gave `lobbyUrl`, and "Reload". Escape never closes an error.
+  Unknown codes read as a general error. Insufficient funds keeps its own notice.
+- The loading screen is inline in `index.html`. Progress weights: text 1, init 2, scene art
+  8, fonts 1 (fonts give up after 3 s). Sound is not counted. A failed load shows the
+  reason and "Reload".
+- The rules show exact multipliers (×15.84, not the ladder's ×15.8): a regulator checks them
+  against the math. Max win is the top multiplier of any mode times the highest bet, rounded
+  down as the server pays. "Malfunction voids all pays and plays" is always shown.
+- `__APP_VERSION__` comes from `package.json` through Vite `define`; step 8 adds the hash.
 - Sound: `shell/audio/AudioManager` is shared (one context, unlock on the first touch,
   silent while the tab is hidden, effects and music buses); `game/sound.ts` is this
   game's sound design. Sound loads in the background and never holds the game up.
@@ -112,8 +128,11 @@ low-end phone, a static preview link to send to the provider.
 - Shot, ring, landing, win and clicks are still the prototype's synthesized placeholders;
   a recording added to the sprite under the same cue replaces one. Ask the provider's
   sound designer for them.
-- Defaults: effects 15, music 6, not muted; for this session only until the settings
-  screen saves them. Raising the music slider unmutes.
+- Defaults: effects 15, music 6, not muted, 1x. Settings are saved in `localStorage`
+  (`hnf.settings`) and checked field by field on load. Raising the music slider unmutes.
+- The music button became a settings button (gear): volumes, and speed where turbo is
+  allowed. The mute and speed buttons stay for one-tap access. The info button hangs under
+  the speed button, or takes its place where turbo is banned.
 - In portrait the mode switch scales with the stage (no 13 px floor), so it no longer
   runs under the music button on narrow phones, as it did in the prototype.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
@@ -126,4 +145,7 @@ low-end phone, a static preview link to send to the provider.
 3. Build requirements: hosting, size budget, supported browsers and devices.
 4. Target markets (decides turbo, autoplay, session clock).
 5. Languages and currencies, including crypto.
-6. Who writes the math and the rules text, and who certifies.
+6. Who writes the math and the rules text, and who certifies. The rules text and its
+   Russian translation are ours for now and need the provider's compliance review.
+7. Fonts come from Google Fonts. EU operators may reject requests to Google from inside
+   the game (GDPR); self-host them before a real-money launch.

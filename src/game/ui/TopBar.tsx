@@ -5,18 +5,19 @@
 import type { Mode, Side } from '../../server/protocol';
 import { SPEEDS, type Speed } from '../../shell/settings';
 import { HISTORY_SIZE } from '../model/RoundModel';
-import { text } from './text';
+import { useText } from './text';
 import './TopBar.css';
 
 export function TitleSign({ history }: { history: Side[] }) {
+  const { t } = useText();
   return (
     <div class="sign-wrap">
-      <h1 class="sign">{text.title}</h1>
-      <ol class="dots" aria-label={text.lastFlips}>
+      <h1 class="sign">{t('game.title')}</h1>
+      <ol class="dots" aria-label={t('flips.last')}>
         {Array.from({ length: HISTORY_SIZE }, (_, i) => {
           const side = history[i];
           return side ? (
-            <li class={side} title={text.side[side]} aria-label={text.side[side]} />
+            <li class={side} title={t(`side.${side}`)} aria-label={t(`side.${side}`)} />
           ) : (
             <li aria-hidden="true" />
           );
@@ -33,8 +34,9 @@ interface ModeSwitchProps {
 }
 
 export function ModeSwitch({ mode, disabled, onChange }: ModeSwitchProps) {
+  const { t } = useText();
   return (
-    <div class="mode" role="group" aria-label={text.modeGroup}>
+    <div class="mode" role="group" aria-label={t('mode.group')}>
       {(['instant', 'multiply'] as const).map((m) => (
         <button
           class="mode-btn"
@@ -42,7 +44,7 @@ export function ModeSwitch({ mode, disabled, onChange }: ModeSwitchProps) {
           disabled={disabled}
           onClick={() => onChange(m)}
         >
-          {text[m]}
+          {t(`mode.${m}`)}
         </button>
       ))}
     </div>
@@ -56,12 +58,13 @@ interface SpeedButtonProps {
 
 /** Cycles 1x → 2x → 4x. Not shown at all where the market bans turbo. */
 export function SpeedButton({ speed, onChange }: SpeedButtonProps) {
+  const { t } = useText();
   const next = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length] ?? 1;
   return (
     <button
       class="tool speed"
       data-speed={speed}
-      aria-label={text.speedLabel(text.speedName[speed])}
+      aria-label={t('speed.button', { name: t(`speed.${speed}`) })}
       onClick={() => onChange(next)}
     >
       <svg

@@ -9,8 +9,134 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Barlow:wght@400;500;600;700&family=Rye&display=swap"
     />
+    <!-- The loading screen is styled here, not in the bundle, so it shows before any script. -->
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #120b10;
+      }
+
+      .loader {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 22px;
+        padding: 24px;
+        background: radial-gradient(circle at 50% 40%, #3a1d12, #120b10 70%);
+        color: #f7ead0;
+        font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+        text-align: center;
+        transition: opacity 400ms ease;
+      }
+
+      .loader[data-state='done'] {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .loader-title {
+        margin: 0;
+        font-family: 'Rye', 'Alfa Slab One', Georgia, serif;
+        font-weight: 400;
+        font-size: clamp(30px, 8vmin, 72px);
+        color: #f2c14e;
+        text-shadow:
+          0 0.06em 0 #5a3508,
+          0 0.12em 0.3em rgba(0, 0, 0, 0.7);
+      }
+
+      /* a brass track that fills from the left */
+      .loader-track {
+        position: relative;
+        width: min(70vw, 420px);
+        height: 10px;
+        border-radius: 99px;
+        background: rgba(0, 0, 0, 0.45);
+        box-shadow:
+          inset 0 1px 2px rgba(0, 0, 0, 0.8),
+          0 0 0 1px rgba(201, 151, 63, 0.5);
+      }
+
+      .loader-fill {
+        --progress: 0;
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: calc(var(--progress) * 100%);
+        min-width: 10px;
+        border-radius: 99px;
+        background: linear-gradient(#f3d488, #c9973f 60%, #8a5a10);
+        transition: width 200ms ease-out;
+      }
+
+      .loader-percent {
+        margin: 0;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        font-size: 15px;
+        color: #d3bd9c;
+      }
+
+      .loader-error {
+        max-width: 420px;
+      }
+
+      .loader-error p {
+        margin: 0 0 8px;
+        color: #d3bd9c;
+      }
+
+      .loader-error .loader-error-title {
+        color: #f7ead0;
+        font-weight: 600;
+        font-size: 18px;
+      }
+
+      .loader-error button {
+        margin-top: 8px;
+        padding: 0.5em 2em;
+        font: inherit;
+        font-weight: 600;
+        color: #f7ead0;
+        background: #5b3622;
+        border: 1px solid #c9973f;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .loader[data-state='error'] .loader-track,
+      .loader[data-state='error'] .loader-percent {
+        display: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .loader,
+        .loader-fill {
+          transition: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div class="loader" id="loader">
+      <h1 class="loader-title">High Noon Flip</h1>
+      <div
+        class="loader-track"
+        role="progressbar"
+        aria-label="Loading the game"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+      >
+        <div class="loader-fill"></div>
+      </div>
+      <p class="loader-percent" aria-hidden="true">0%</p>
+      <div class="loader-error" role="alert" hidden></div>
+    </div>
     <div class="shell">
       <main class="stage" id="stage">
         <div class="scene" id="scene"></div>

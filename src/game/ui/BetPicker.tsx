@@ -5,7 +5,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { Minor } from '../../server/protocol';
 import type { Formats } from './format';
-import { text } from './text';
+import { useText } from './text';
 import './BetPicker.css';
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
 }
 
 export function BetPicker({ bets, bet, fmt, onChoose, onClose }: Props) {
+  const { t } = useText();
   const grid = useRef<HTMLDivElement>(null);
   useEffect(() => {
     grid.current
@@ -36,14 +37,14 @@ export function BetPicker({ bets, bet, fmt, onChoose, onClose }: Props) {
       class="picker"
       role="dialog"
       aria-modal="true"
-      aria-label={text.chooseBet}
+      aria-label={t('bet.choose')}
       // a tap outside the bullets closes it without changing the bet
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest('.picker-grid')) onClose();
       }}
     >
       <div class="picker-panel">
-        <h2>{text.chooseBet}</h2>
+        <h2>{t('bet.choose')}</h2>
         <div class="picker-now">
           {fmt.amount(bet)} <small>{fmt.code}</small>
         </div>
@@ -60,7 +61,7 @@ export function BetPicker({ bets, bet, fmt, onChoose, onClose }: Props) {
             </button>
           ))}
         </div>
-        <p class="picker-hint">{text.chooseBetHint}</p>
+        <p class="picker-hint">{t('bet.chooseHint')}</p>
       </div>
     </div>
   );

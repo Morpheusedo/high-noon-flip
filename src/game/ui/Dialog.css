@@ -1,0 +1,64 @@
+/* a dialog over the stage: settings, rules and errors share this frame */
+.dialog {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 45%, rgba(8, 4, 6, 0.8), rgba(4, 2, 3, 0.95) 70%);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+/* errors sit above every other dialog */
+.dialog[role='alertdialog'] {
+  z-index: 12;
+}
+
+.dialog.closable {
+  cursor: pointer;
+}
+
+.dialog-panel {
+  width: min(86%, 132cqmin);
+  /* the stage's height, not a percentage: the grid row grows with the panel */
+  max-height: 86cqh;
+  box-sizing: border-box;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 2cqmin;
+  padding: 3.4cqmin;
+  background: rgba(16, 9, 12, 0.92);
+  border: 0.4cqmin solid var(--brass);
+  border-radius: 3cqmin;
+  box-shadow: 0 2cqmin 6cqmin rgba(0, 0, 0, 0.7);
+}
+
+.dialog-panel h2 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: clamp(16px, 5cqmin, 34px);
+  color: var(--gold);
+}
+
+.dialog-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(11px, 3cqmin, 17px);
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.6cqmin;
+  justify-content: center;
+}
+
+.dialog-panel .btn {
+  align-self: center;
+  padding: 0.5em 2em;
+  font-weight: 600;
+  font-size: clamp(12px, 3.2cqmin, 18px);
+}

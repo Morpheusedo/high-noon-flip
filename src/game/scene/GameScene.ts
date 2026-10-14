@@ -47,7 +47,8 @@ export class GameScene implements Presenter {
   private readonly coinPose: CoinPose = { angle: 0 };
   private time = 0;
 
-  async mount(host: HTMLElement): Promise<void> {
+  /** Loads the art and starts drawing into `host`; `onProgress` gets 0..1 while the art loads. */
+  async mount(host: HTMLElement, onProgress?: (fraction: number) => void): Promise<void> {
     const [layout] = await Promise.all([
       loadLayout(),
       this.app.init({
@@ -59,7 +60,7 @@ export class GameScene implements Presenter {
       }),
     ]);
     this.layout = layout;
-    this.assets = await loadArt(layout);
+    this.assets = await loadArt(layout, onProgress);
     host.appendChild(this.app.canvas);
     this.app.stage.addChild(this.root);
 

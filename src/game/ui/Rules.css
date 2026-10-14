@@ -1,0 +1,94 @@
+/* the info button hangs under the speed button, or takes its place where turbo is banned */
+.tool.rules {
+  right: calc(3% + var(--tool) + 1.6cqmin);
+  top: calc(4% + var(--tool) + 1.8cqmin);
+}
+
+.hud[data-turbo='off'] .tool.rules {
+  top: 4%;
+}
+
+.rules-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: clamp(12px, 3.3cqmin, 19px);
+  line-height: 1.45;
+  color: var(--cream);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.rules-body:focus-visible {
+  outline-offset: -2px;
+}
+
+.rules-body h3 {
+  margin: 1em 0 0.25em;
+  font-size: 0.82em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass-hi);
+}
+
+.rules-body h3:first-child {
+  margin-top: 0;
+}
+
+.rules-body p {
+  margin: 0 0 0.5em;
+  max-width: 62ch;
+}
+
+.rules-body b {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.rules-body .dialog-note {
+  font-size: 0.9em;
+}
+
+.rules-ladder {
+  margin: 0.4em 0 0.7em;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+}
+
+.rules-ladder th,
+.rules-ladder td {
+  padding: 0.2em 1.2em 0.2em 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rules-ladder th {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rules-ladder td:nth-child(2) {
+  color: var(--gold);
+}
+
+.rules-legal {
+  font-weight: 600;
+}
+
+@container stage (max-aspect-ratio: 1/1) {
+  /* under the speed button in the top right corner */
+  .tool.rules {
+    right: 3%;
+    top: calc(2% + var(--tool) + 2.2cqmin);
+  }
+
+  .hud[data-turbo='off'] .tool.rules {
+    top: 2%;
+  }
+
+  .rules-panel {
+    max-height: 90cqh;
+  }
+}

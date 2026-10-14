@@ -16,7 +16,7 @@ import {
   withGive,
 } from './dial';
 import { useTallStage } from './hooks';
-import { text } from './text';
+import { useText } from './text';
 import './BetDial.css';
 
 interface Props {
@@ -57,6 +57,7 @@ interface Gesture {
 }
 
 export function BetDial({ bets, bet, disabled, label, short, onChange, feedback }: Props) {
+  const { t } = useText();
   const root = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const wheelAt = useRef(0);
@@ -180,7 +181,7 @@ export function BetDial({ bets, bet, disabled, label, short, onChange, feedback 
       class={`dial${dragPos !== null ? ' dragging' : ''}`}
       role="slider"
       tabIndex={disabled ? -1 : 0}
-      aria-label={text.betDial}
+      aria-label={t('bet.dial')}
       aria-valuemin={0}
       aria-valuemax={count - 1}
       aria-valuenow={index}

@@ -93,6 +93,22 @@
   background: var(--wood-hi);
 }
 
+/* error dialogs: the frame from Dialog.css, narrower, with the code small under the text */
+.error-panel {
+  width: min(86%, 100cqmin);
+}
+
+.error-panel p {
+  margin: 0;
+  max-width: 62ch;
+  font-size: clamp(12px, 3.3cqmin, 19px);
+  line-height: 1.45;
+}
+
+.error-panel .dialog-note {
+  font-size: clamp(10px, 2.6cqmin, 15px);
+}
+
 @container stage (max-aspect-ratio: 1/1) {
   .stamp {
     top: 33.5%;

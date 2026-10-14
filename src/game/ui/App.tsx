@@ -27,9 +27,10 @@ import { BetPicker } from './BetPicker';
 import { CoinTap, Emblems } from './Emblems';
 import { formats } from './format';
 import { useReducedMotion } from './hooks';
-import { ErrorNotice, FundsNotice, ResultStamp } from './Notices';
+import { ErrorDialog, FundsNotice, ResultStamp } from './Notices';
 import { Balance, BetPlaque, CashOut, Ladder } from './Plaques';
-import { MixButton, MixPanel, SoundButton } from './SoundControls';
+import { Rules, RulesButton } from './Rules';
+import { SettingsButton, SettingsPanel, SoundButton } from './Settings';
 import { ModeSwitch, SpeedButton, TitleSign } from './TopBar';
 import './app.css';
 
@@ -37,8 +38,10 @@ interface Props {
   model: RoundModel;
   settings: Store<Settings>;
   lang: string;
-  /** Play money: the balance plaque says so. */
+  /** Play money: the balance plaque and the rules say so. */
   demo: boolean;
+  /** The operator's lobby, offered when the session cannot go on. */
+  lobbyUrl: string | null;
   sounds: UiSounds;
   /** Turns the coin over by hand, for looks. */
   onTurnCoin(): void;
@@ -47,13 +50,20 @@ interface Props {
 /** How long a keycap stays down after its arrow key. */
 const KEY_DIP_MS = 110;
 
-export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) {
+/** At most one panel is open over the game; each returns the focus to the button that opened it. */
+type Panel = 'bets' | 'settings' | 'rules';
+const OPENER: Record<Panel, string> = {
+  bets: '.plaque.bet',
+  settings: '.tool.settings',
+  rules: '.tool.rules',
+};
+
+export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin }: Props) {
   const s = useStore(model.store);
   const prefs = useStore(settings);
   const { speed } = prefs;
-  const [mixing, setMixing] = useState(false);
+  const [panel, setPanel] = useState<Panel | null>(null);
   const reducedMotion = useReducedMotion();
-  const [picking, setPicking] = useState(false);
   const [pressed, setPressed] = useState<Side | null>(null);
   const fmt = useMemo(() => formats(s.config.currency, lang), [s.config.currency, lang]);
 
@@ -62,17 +72,21 @@ export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) 
   const setupOpen = canChangeSetup(s);
   const step = openRun?.step ?? 0;
   const hud = useRef<HTMLDivElement>(null);
-  // back to the plaque that opened it, so a keyboard player keeps their place
-  const closePicker = useCallback(() => {
+  const open = (p: Panel) => {
     sounds.click();
-    setPicking(false);
-    hud.current?.querySelector<HTMLElement>('.plaque.bet')?.focus({ preventScroll: true });
-  }, [sounds]);
-  const closeMix = useCallback(() => {
-    sounds.click();
-    setMixing(false);
-    hud.current?.querySelector<HTMLElement>('.tool.mix')?.focus({ preventScroll: true });
-  }, [sounds]);
+    setPanel(p);
+  };
+  // back to the button that opened it, so a keyboard player keeps their place
+  const close = useCallback(
+    (quiet = false) => {
+      if (!quiet) sounds.click();
+      if (panel)
+        hud.current?.querySelector<HTMLElement>(OPENER[panel])?.focus({ preventScroll: true });
+      setPanel(null);
+    },
+    [sounds, panel],
+  );
+  const closePanel = useCallback(() => close(), [close]);
   const set = (patch: Partial<typeof prefs>) => settings.set({ ...settings.get(), ...patch });
 
   const changeBet = (bet: Minor) => model.setBet(bet);
@@ -90,7 +104,7 @@ export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) 
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       const target = e.target instanceof Element ? e.target : null;
-      if (picking || mixing || target?.closest('input, textarea, select')) return;
+      if (panel || target?.closest('input, textarea, select')) return;
       const state = model.state;
       const side = e.key === 'ArrowLeft' ? 'outlaw' : e.key === 'ArrowRight' ? 'sheriff' : null;
       if (side) {
@@ -113,14 +127,15 @@ export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) 
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [model, sounds, picking, mixing]);
+  }, [model, sounds, panel]);
 
   // the bet list closes by itself if a round starts some other way, e.g. a key
   useEffect(() => {
-    if (!setupOpen) setPicking(false);
+    if (!setupOpen) setPanel((p) => (p === 'bets' ? null : p));
   }, [setupOpen]);
 
   const outcome = phase.name === 'result' ? phase.outcome.kind : undefined;
+  const turbo = s.jurisdiction.turboAllowed;
   const lower = affordableBet(s);
 
   return (
@@ -131,6 +146,7 @@ export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) 
       data-mode={s.mode}
       data-run={openRun ? 'live' : undefined}
       data-outcome={outcome === 'lose' ? 'lose' : outcome ? 'win' : undefined}
+      data-turbo={turbo ? undefined : 'off'}
     >
       <TitleSign history={s.history} />
       <ModeSwitch
@@ -142,7 +158,7 @@ export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) 
           sounds.click();
         }}
       />
-      {s.jurisdiction.turboAllowed && (
+      {turbo && (
         <SpeedButton
           speed={speed}
           onChange={(v) => {
@@ -158,26 +174,14 @@ export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) 
           sounds.click();
         }}
       />
-      <MixButton
-        onOpen={() => {
-          sounds.click();
-          setMixing(true);
-        }}
-      />
+      <SettingsButton onOpen={() => open('settings')} />
+      <RulesButton onOpen={() => open('rules')} />
 
       <CoinTap disabled={!idle} onTap={onTurnCoin} />
       <Emblems disabled={!idle} pressed={pressed} onPick={(side) => void model.pick(side)} />
 
       <Balance balance={s.balance} demo={demo} reducedMotion={reducedMotion} fmt={fmt} />
-      <BetPlaque
-        bet={s.bet}
-        disabled={!setupOpen}
-        fmt={fmt}
-        onOpen={() => {
-          sounds.click();
-          setPicking(true);
-        }}
-      />
+      <BetPlaque bet={s.bet} disabled={!setupOpen} fmt={fmt} onOpen={() => open('bets')} />
       {s.mode === 'multiply' && <Ladder ladder={config.ladder} step={step} fmt={fmt} />}
       {openRun ? (
         <CashOut
@@ -213,25 +217,42 @@ export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) 
             onClose={() => void model.dismissError()}
           />
         ) : (
-          <ErrorNotice
+          <ErrorDialog
             code={phase.code}
             fatal={phase.fatal}
-            onClose={() => void model.dismissError()}
+            lobbyUrl={lobbyUrl}
+            onDismiss={() => void model.dismissError()}
           />
         ))}
 
-      {mixing && (
-        <MixPanel
+      {panel === 'settings' && (
+        <SettingsPanel
           sfx={prefs.sfxVolume}
           music={prefs.musicVolume}
+          speed={turbo ? speed : null}
           onSfx={(v) => set({ sfxVolume: v })}
           onSfxSet={() => sounds.latch()}
           // turning the music up is a clear wish to hear it, so it also unmutes
           onMusic={(v) => set({ musicVolume: v, ...(v > 0 ? { muted: false } : {}) })}
-          onClose={closeMix}
+          onSpeed={(v) => {
+            set({ speed: v });
+            sounds.click();
+          }}
+          onClose={closePanel}
         />
       )}
-      {picking && (
+      {panel === 'rules' && (
+        <Rules
+          config={config}
+          jurisdiction={s.jurisdiction}
+          bet={s.bet}
+          demo={demo}
+          lang={lang}
+          fmt={fmt}
+          onClose={closePanel}
+        />
+      )}
+      {panel === 'bets' && (
         <BetPicker
           bets={config.bets}
           bet={s.bet}
@@ -239,10 +260,9 @@ export function App({ model, settings, lang, demo, sounds, onTurnCoin }: Props) 
           onChoose={(bet) => {
             changeBet(bet);
             sounds.latch();
-            setPicking(false);
-            hud.current?.querySelector<HTMLElement>('.plaque.bet')?.focus({ preventScroll: true });
+            close(true);
           }}
-          onClose={closePicker}
+          onClose={closePanel}
         />
       )}
     </div>

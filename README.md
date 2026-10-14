@@ -32,7 +32,8 @@ only) the console has `hnf.server` (the mock server: `hnf.server.forceOutcomes('
 
 ```
 src/
-├─ main.ts            boot: launch params → server → scene + interface
+├─ main.ts            boot: launch params → text, server, art behind the loader → game
+├─ locales/           every string the player reads: en.json (the base), ru.json
 ├─ server/
 │  ├─ protocol.ts     the contract with the game server (RGS); start here
 │  └─ mockServer.ts   in-browser stand-in for the RGS, with QA controls
@@ -40,7 +41,11 @@ src/
 │  ├─ launchParams.ts reading and validating the launch URL
 │  ├─ money.ts        minor units → "€198.00" for any currency and language
 │  ├─ assets.ts       asset URLs that work under any CDN path
-│  ├─ settings.ts     the player's settings (speed, sound) and the turbo rule
+│  ├─ i18n.ts         dictionaries: placeholders, plurals, language fallback
+│  ├─ loader.ts       the loading screen's progress and its error state
+│  ├─ errors.ts       a screen and a way out for each server error code
+│  ├─ storage.ts      localStorage that survives being blocked or full
+│  ├─ settings.ts     the player's settings (speed, sound), saved; the turbo rule
 │  ├─ audio/          AudioManager: one context, sprite, music layers, volumes, mute
 │  └─ store.ts        observable state; useStore.ts connects it to Preact
 └─ game/
@@ -48,6 +53,7 @@ src/
    ├─ director.ts     turns phase changes into animations, reports back when done
    ├─ timing.ts       every duration of a round, scaled by speed in one place
    ├─ sound.ts        this game's sounds and how the music follows the stake
+   ├─ rules.ts        the figures the rules screen shows, taken from the server config
    ├─ scene/          PixiJS: everything drawn on the canvas
    │  ├─ GameScene.ts     the canvas, the layers, the API the director calls
    │  ├─ Background.ts    photo, sun shade, dust, parallax, vignette
@@ -63,8 +69,11 @@ src/
       ├─ Plaques.tsx      balance, total bet, multiply ladder, cash out
       ├─ BetDial.tsx      the cylinder bet dial; its arithmetic is in dial.ts
       ├─ BetPicker.tsx    every bet level at once, from the bet plaque
-      ├─ Notices.tsx      result stamp, insufficient funds, errors
-      ├─ text.ts          every string the interface shows
+      ├─ Settings.tsx     mute, the settings button and panel (volumes, speed)
+      ├─ Rules.tsx        the info button and the rules screen
+      ├─ Notices.tsx      result stamp, insufficient funds, error dialogs
+      ├─ Dialog.tsx       the frame every dialog uses
+      ├─ text.ts          useText(): the player's dictionary for components
       └─ art/             interface images, bundled and hashed by Vite
 tests/                unit tests for the model, the director, the server mock and the shell
 docs/ROADMAP.md       the plan, what is done, and the decisions taken
@@ -73,6 +82,7 @@ public/assets/        scene images and sounds, loaded at run time
    └─ audio/          built by `npm run audio`: sfx.m4a sprite, music loops, audio.json
 assets-src/audio/     the sound sources the audio build reads; not shipped
 scripts/              build scripts (the audio sprite)
+index.html            the loading screen, styled inline so it shows before any script
 ```
 
 Rules the code follows:
@@ -94,6 +104,12 @@ Rules the code follows:
   the client never assumes six.
 - **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet. A held key does not repeat, so it cannot act as
   autoplay.
+- **No string in code.** Every text the player reads is a key in `src/locales/en.json`.
+  English is bundled; any other language is a small chunk loaded only when `lang` asks for
+  it. To add a language, add `xx.json` next to `en.json`; a test fails until it has every
+  key with the same `{placeholders}`. A missing language or key falls back to English.
+- **The rules come from the config.** Payouts, the ladder, bets, RTP and the maximum win
+  on the rules screen are read from the server's `GameConfig`, never typed into the text.
 
 ## Stack
 

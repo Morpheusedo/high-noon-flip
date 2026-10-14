@@ -29,24 +29,42 @@ export interface SceneContext {
   readonly motion: Motion;
 }
 
-export async function loadArt(layout: SceneLayout): Promise<{ art: ArtTextures; fx: FxTextures }> {
-  const load = (file: string) => Assets.load<Texture>(assetUrl(`images/${file}`));
+/** Loads every image the scene draws; `onProgress` gets 0..1 as they arrive. */
+export async function loadArt(
+  layout: SceneLayout,
+  onProgress?: (fraction: number) => void,
+): Promise<{ art: ArtTextures; fx: FxTextures }> {
   const { revolver, coin } = layout;
-  const [landscape, portrait, sheriff, outlaw, base, cocked, hammer, strip] = await Promise.all([
-    load(layout.landscape.background.image),
-    load(layout.portrait.background.image),
-    load(coin.sheriff),
-    load(coin.outlaw),
-    load(revolver.base),
-    load(revolver.cocked),
-    load(revolver.hammer),
-    load(revolver.strip),
-  ]);
+  const url = (file: string) => assetUrl(`images/${file}`);
+  const files = [
+    layout.landscape.background.image,
+    layout.portrait.background.image,
+    coin.sheriff,
+    coin.outlaw,
+    revolver.base,
+    revolver.cocked,
+    revolver.hammer,
+    revolver.strip,
+  ];
+  const loaded = await Assets.load<Texture>(files.map(url), onProgress);
+  const get = (file: string): Texture => {
+    const texture = loaded[url(file)];
+    if (!texture) throw new Error(`Image did not load: ${file}`);
+    return texture;
+  };
   return {
     art: {
-      background: { landscape, portrait },
-      coin: { sheriff, outlaw },
-      revolver: { base, cocked, hammer, strip },
+      background: {
+        landscape: get(layout.landscape.background.image),
+        portrait: get(layout.portrait.background.image),
+      },
+      coin: { sheriff: get(coin.sheriff), outlaw: get(coin.outlaw) },
+      revolver: {
+        base: get(revolver.base),
+        cocked: get(revolver.cocked),
+        hammer: get(revolver.hammer),
+        strip: get(revolver.strip),
+      },
     },
     fx: fxTextures(),
   };

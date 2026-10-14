@@ -8,7 +8,7 @@
  * is for looks only: the server still decides every flip.
  */
 import type { Side } from '../../server/protocol';
-import { text } from './text';
+import { useText } from './text';
 import './Emblems.css';
 
 interface Props {
@@ -19,12 +19,13 @@ interface Props {
 }
 
 export function Emblems({ disabled, pressed, onPick }: Props) {
+  const { t } = useText();
   return (
     <>
       {(['outlaw', 'sheriff'] as const).map((side) => (
         <button
           class={`pick ${side}`}
-          aria-label={text.side[side]}
+          aria-label={t(`side.${side}`)}
           disabled={disabled}
           onClick={() => onPick(side)}
         />
@@ -33,7 +34,7 @@ export function Emblems({ disabled, pressed, onPick }: Props) {
         <button
           class={`key ${side}${pressed === side ? ' down' : ''}`}
           tabIndex={-1}
-          aria-label={text.pickKey[side]}
+          aria-label={t(`pick.key.${side}`)}
           disabled={disabled}
           onClick={() => onPick(side)}
         >
@@ -59,5 +60,8 @@ export function Emblems({ disabled, pressed, onPick }: Props) {
 }
 
 export function CoinTap({ disabled, onTap }: { disabled: boolean; onTap(): void }) {
-  return <button class="coin-tap" aria-label={text.turnCoin} disabled={disabled} onClick={onTap} />;
+  const { t } = useText();
+  return (
+    <button class="coin-tap" aria-label={t('coin.turn')} disabled={disabled} onClick={onTap} />
+  );
 }

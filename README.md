@@ -36,10 +36,14 @@ src/
 │  ├─ launchParams.ts reading and validating the launch URL
 │  ├─ money.ts        minor units → "€198.00" for any currency and language
 │  └─ assets.ts       asset URLs that work under any CDN path
+│  ├─ store.ts        observable state; useStore.ts connects it to Preact
 └─ game/
+   ├─ model/          RoundModel: the round state machine, the source of truth
+   ├─ director.ts     turns phase changes into animations, reports back when done
    ├─ scene/          PixiJS: everything drawn on the canvas
    └─ ui/             Preact: the HTML interface over the canvas
-tests/                unit tests for the server mock and the shell
+tests/                unit tests for the model, the server mock and the shell
+docs/ROADMAP.md       the plan, what is done, and the decisions taken
 public/assets/        images and sounds, served as they are
 ```
 
@@ -57,5 +61,5 @@ Rules the code follows:
 
 ## Stack
 
-TypeScript (strict), Vite, PixiJS 8, Preact with signals, Vitest, ESLint, Prettier.
+TypeScript (strict), Vite, PixiJS 8, Preact, Vitest, ESLint, Prettier.
 Versions are pinned exactly in `package.json`.

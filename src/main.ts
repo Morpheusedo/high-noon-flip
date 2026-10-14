@@ -6,6 +6,8 @@ import { MockServer } from './server/mockServer';
 import type { GameServer } from './server/protocol';
 import { readLaunchParams } from './shell/launchParams';
 import { GameScene } from './game/scene/GameScene';
+import { RoundModel } from './game/model/RoundModel';
+import { startDirector } from './game/director';
 import { App } from './game/ui/App';
 import './styles.css';
 
@@ -15,9 +17,10 @@ async function boot(): Promise<void> {
   const server: GameServer = new MockServer({ store: localStorage, latencyMs: 150 });
   if (params.debug) Object.assign(window, { hnf: { server } });
 
-  const init = await server.init();
+  const model = new RoundModel(server, await server.init());
   await new GameScene().mount(byId('scene'));
-  render(h(App, { init, lang: params.lang }), byId('ui'));
+  startDirector(model);
+  render(h(App, { model, lang: params.lang }), byId('ui'));
 }
 
 function byId(id: string): HTMLElement {

@@ -1,0 +1,1437 @@
+<title>High Noon Flip</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Barlow:wght@400;500;600;700&family=Rye&display=swap">
+<style>
+/* Layout: one fixed-ratio stage (16:9, or 9:16 on tall screens). A PixiJS canvas
+   paints the scene (desert, revolver, coin, effects); the interface sits on top
+   as HTML so text stays sharp and translatable. Single dusk look by design. */
+:root {
+  color-scheme: dark;
+  --bg: #120b10;
+  --wood: #5b3622;
+  --wood-hi: #7f4f31;
+  --wood-lo: #341d12;
+  --brass: #c9973f;
+  --brass-hi: #f3d488;
+  --cream: #f7ead0;
+  --muted: #d3bd9c;
+  --gold: #f2c14e;
+  --win: #a6dc86;
+  --lose: #f59377;
+  --paper: #ecd9b0;
+  --ink: #2b1a0e;
+  --ink-soft: #6b5237;
+  --title: "Rye", "Alfa Slab One", Rockwell, Georgia, serif;
+  --display: "Alfa Slab One", Rockwell, "Roboto Slab", Georgia, serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --num: "Barlow", "Helvetica Neue", Arial, sans-serif;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--cream); font-family: var(--body); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 2px; }
+
+.shell {
+  height: 100%; min-height: 340px; box-sizing: border-box;
+  padding-block: 12px; padding-inline: 16px;
+  container: shell / size;
+  display: grid; place-items: center;
+}
+.stage {
+  position: relative; overflow: hidden;
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  container: stage / size;
+  border-radius: 10px;
+  background: linear-gradient(#2a1846, #7a2f55 45%, #d2602f 62%, #4a2318 62%, #2a1410);
+  user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+/* ---- top row ---- */
+.sign-wrap { position: absolute; left: 50%; top: 4.5%; translate: -50% 0; display: flex; flex-direction: column; gap: 1.1cqmin; align-items: center; }
+.sign {
+  position: relative; margin: 0;
+  font-family: var(--title); font-weight: 400; font-size: clamp(15px, 4.3cqmin, 36px); letter-spacing: .03em;
+  padding: 0; white-space: nowrap; color: var(--gold);
+  text-shadow: 0 .06em 0 #5a3508, 0 .12em .2em rgba(0, 0, 0, .6);
+  isolation: isolate;
+}
+.status {
+  position: absolute; left: 50%; top: 13.4%; translate: -50% 0; margin: 0; z-index: 6;
+  font-size: clamp(11px, 3cqmin, 22px); font-weight: 600; color: var(--cream);
+  white-space: nowrap; text-align: center; padding: .15em .9em; border-radius: 99px;
+  background: rgba(18, 9, 14, .5);
+}
+@media (prefers-reduced-motion: reduce) { .cashout, .cashout::before { animation: none; } .dial-rot, .dchamber { transition: none; } }
+.status:empty { display: none; }
+.stage[data-outcome="win"] .status { color: var(--win); }
+.stage[data-outcome="lose"] .status { color: var(--lose); }
+.strip-label, .plaque-label {
+  font-size: clamp(9px, 2cqmin, 14px); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .7);
+}
+/* last flips: a row under the title sign, exactly as wide as the board */
+.strip { justify-content: center; }
+.strip .strip-label { font-size: clamp(11px, 2.7cqmin, 19px); }
+.dots { display: flex; gap: .6cqmin; margin: 0; padding: 0; list-style: none; }
+/* last flips: a small Sheriff star or Outlaw revolvers for each result; slots not played yet are faint dots */
+.dots li {
+  position: relative; flex: none; width: clamp(15px, 4.6cqmin, 64px); aspect-ratio: 1;
+  background: center / contain no-repeat; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .7));
+}
+.dots li:not(.sheriff):not(.outlaw)::before { content: ""; position: absolute; left: 50%; top: 50%; width: 26%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; background: rgba(247, 234, 208, .28); }
+.dots li.sheriff { background-image: url(art/logo-sheriff.webp); }
+.dots li.outlaw { background-image: url(art/logo-outlaw.webp); }
+.mode {
+  position: absolute; left: 3%; top: 4.5%; z-index: 4; display: flex; gap: .5cqmin; padding: .6cqmin; border-radius: 99px;
+  background: rgba(12, 6, 9, .62); border: 1px solid rgba(201, 151, 63, .55);
+}
+.mode-btn {
+  padding: .5em 1.15em; border: 0; border-radius: 99px; background: none; color: var(--muted);
+  font-family: var(--body); font-weight: 600; font-size: clamp(13px, 3cqmin, 20px); letter-spacing: .08em; text-transform: uppercase;
+}
+.mode-btn[aria-pressed="true"] { background: linear-gradient(var(--brass-hi), var(--brass)); color: #2a1a02; box-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+.mode-btn:hover:not([aria-pressed="true"]) { color: var(--cream); }
+.stage:not([data-state="idle"]) .mode, .stage[data-run] .mode, .stage[data-run] .plaque.bet { opacity: .5; pointer-events: none; }
+
+/* multiply mode: a row of rounds to climb, then cash out */
+.ladder {
+  position: absolute; left: 50%; bottom: 15.5%; translate: -50% 0; z-index: 4; display: none; gap: .4cqmin;
+  margin: 0; padding: .8cqmin 1.6cqmin; list-style: none; border-radius: 3cqmin; background: rgba(12, 6, 9, .6);
+}
+.stage[data-mode="multiply"] .ladder { display: flex; }
+.rung {
+  min-width: 6.6cqmin; display: flex; flex-direction: column; align-items: center; gap: .2cqmin;
+  font-family: var(--num); font-weight: 700; font-size: clamp(9px, 2cqmin, 14px); font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.rung::before { content: ""; width: 4.6cqmin; aspect-ratio: 1; background: url(art/bullet-copper.webp) center / 100% 100% no-repeat; opacity: .5; }
+.rung.next { color: var(--cream); } .rung.next::before { opacity: 1; }
+.rung.on { color: var(--gold); } .rung.on::before { background-image: url(art/bullet-gold.webp); opacity: 1; filter: drop-shadow(0 0 .8cqmin rgba(255, 200, 90, .9)); }
+.cashout {
+  position: absolute; left: 50%; bottom: 3%; translate: -50% 0; z-index: 4; display: none; padding: 1.7cqmin 5cqmin; border: 0;
+  background: url(art/plaque.webp) center / 100% 100% no-repeat; white-space: nowrap; color: var(--gold);
+  font-family: var(--num); font-weight: 700; font-size: clamp(15px, 4.4cqmin, 34px); font-variant-numeric: tabular-nums;
+  text-shadow: 0 .05em .08em #000, 0 0 .35em rgba(0, 0, 0, .75); filter: drop-shadow(0 .5cqmin 1cqmin rgba(0, 0, 0, .6)); outline: 0;
+}
+/* a yellow line that starts at the top right corner, runs left along the top, down the left side and back
+   along the bottom to the bottom right corner, while the tab bobs slowly */
+.cashout { animation: bob 2.8s ease-in-out infinite; }
+.cashout::before {
+  content: ""; position: absolute; inset: -.6cqmin 0 -.6cqmin -.6cqmin; pointer-events: none;
+  border: .55cqmin solid var(--gold); border-right: 0; border-radius: 1cqmin 0 0 1cqmin;
+  box-shadow: inset 0 0 1cqmin rgba(242, 193, 78, .4);
+  animation: trace 3.8s linear infinite;
+}
+/* the line draws round from the top right corner to the bottom right, then its tail follows the same way and it starts again: no fade, no flash */
+@keyframes trace {
+  0% { clip-path: polygon(100% 0, 100% 0, 100% 1.3cqmin, 100% 1.3cqmin, 100% 1.3cqmin, 100% 1.3cqmin, 100% 1.3cqmin, 100% 1.3cqmin); }
+  18% { clip-path: polygon(100% 0, 0 0, 0 1.3cqmin, 0 1.3cqmin, 0 1.3cqmin, 1.3cqmin 1.3cqmin, 1.3cqmin 1.3cqmin, 100% 1.3cqmin); }
+  31% { clip-path: polygon(100% 0, 0 0, 0 100%, 1.3cqmin 100%, 1.3cqmin 100%, 1.3cqmin 100%, 1.3cqmin 1.3cqmin, 100% 1.3cqmin); }
+  50% { clip-path: polygon(100% 0, 0 0, 0 100%, 100% 100%, 100% calc(100% - 1.3cqmin), 1.3cqmin calc(100% - 1.3cqmin), 1.3cqmin 1.3cqmin, 100% 1.3cqmin); }
+  68% { clip-path: polygon(0 0, 0 0, 0 100%, 100% 100%, 100% calc(100% - 1.3cqmin), 1.3cqmin calc(100% - 1.3cqmin), 1.3cqmin 1.3cqmin, 1.3cqmin 1.3cqmin); }
+  81% { clip-path: polygon(0 calc(100% - 1.3cqmin), 0 calc(100% - 1.3cqmin), 0 100%, 100% 100%, 100% calc(100% - 1.3cqmin), 1.3cqmin calc(100% - 1.3cqmin), 1.3cqmin calc(100% - 1.3cqmin), 1.3cqmin calc(100% - 1.3cqmin)); }
+  100% { clip-path: polygon(100% calc(100% - 1.3cqmin), 100% calc(100% - 1.3cqmin), 100% 100%, 100% 100%, 100% calc(100% - 1.3cqmin), 100% calc(100% - 1.3cqmin), 100% calc(100% - 1.3cqmin), 100% calc(100% - 1.3cqmin)); }
+}
+@keyframes bob { 0%, 100% { transform: none; } 50% { transform: translateY(-1.6cqmin); } }
+.stage[data-run="live"] .cashout { display: block; }
+.cashout .plaque-label { margin-right: .7em; }
+.cashout .plaque-value { color: var(--gold); }
+.stage[data-run="live"] .dial { display: none; }
+.stage:not([data-state="idle"]) .cashout { opacity: .55; pointer-events: none; animation: none; }
+.tools { position: absolute; right: 3%; top: 4%; display: flex; gap: 1.6cqmin; }
+.tool {
+  width: clamp(34px, 8.4cqmin, 60px); aspect-ratio: 1; border-radius: 50%; padding: 0; color: #3a2606;
+  background: url(art/btn-brass.webp) center / 100% 100% no-repeat;
+  border: 0; box-shadow: 0 .2em .5em rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .4);
+  display: grid; place-items: center;
+}
+.tool { position: relative; }
+/* info button: hangs under the rocket */
+.tools { align-items: flex-start; }
+#infoBtn { position: absolute; left: 0; top: calc(100% + 1.8cqmin); }
+/* music and levels button: under the sound button */
+#musicBtn { position: absolute; right: 3%; top: calc(4% + clamp(34px, 8.4cqmin, 60px) + 1.8cqmin); z-index: 4; }
+.mix-panel { width: min(86%, 92cqmin); }
+.mix-row { display: grid; grid-template-columns: 1fr; gap: .8cqmin 2cqmin; align-items: center; color: var(--cream); font-size: clamp(12px, 3.4cqmin, 19px); font-weight: 600; }
+.mix-row input { grid-column: 1; width: 100%; accent-color: var(--gold); height: 2.2em; }
+.mix-row label { display: flex; justify-content: space-between; }
+.mix-row output { grid-row: 1; grid-column: 1; justify-self: end; font-family: var(--num); font-variant-numeric: tabular-nums; color: var(--gold); }
+.info { position: absolute; inset: 0; z-index: 11; display: grid; place-items: center; cursor: pointer;
+  background: radial-gradient(circle at 50% 45%, rgba(8, 4, 6, .8), rgba(4, 2, 3, .95) 70%); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.info-panel { width: min(86%, 132cqmin); max-height: 86%; box-sizing: border-box; cursor: default; display: flex; flex-direction: column; gap: 2cqmin; padding: 3.4cqmin;
+  background: rgba(16, 9, 12, .92); border: .4cqmin solid var(--brass); border-radius: 3cqmin; box-shadow: 0 2cqmin 6cqmin rgba(0, 0, 0, .7); }
+.info-panel h2 { margin: 0; font-family: var(--title); font-weight: 400; font-size: clamp(16px, 5cqmin, 34px); color: var(--gold); }
+.info-body { min-height: 0; overflow-y: auto; font-size: clamp(12px, 3.3cqmin, 19px); line-height: 1.45; color: var(--cream); }
+.info-body h3 { margin: 1em 0 .25em; font-size: .82em; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--brass-hi); }
+.info-body h3:first-child { margin-top: 0; }
+.info-body p { margin: 0 0 .5em; max-width: 62ch; }
+.info-body b { color: var(--gold); font-weight: 600; }
+.info-note { color: var(--muted); font-size: .9em; }
+.info-panel .btn { align-self: center; padding: .5em 2em; font-weight: 600; font-size: clamp(12px, 3.2cqmin, 18px); }
+.tool svg { width: 50%; height: 50%; }
+.tool-badge {
+  position: absolute; right: -14%; bottom: -12%; padding: .05em .4em; border-radius: 99px;
+  background: #1a0f0a; border: 1px solid var(--brass); color: var(--gold);
+  font-family: var(--num); font-weight: 700; font-size: clamp(9px, 2.1cqmin, 13px); line-height: 1.3;
+}
+.tool[data-speed="1"], .tool[data-speed="2"] { box-shadow: 0 0 1.6cqmin rgba(255, 200, 90, .85), 0 .2em .5em rgba(0, 0, 0, .5); }
+.tool[data-speed="2"] .tool-badge { background: var(--gold); color: #2a1a02; }
+.tool:hover { filter: brightness(1.12); }
+.tool:active { translate: 0 1px; }
+
+/* invisible button over the coin: tapping it turns the coin to its other face (looks only, the flip stays random) */
+.coin-tap { position: absolute; left: 50%; top: 36%; width: 33.4cqmin; aspect-ratio: 1; translate: -50% -50%; z-index: 3; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+.stage:not([data-state="idle"]) .coin-tap { pointer-events: none; }
+
+/* ---- pick buttons ---- */
+/* the two choices are the emblems themselves, cut from the coin art and silver-plated: no plate behind them */
+.pick {
+  position: absolute; top: calc(45% + 3px); width: 31.5cqmin; height: 31.5cqmin; padding: 0; border: 0; z-index: 4;
+  background: none; isolation: isolate;
+  animation: hop 1.8s infinite;
+  /* layered shadow: a tight contact shadow, a soft body shadow and a wide ambient one */
+  filter: drop-shadow(0 .25cqmin .3cqmin rgba(0, 0, 0, .6)) drop-shadow(0 1.3cqmin 1.6cqmin rgba(0, 0, 0, .55)) drop-shadow(0 3.2cqmin 4.2cqmin rgba(0, 0, 0, .38));
+  transition: opacity .25s, translate .3s cubic-bezier(.3, 1.3, .5, 1), scale .12s;
+}
+/* the emblem itself */
+/* a glint sweeps across the metal while the emblem is in the air, like the one on the coin */
+.pick::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(112deg, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, .85) 50%, rgba(255, 255, 255, 0) 58%) 100% 0 / 250% 100% no-repeat, var(--logo) center / contain no-repeat;
+  -webkit-mask: var(--logo) center / contain no-repeat; mask: var(--logo) center / contain no-repeat;
+  animation: glint 1.8s linear infinite;
+}
+@keyframes glint { 0%, 5% { background-position: 100% 0, center; } 32%, 100% { background-position: 0% 0, center; } }
+/* a green outline around the emblem that pulses softly */
+.pick::before {
+  content: ""; position: absolute; inset: -4.6875%; z-index: -1; background: #6fe37a;
+  -webkit-mask: center / 100% 100% no-repeat; mask: center / 100% 100% no-repeat;
+  filter: blur(.35cqmin) drop-shadow(0 0 1.6cqmin rgba(90, 230, 110, .55));
+  opacity: 0; animation: lit 1.8s ease-in-out infinite;
+}
+/* the outline lights up only on the emblem that is in the air */
+@keyframes lit { 0%, 46%, 100% { opacity: 0; } 19% { opacity: .62; } }
+/* one slow hop each, taking turns: Sheriff, then Outlaw */
+@keyframes hop {
+  0%, 100% { transform: none; animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  17% { transform: translateY(-15%) scale(1.16); animation-timing-function: cubic-bezier(.6, 0, .9, .4); }
+  32% { transform: none; animation-timing-function: ease-out; }
+  37% { transform: translateY(-3%) scale(1.02); animation-timing-function: ease-in; }
+  42% { transform: none; }
+}
+.pick.sheriff, .pick.sheriff::before, .pick.sheriff::after { animation-delay: 0s; }
+.pick.outlaw, .pick.outlaw::before, .pick.outlaw::after { animation-delay: -0.9s; }
+.pick.outlaw { --logo: url(art/logo-outlaw.webp); }
+.pick.sheriff { --logo: url(art/logo-sheriff.webp); }
+.pick.outlaw::before { -webkit-mask-image: url(art/halo-outlaw.webp); mask-image: url(art/halo-outlaw.webp); }
+.pick.sheriff::before { -webkit-mask-image: url(art/halo-sheriff.webp); mask-image: url(art/halo-sheriff.webp); }
+.pick.outlaw { left: 2.5%; translate: 0 -50%; }
+.pick.sheriff { right: 2.5%; translate: 0 -50%; }
+.pick svg, .pick span { display: none; }
+.pick:hover { scale: 1.05; }
+.pick:active { scale: .95; }
+.stage:not([data-state="idle"]) .pick { opacity: 0; pointer-events: none; animation: none; }
+.stage:not([data-state="idle"]) .pick.outlaw { translate: -130% -50%; }
+.stage:not([data-state="idle"]) .pick.sheriff { translate: 130% -50%; }
+
+/* keyboard hints (desktop only): a brass keycap under each emblem; the left and right arrow keys fire, and the caps can be clicked too */
+.key {
+  position: absolute; top: calc(45% + 3px + 17.2cqmin); width: 7.4cqmin; height: 6.8cqmin; translate: -50% 0; z-index: 4; padding: 0 0 .5cqmin;
+  display: grid; place-items: center; color: #3a2606; border: 0; border-radius: 1.3cqmin;
+  background: linear-gradient(#f7dc98, var(--brass) 62%, #a87a2c);
+  box-shadow: inset 0 .25cqmin 0 rgba(255, 255, 255, .55), inset 0 0 0 .22cqmin rgba(90, 53, 8, .55), 0 .75cqmin 0 #5f3f0d, 0 .75cqmin 0 .22cqmin rgba(20, 10, 4, .7), 0 1.6cqmin 1.8cqmin rgba(0, 0, 0, .6);
+  transition: opacity .25s, transform .07s, box-shadow .07s;
+}
+.key svg { width: 54%; height: 54%; filter: drop-shadow(0 1px 0 rgba(255, 240, 190, .6)); }
+.key-l { left: calc(2.5% + 15.75cqmin); }
+.key-r { left: calc(97.5% - 15.75cqmin); }
+.key:hover { filter: brightness(1.1); }
+.key:active, .key.down { transform: translateY(.55cqmin); box-shadow: inset 0 .25cqmin 0 rgba(255, 255, 255, .55), inset 0 0 0 .22cqmin rgba(90, 53, 8, .55), 0 .2cqmin 0 #5f3f0d, 0 .2cqmin 0 .22cqmin rgba(20, 10, 4, .7), 0 .6cqmin .9cqmin rgba(0, 0, 0, .6); }
+.stage:not([data-state="idle"]) .key { opacity: 0; pointer-events: none; }
+
+/* ---- plaques ---- */
+.plaque {
+  position: absolute; bottom: 4%; min-width: 24cqmin; text-align: left;
+  padding: 1.8cqmin 4cqmin; z-index: 4;
+  background: url(art/plaque.webp) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 .5cqmin 1cqmin rgba(0, 0, 0, .55));
+  display: flex; flex-direction: column; gap: .2cqmin;
+}
+/* balance: the same wooden plaque as total bet, sitting to its left */
+.balance {
+  position: absolute; left: 3cqmin; bottom: 4%; z-index: 4; width: 34cqmin; box-sizing: border-box; padding: 1.8cqmin 4cqmin;
+  display: flex; flex-direction: column; gap: .2cqmin; text-align: left;
+  background: url(art/plaque.webp) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 .5cqmin 1cqmin rgba(0, 0, 0, .55));
+}
+.balance .plaque-value { font-size: calc(clamp(15px, 4.8cqmin, 36px) * var(--fit, 1)); line-height: calc(clamp(15px, 4.8cqmin, 36px) * 1.2); }
+.balance .plaque-value small { line-height: 1; }
+.balance .fit-probe { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; --fit: 1; }
+/* bet dial: the revolver's cylinder, half sunk below the screen; swipe to turn it */
+.dial {
+  position: absolute; right: 4%; bottom: 0; width: 44cqmin; aspect-ratio: 1; translate: 0 50%; z-index: 4;
+  border-radius: 50%; touch-action: none; cursor: grab; filter: drop-shadow(0 -.4cqmin 1.6cqmin rgba(0, 0, 0, .75));
+}
+.dial::before {
+  content: ""; position: absolute; left: 50%; top: -2.2cqmin; translate: -50% 0; z-index: 2; pointer-events: none;
+  border: 1.2cqmin solid transparent; border-top-color: var(--gold); filter: drop-shadow(0 1px 2px #000);
+}
+.dial-rot {
+  position: absolute; inset: 0; border-radius: 50%; background: url(art/cylinder.webp) center / 100% 100% no-repeat;
+  transition: transform var(--spin, .18s) cubic-bezier(.25, 1.2, .5, 1);
+}
+.dchamber {
+  position: absolute; left: var(--x); top: var(--y); width: 22.6%; height: 22.6%; margin: -11.3%; padding: 0; border: 0; border-radius: 50%;
+  background: url(art/bullet-copper.webp) center / 94% 94% no-repeat; color: #fff6e2; cursor: pointer;
+  font-family: var(--num); font-weight: 700; font-size: clamp(12px, 4cqmin, 30px); font-variant-numeric: tabular-nums;
+  text-shadow: 0 .05em .08em #000, 0 0 .3em rgba(0, 0, 0, .85);
+  transition: transform var(--spin, .18s) cubic-bezier(.25, 1.2, .5, 1), scale .22s cubic-bezier(.3, 1.7, .5, 1), box-shadow .2s;
+}
+/* the chosen bullet rises out of its chamber and gets a bright outline */
+.dchamber[aria-pressed="true"] { scale: 1.26; z-index: 2; background-image: radial-gradient(circle, rgba(3, 14, 6, .92) 0 44%, rgba(3, 14, 6, 0) 60%), url(art/bullet-gold.webp); color: #2a1a02; text-shadow: 0 .06em 0 rgba(255, 244, 200, .7), 0 -.05em 0 rgba(0, 0, 0, .45); box-shadow: 0 0 0 .45cqmin #fff3c4, 0 0 0 .8cqmin #7a5210, 0 .8cqmin 1.6cqmin rgba(0, 0, 0, .7), 0 0 3cqmin rgba(255, 200, 90, .9); }
+/* the chosen amount is green neon: a bright band runs down through the digits, over and over */
+.dchamber[aria-pressed="true"] .dnum {
+  display: inline-block; padding: .08em .04em; color: transparent; text-shadow: none;
+  background: linear-gradient(180deg, #2bff5e 0 36%, #ffffff 50%, #2bff5e 64% 100%) 0 100% / 100% 300%;
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 .05em #000) drop-shadow(0 0 .2em #39ff14) drop-shadow(0 0 .45em rgba(57, 255, 20, .6));
+  animation: neon 1.5s linear infinite;
+}
+@keyframes neon { from { background-position: 0 100%; } to { background-position: 0 0%; } }
+@media (prefers-reduced-motion: reduce) { .dchamber[aria-pressed="true"] .dnum { animation: none; background-position: 0 50%; } }
+.dial.dragging { cursor: grabbing; }
+.dial.dragging .dial-rot { transition: none; }
+.dial.dragging .dchamber { transition: scale .18s cubic-bezier(.3, 1.7, .5, 1), box-shadow .15s; }
+.stage:not([data-state="idle"]) .dial, .stage:not([data-state="idle"]) .plaque.bet { opacity: .55; pointer-events: none; }
+.plaque.bet { left: 38.5cqmin; border: 0; }
+.plaque.bet:hover { filter: brightness(1.15); }
+.plaque-value { font-family: var(--num); font-weight: 700; font-size: clamp(15px, 4.8cqmin, 36px); letter-spacing: .01em; font-variant-numeric: tabular-nums; white-space: nowrap; color: #fff6e2; text-shadow: 0 .05em .08em #000, 0 0 .35em rgba(0, 0, 0, .75); }
+.plaque-value small { font-family: var(--body); font-size: .5em; font-weight: 600; color: var(--muted); margin-left: .3em; }
+.proto-tag { position: absolute; left: 50%; bottom: 1.2%; translate: -50% 0; z-index: 5;
+  font-size: clamp(8px, 1.7cqmin, 12px); color: var(--muted); white-space: nowrap; letter-spacing: .06em; opacity: .75; text-shadow: 0 1px 2px #000; }
+
+/* ---- result moments ---- */
+/* result seal: an inked rubber stamp, green for a win and red for a loss */
+.stamp {
+  --ink: #37d466;
+  position: absolute; left: 50%; top: 35.5%; translate: -50% -50%; rotate: -11deg; z-index: 6;
+  padding: .6cqmin 3.6cqmin 1cqmin; text-align: center; pointer-events: none; color: var(--ink);
+  border: .9cqmin solid var(--ink); border-radius: 1.6cqmin; outline: .3cqmin solid var(--ink); outline-offset: .7cqmin;
+  background: rgba(10, 6, 8, .55); line-height: 1.05;
+  box-shadow: 0 0 4cqmin color-mix(in srgb, var(--ink) 45%, transparent), inset 0 0 2cqmin color-mix(in srgb, var(--ink) 22%, transparent);
+  text-shadow: 0 0 1.2cqmin color-mix(in srgb, var(--ink) 60%, transparent);
+}
+.stamp.lose { --ink: #ff4a3d; rotate: 9deg; }
+.stamp b { display: block; font-family: var(--display); font-weight: 400; font-size: clamp(26px, 11cqmin, 96px); letter-spacing: .12em; margin-right: -.12em; }
+.stamp span { font-family: var(--num); font-weight: 700; font-size: clamp(12px, 3.8cqmin, 32px); font-variant-numeric: tabular-nums; color: var(--ink); filter: brightness(1.25); }
+.notice {
+  position: absolute; left: 50%; top: 26%; translate: -50% 0; z-index: 7; width: max-content; max-width: 86%;
+  padding: 1.6cqmin 2.4cqmin; background: var(--bg); border: 1px solid var(--lose); border-radius: 6px;
+  font-size: clamp(11px, 2.8cqmin, 18px); display: flex; flex-wrap: wrap; gap: 1.4cqmin; align-items: center; justify-content: center;
+}
+.btn { padding: .35em .9em; background: var(--wood); border: 1px solid var(--brass); border-radius: 4px; color: var(--cream); }
+.btn:hover { background: var(--wood-hi); }
+
+/* ---- menu: a wanted poster ---- */
+.menu { position: absolute; inset: 0; z-index: 10; background: radial-gradient(circle at 50% 55%, rgba(8, 4, 6, .72), rgba(4, 2, 3, .94) 70%); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); display: grid; place-items: center; cursor: pointer; }
+.panel {
+  width: 100%; height: 100%; box-sizing: border-box; color: var(--cream);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.6cqmin; padding: 4cqmin;
+  font-size: clamp(12px, 3cqmin, 20px);
+}
+.panel h2 { margin: 0; font-family: var(--title); font-weight: 400; font-size: clamp(15px, 4.4cqmin, 34px); color: var(--gold); text-shadow: 0 .06em 0 #5a3508, 0 .12em .3em #000; }
+.bet-hint { margin: 0; font-size: clamp(11px, 2.6cqmin, 18px); font-weight: 500; color: var(--muted); }
+.panel .btn { font-family: var(--body); font-weight: 600; padding: .45em 1.6em; }
+.bet-now { font-family: var(--num); font-weight: 700; font-size: clamp(18px, 5.6cqmin, 42px); color: #fff6e2; text-shadow: 0 .05em .1em #000; font-variant-numeric: tabular-nums; }
+.cyl-wrap { position: relative; padding-top: 3cqmin; }
+.cyl-wrap::before { content: ""; position: absolute; left: 50%; top: 0; translate: -50% 0; border: 1.6cqmin solid transparent; border-top-color: var(--gold); filter: drop-shadow(0 1px 2px #000); }
+.cyl {
+  --sel: 0; position: relative; width: 56cqmin; cursor: default; aspect-ratio: 1; border-radius: 50%;
+  background: url(art/cylinder.webp) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 1.2cqmin 3cqmin rgba(0, 0, 0, .85)) drop-shadow(0 0 4cqmin rgba(255, 190, 110, .18));
+  transform: rotate(calc(var(--sel) * -60deg)); transition: transform .4s cubic-bezier(.3, 1.4, .5, 1);
+}
+.chamber {
+  position: absolute; left: var(--x); top: var(--y); width: 22.6%; height: 22.6%; margin: -11.3%; padding: 0; border-radius: 50%;
+  background: url(art/bullet-copper.webp) center / 94% 94% no-repeat; border: 0; color: #fff6e2;
+  text-shadow: 0 .05em .08em #000, 0 0 .3em rgba(0, 0, 0, .85);
+  font-family: var(--num); font-weight: 700; font-size: clamp(14px, 5.4cqmin, 38px); font-variant-numeric: tabular-nums; cursor: pointer;
+  transform: rotate(calc(var(--sel) * 60deg));
+  transition: transform .4s cubic-bezier(.3, 1.4, .5, 1);
+}
+.chamber[aria-pressed="true"] { background-image: url(art/bullet-gold.webp); color: #2a1a02; text-shadow: 0 .06em 0 rgba(255, 244, 200, .7), 0 -.05em 0 rgba(0, 0, 0, .45); box-shadow: 0 0 2.4cqmin rgba(255, 200, 90, .85); }
+.chamber:hover { filter: brightness(1.12); }
+.cyl-hub { display: none; position: absolute; left: 50%; top: 50%; width: 7cqmin; height: 7cqmin; margin: -3.5cqmin; border-radius: 50%; border: 1px solid #2c3138; background: radial-gradient(circle at 35% 28%, #f3d488, #8a6220); }
+
+/* ---- tall screens: 9:16 stage ---- */
+@container shell (max-aspect-ratio: 4/5) {
+  .stage { width: min(100cqw, calc(100cqh * 9 / 16)); aspect-ratio: 9 / 16; }
+  .sign-wrap { top: 2.2%; gap: 1.4cqmin; }
+  .sign { font-size: clamp(15px, 5.5cqmin, 36px); }
+  .status { top: 15.4%; font-size: clamp(11px, 3.2cqmin, 22px); }
+  /* speed in the top right corner, sound in the top left, on the same line */
+  .tools { display: contents; }
+  .tool { position: absolute; top: 2%; z-index: 4; }
+  #speedBtn { right: 3%; } #soundBtn { left: 3%; }
+  #infoBtn { left: auto; right: 3%; top: calc(2% + clamp(36px, 10.4cqmin, 80px) + 2.2cqmin); }
+  #musicBtn { right: auto; left: 3%; top: calc(2% + clamp(36px, 10.4cqmin, 80px) + 2.2cqmin); }
+  .ladder { top: 20.5% !important; }
+  .dots li { width: clamp(15px, 5.6cqmin, 64px); }
+  .dots { gap: .7cqmin; }
+  .strip .strip-label { font-size: clamp(10px, 3cqmin, 19px); }
+  .tool { width: clamp(36px, 10.4cqmin, 80px); }
+  .tool-badge { font-size: clamp(9px, 2.9cqmin, 17px); }
+  .mode { left: 50%; top: 10.8%; translate: -50% 0; }
+  .mode-btn { font-size: clamp(13px, 4.1cqmin, 20px); }
+  /* multiplier ladder: a column down the left side, under the sound button */
+  .ladder { bottom: auto; top: 18.5%; left: 3%; translate: none; flex-direction: column; gap: .7cqmin; padding: 1.4cqmin 1.8cqmin 1.4cqmin 1.2cqmin; border-radius: 3cqmin;
+    background: rgba(10, 5, 8, .5); border: .35cqmin solid var(--brass); box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(0, 0, 0, .5); }
+  .rung { min-width: 0; flex-direction: row; gap: .8cqmin; font-size: clamp(9px, 2.8cqmin, 28px); color: var(--cream); text-shadow: 0 1px 2px #000, 0 0 .3em rgba(0, 0, 0, .8); }
+  .rung::before { width: 4.8cqmin; flex: none; }
+  /* cash out: a wooden tab from the right edge, mirroring the balance tab on the left */
+  .cashout { left: auto; right: -3cqmin; bottom: 7%; translate: none; min-width: 34cqmin; box-sizing: border-box;
+    padding: 1.35cqmin 5.7cqmin 1.5cqmin 3cqmin; flex-direction: column; align-items: flex-end; gap: .2cqmin; text-align: right; }
+  .stage[data-run="live"] .cashout { display: flex; }
+  .cashout .plaque-label { font-size: clamp(8px, 2.25cqmin, 14px); margin-right: 0; }
+  .cashout .plaque-value { font-size: clamp(13px, 5cqmin, 32px); color: var(--gold); }
+  .strip-label, .plaque-label { font-size: clamp(9px, 2.8cqmin, 14px); }
+  .pick { top: calc(59.5% + 3px); width: 29.5cqmin; height: 29.5cqmin; }
+  .pick.outlaw { left: 3%; } .pick.sheriff { right: 3%; }
+  .coin-tap { top: 33.5%; width: 52cqmin; }
+  .key { display: none; }
+  /* two wooden tabs sliding in from the left edge: total bet on top, balance under it */
+  .plaque.bet, .balance {
+    left: -3cqmin; right: auto; min-width: 34cqmin; box-sizing: border-box; padding: 1.35cqmin 3cqmin 1.5cqmin 5.7cqmin; z-index: 5;
+    align-items: flex-start; text-align: left;
+    background: url(art/plaque.webp) center / 100% 100% no-repeat; filter: drop-shadow(0 .5cqmin 1cqmin rgba(0, 0, 0, .6));
+  }
+  .plaque.bet { bottom: 13.9%; }
+  .balance { bottom: 7%; width: auto; }
+  .balance .plaque-label { font-size: clamp(8px, 2.25cqmin, 14px); }
+  /* bet cylinder set into the right edge under the Sheriff emblem: its left half shows, swipe up or down to turn it */
+  .dial { right: 0; left: auto; bottom: auto; top: 87%; translate: 50% -50%; width: 42cqmin; filter: drop-shadow(-.4cqmin 0 1.6cqmin rgba(0, 0, 0, .75)); }
+  .plaque.bet .plaque-value { font-size: clamp(13px, 5cqmin, 32px); }
+  .plaque.bet .plaque-label { font-size: clamp(8px, 2.25cqmin, 14px); }
+  .chg { display: none; }
+  .dial::before { left: -2.6cqmin; top: 50%; translate: 0 -50%; border: 1.3cqmin solid transparent; border-left-color: var(--gold); }
+  .dchamber { font-size: clamp(12px, 3.8cqmin, 30px); }
+  .balance .plaque-value { font-size: calc(clamp(13px, 5cqmin, 32px) * var(--fit, 1)); line-height: normal; }
+  .plaque-value { font-size: clamp(14px, 6cqmin, 34px); }
+  .stamp { top: 33.5%; }
+  .notice { top: 26%; font-size: clamp(11px, 3.6cqmin, 18px); }
+  .panel { gap: 3cqmin; font-size: clamp(12px, 3.8cqmin, 20px); }
+  .bet-hint { font-size: clamp(11px, 3.6cqmin, 18px); }
+  .panel h2 { font-size: clamp(16px, 6cqmin, 36px); }
+  .cyl { width: 80cqmin; }
+  .chamber { font-size: clamp(14px, 7.4cqmin, 38px); }
+  .bet-now { font-size: clamp(18px, 7.4cqmin, 44px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pick { animation: none; transition: opacity .2s; }
+  .pick::before { animation: none; opacity: .6; }
+  .pick::after { animation: none; }
+  .cyl, .chamber { transition: none; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-star" viewBox="0 0 100 100">
+      <polygon fill="currentColor" points="50,6 61.2,36.6 93.7,37.8 68.1,57.9 77,89.2 50,71 23,89.2 31.9,57.9 6.3,37.8 38.8,36.6"/>
+    </symbol>
+    <g id="g-gun">
+      <rect x="14" y="44" width="52" height="9" rx="2"/>
+      <rect x="50" y="41" width="17" height="15" rx="3"/>
+      <rect x="64" y="50" width="12" height="26" rx="4" transform="rotate(-18 70 52)"/>
+    </g>
+    <symbol id="i-guns" viewBox="0 0 100 100">
+      <g fill="currentColor">
+        <use href="#g-gun" transform="rotate(-38 50 50)"/>
+        <use href="#g-gun" transform="translate(100 0) scale(-1 1) rotate(-38 50 50)"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+  <main class="stage" id="stage" data-state="idle">
+    <div class="mode" role="group" aria-label="Game mode">
+      <button class="mode-btn" id="modeInstant" aria-pressed="true">Instant</button>
+      <button class="mode-btn" id="modeMultiply" aria-pressed="false">Multiply</button>
+    </div>
+    <div class="sign-wrap">
+      <h1 class="sign">High Noon Flip</h1>
+      <ol class="dots strip" id="dots" aria-label="Last flips"></ol>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+    <div class="tools">
+      <button class="tool" id="speedBtn" aria-label="Speed: Normal. Tap to change.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(45 12 12)"><path d="M12 2.5c2.8 2 4.5 5.6 4.5 9.5l-1.7 3H9.200l-1.700-3c0-3.900 1.700-7.500 4.500-9.500z"/><circle cx="12" cy="9.500" r="1.500"/><path d="M8.500 14.500l-2.500 3 3-.800M15.500 14.500l2.500 3-3-.800M12 17.500v3.500"/></g></svg>
+        <span class="tool-badge" id="speedBadge">1&#215;</span>
+      </button>
+      <button class="tool" id="infoBtn" aria-label="How to play">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.2v.1"/></svg>
+      </button>
+      <button class="tool" id="soundBtn" aria-label="Mute sound" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path id="soundWaves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+      </button>
+    </div>
+
+    <button class="tool" id="musicBtn" aria-label="Sound and music levels">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17.5V6l10-2v11.500"/><circle cx="6.500" cy="17.500" r="2.500"/><circle cx="16.500" cy="15.500" r="2.500"/></svg>
+    </button>
+    <button class="coin-tap" id="coinTap" aria-label="Turn the coin over"></button>
+    <button class="pick outlaw" id="pickOutlaw" aria-label="Outlaw"><svg><use href="#i-guns"/></svg><span>OUTLAW</span></button>
+    <button class="pick sheriff" id="pickSheriff" aria-label="Sheriff"><svg><use href="#i-star"/></svg><span>SHERIFF</span></button>
+    <button class="key key-l" id="keyOutlaw" tabindex="-1" aria-label="Outlaw: left arrow key"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg></button>
+    <button class="key key-r" id="keySheriff" tabindex="-1" aria-label="Sheriff: right arrow key"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+
+    <div class="balance"><span class="plaque-label">Demo balance</span><span class="plaque-value"><span id="balance">1000.00</span><small>FUN</small></span></div>
+    <button class="plaque bet" id="betBtn" aria-label="Change bet"><span class="plaque-label">Total bet<span class="chg"> &#183; change</span></span><span class="plaque-value"><span id="bet">1</span><small>FUN</small></span></button>
+    <div class="dial" id="dial" role="listbox" aria-label="Bet in FUN. Swipe left or right to change."><div class="dial-rot" id="dialRot"></div></div>
+
+    <ol class="ladder" id="ladder" aria-label="Multiplier ladder"></ol>
+    <button class="cashout" id="cashBtn">Cash out</button>
+
+    <div class="stamp" id="stamp" hidden><b id="stampTitle">WIN</b><span id="stampAmt">+1.98 FUN</span></div>
+    <div class="notice" id="notice" hidden><span>Not enough balance for this bet.</span><button class="btn" id="lowerBtn">Lower the bet</button><button class="btn" id="resetBtn">Reset to 1000</button></div>
+
+    <div class="menu" id="menu" role="dialog" aria-modal="true" aria-label="Choose your bet" hidden>
+      <div class="panel">
+        <h2>Choose your bet</h2>
+        <div class="bet-now"><span id="betNow">1</span> FUN</div>
+        <div class="cyl-wrap"><div class="cyl" id="cyl"></div></div>
+        <p class="bet-hint">Tap a bullet to set your bet</p>
+      </div>
+    </div>
+    <div class="info" id="mix" role="dialog" aria-modal="true" aria-label="Sound and music levels" hidden>
+      <div class="info-panel mix-panel">
+        <h2>Sound</h2>
+        <div class="mix-row"><label for="fxVol">Sound effects</label><input type="range" id="fxVol" min="0" max="100" step="1"><output id="fxOut">15</output></div>
+        <div class="mix-row"><label for="musVol">Music</label><input type="range" id="musVol" min="0" max="100" step="1"><output id="musOut">6</output></div>
+        <p class="info-note">The music gets more intense as the stake goes up.</p>
+        <button class="btn" id="mixClose">Close</button>
+      </div>
+    </div>
+    <div class="info" id="info" role="dialog" aria-modal="true" aria-label="How to play" hidden>
+      <div class="info-panel">
+        <h2>How to play</h2>
+        <div class="info-body">
+          <h3>The game</h3>
+          <p>Choose your bet on the cylinder, then tap <b>Sheriff</b> or <b>Outlaw</b>. The revolver fires and flips the coin. If it lands on your side, you win.</p>
+          <h3>Instant</h3>
+          <p>One flip. A correct pick pays 1.98 &#215; your bet.</p>
+          <h3>Multiply</h3>
+          <p>You stake once. Each correct pick doubles the prize: &#215;1.98, &#215;3.96, &#215;7.92 and so on, up to &#215;253 after eight in a row. Tap <b>Cash out</b> at any time to take the prize shown. One wrong pick ends the run and the stake is lost.</p>
+          <h3>Odds</h3>
+          <p>Each side lands half the time, on every flip. Return to player is 99%.</p>
+          <h3>Good to know</h3>
+          <p>Tapping the coin turns it over for looks only; it does not change the result. The rocket changes the speed (1&#215;, 2&#215;, 4&#215;), not the odds or payouts.</p>
+          <p class="info-note">Demo: play money. The result is picked in your browser; in the real game the server decides it.</p>
+        </div>
+        <button class="btn" id="infoClose">Close</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js"></script>
+<script>
+(function () {
+  /* Art slots: set a file path here to replace the code-drawn placeholder. */
+  const ART = { background: 'art/background.jpg', backgroundPortrait: 'art/background-portrait.jpg', coinSheriff: 'art/coin-sheriff.webp', coinOutlaw: 'art/coin-outlaw.webp', revolver: 'art/revolver-base.webp', revolverHammer: 'art/revolver-hammer.webp', revolverCocked: 'art/revolver-base-b.webp', cylStrip: 'art/cyl-strip.webp' };
+
+  const BETS = [1, 5, 10, 25, 50, 100];
+  const PAYOUT = 1.98;
+  const NAMES = { sheriff: 'Sheriff', outlaw: 'Outlaw' };
+  const $ = (id) => document.getElementById(id);
+  const stage = $('stage');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const FLIP_MS = reduced ? 500 : 1900;
+  const IDLE = 'Pick a side to fire';
+
+  // money is held in cents so 1.98 payouts stay exact
+  // multiply mode: every correct guess doubles the prize; 198 = 1.98 in hundredths, so every rung keeps the 99% return
+  const LADDER = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => 198 * Math.pow(2, i));
+  const multLabel = (h) => '\u00d7' + (h < 1000 ? (h / 100).toFixed(2) : h < 10000 ? (h / 100).toFixed(1) : Math.round(h / 100));
+  let S = { balance: 100000, betIdx: 0, rounds: [], volume: 15, muted: false, mode: 'instant', speed: 0, musicVol: 6 };
+  let run = null;       // { step, bet } while a multiply round is in progress
+  // play speed: normal, fast (2x) or turbo (4x). It shortens the flip and the pauses; the odds and payouts are the same.
+  const SPEEDS = [{ name: 'Normal', badge: '1\u00d7', k: 1, turns: 6 }, { name: 'Fast', badge: '2\u00d7', k: 0.5, turns: 3 }, { name: 'Turbo', badge: '4\u00d7', k: 0.24, turns: 1 }];
+  const spd = () => SPEEDS[S.speed] || SPEEDS[0];
+  const flipMs = () => reduced ? 500 : Math.round(1900 * spd().k);
+  const hold = (ms) => wait(Math.max(380, ms * spd().k));
+  const idleText = () => '';
+  let roundNo = 0, shownBal = S.balance, balRaf = 0;
+
+  const fmt = (c) => (c / 100).toFixed(2);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const betCents = () => BETS[S.betIdx] * 100;
+
+  /* ---------- placeholder sound ---------- */
+  let ac = null;
+  function ctx() {
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+      return ac;
+    } catch (e) { return null; }
+  }
+  // sound effects: silent when muted or turned down to zero
+  function audio() { return (S.muted || S.volume === 0) ? null : ctx(); }
+
+  /* ---------- music: a calm loop and an intense loop, blended by how much is at stake ---------- */
+  const MUSIC = { calm: { url: 'art/music-calm.mp4', len: 34.9088 }, hot: { url: 'art/music-hot.mp4', len: 31.2195 } }, mus = {};
+  let music = null;
+  function intensity() {
+    let i = S.betIdx / (BETS.length - 1);                       // 1 FUN = 0 ... 100 FUN = 1
+    if (run) i += 0.12 + 0.13 * run.step;                        // a multiply run raises the pressure with every win
+    return Math.max(0, Math.min(1, i));
+  }
+  function startMusic() {
+    if (music || !mus.calm || !mus.hot) return;
+    const a = ctx(); if (!a) return;
+    const out = a.createGain(), tone1 = a.createBiquadFilter(); tone1.type = 'lowpass'; tone1.frequency.value = 3000; out.gain.value = 0;
+    tone1.connect(out).connect(a.destination);
+    const layer = (k) => { const src = a.createBufferSource(), g = a.createGain(); src.buffer = mus[k]; src.loop = true; src.loopStart = 0.2; src.loopEnd = 0.2 + MUSIC[k].len; g.gain.value = 0; src.connect(g).connect(tone1); src.start(0, 0.2); return g; };
+    music = { out, tone: tone1, calm: layer('calm'), hot: layer('hot') };
+    updateMusic(true);
+  }
+  function updateMusic(fast) {
+    if (!music || !ac) return;
+    const t = ac.currentTime, i = intensity(), tc = fast ? 0.25 : 0.9;
+    const x = Math.max(0, Math.min(1, (i - 0.3) / 0.4)), blend = x * x * (3 - 2 * x);      // calm up to 10 FUN, intense from 50 FUN
+    music.calm.gain.setTargetAtTime(Math.cos(blend * Math.PI / 2), t, tc);
+    music.hot.gain.setTargetAtTime(Math.sin(blend * Math.PI / 2) * (0.8 + 0.2 * i), t, tc);
+    music.tone.frequency.setTargetAtTime(2600 + 15000 * Math.min(1, i * 1.6), t, tc);         // lowest stakes are slightly muffled, as if heard from outside the saloon
+    const vol = S.muted ? 0 : Math.pow((S.musicVol === undefined ? 6 : S.musicVol) / 100, 1.6) * 0.9;
+    music.out.gain.setTargetAtTime(vol, t, fast ? 0.08 : 0.3);
+  }
+  try {
+    const OC2 = window.OfflineAudioContext || window.webkitOfflineAudioContext, oc2 = OC2 && new OC2(2, 2, 44100);
+    if (oc2) Object.keys(MUSIC).forEach((k) => fetch(MUSIC[k].url).then((r) => r.ok ? r.arrayBuffer() : Promise.reject()).then((b) => oc2.decodeAudioData(b, (d) => { mus[k] = d; startMusic(); }, () => {})).catch(() => {}));
+  } catch (e) {}
+  // The music is started as soon as it has loaded. Where the browser refuses sound before the player has touched the page,
+  // it stays silent until the first touch of any kind, anywhere, and then carries on by itself.
+  const WAKE = ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown'];
+  function wake() {
+    const a = ctx(); startMusic();
+    if (a && a.state === 'running' && music) WAKE.forEach((ev) => document.removeEventListener(ev, wake, true));
+  }
+  WAKE.forEach((ev) => document.addEventListener(ev, wake, true));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ac && ac.state === 'suspended') ac.resume(); });
+
+  function tone(freq, dur, type, gain, when, slideTo) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime + (when || 0), o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime((gain || 0.2) * S.volume / 100, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  /* ---------- recorded revolver-cylinder sounds ---------- */
+  const SND = { spin: 'art/snd-spin.mp4', lock: 'art/snd-lock.mp4', tick: 'art/snd-tick.mp4' }, snd = {};
+  const RICOCHETS = 17; let lastRico = 0;
+  for (let i = 1; i <= RICOCHETS; i++) SND['rico' + i] = 'art/rico-' + String(i).padStart(2, '0') + '.mp4';
+  // decoded up front on a silent offline context, so the very first tap already has the real sounds
+  try {
+    const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext, oc = OC && new OC(1, 2, 44100);
+    if (oc) Object.keys(SND).forEach((k) => fetch(SND[k]).then((r) => r.ok ? r.arrayBuffer() : Promise.reject()).then((b) => oc.decodeAudioData(b, (d) => { snd[k] = d; }, () => {})).catch(() => {}));
+  } catch (e) {}
+  // plays a recording; returns false if it is not available so the caller can fall back to a synthetic sound
+  function sample(name, o) {
+    const a = audio(); if (!snd[name]) return false; if (!a) return true;
+    o = o || {};
+    const src = a.createBufferSource(), g = a.createGain(), t = a.currentTime + (o.when || 0), vol = (o.gain || 0.8) * S.volume / 100;
+    src.buffer = snd[name]; src.playbackRate.value = o.rate || 1;
+    g.gain.setValueAtTime(o.fadeIn ? 0.0001 : vol, t);
+    if (o.fadeIn) g.gain.linearRampToValueAtTime(vol, t + o.fadeIn);
+    src.connect(g).connect(a.destination); src.start(t, o.offset || 0);
+    return true;
+  }
+  function noise(dur, gain, when, cutoff) {
+    const a = audio(); if (!a) return;
+    const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.5);
+    const src = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = cutoff || 1800; g.gain.value = gain * S.volume / 100;
+    src.buffer = buf; src.connect(f).connect(g).connect(a.destination); src.start(a.currentTime + (when || 0));
+  }
+  const sfx = {
+    click: () => tone(900, 0.04, 'square', 0.08),
+    cock: () => { tone(1400, 0.03, 'square', 0.1); tone(700, 0.04, 'square', 0.1, 0.07); },
+    shot: () => { noise(0.4, 0.95); noise(0.5, 0.3, 0.16, 900); noise(0.6, 0.14, 0.36, 600); tone(140, 0.28, 'sine', 0.6, 0, 40); },
+    ring: () => { tone(2640, 1.1, 'sine', 0.11, 0.05); tone(3960, 0.8, 'sine', 0.05, 0.05); },
+    land: () => { tone(3100, 0.35, 'sine', 0.1); tone(1900, 0.08, 'triangle', 0.1); },
+    win: () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.24, 'triangle', 0.2, i * 0.09)); for (let i = 0; i < 9; i++) tone(2400 + Math.random() * 1800, 0.12, 'sine', 0.05, 0.3 + i * 0.07); },
+    // a loss plays one of the recorded ricochets, picked at random and never the same one twice running
+    lose: () => {
+      const ready = []; for (let i = 1; i <= RICOCHETS; i++) if (snd['rico' + i] && i !== lastRico) ready.push(i);
+      if (ready.length) { lastRico = ready[Math.floor(Math.random() * ready.length)]; sample('rico' + lastRico, { gain: 0.2 }); return; }
+      tone(220, 0.5, 'sawtooth', 0.08, 0, 90);
+    },
+    ratchet: () => { if (sample('tick', { gain: 0.55, rate: 0.94 + Math.random() * 0.14 })) return; noise(0.028, 0.5, 0, 7000); tone(3100, 0.022, 'square', 0.07); tone(1650, 0.045, 'triangle', 0.11, 0.006); },
+    latch: () => { if (sample('lock', { gain: 0.85 })) return; tone(2100, 0.025, 'square', 0.12); tone(520, 0.06, 'square', 0.14, 0.045); noise(0.05, 0.25, 0.045, 3000); },
+    // the recorded spin is 1.9 s long and slows to its last clicks; play only its last `secs` so it always ends on those clicks
+    spin: (secs) => { const len = snd.spin ? snd.spin.duration : 0, d = Math.min(len, Math.max(0.45, secs)); return sample('spin', { gain: 0.8, offset: len - d, fadeIn: 0.05 }); },
+  };
+
+  /* ---------- interface rendering ---------- */
+  // big balances get a smaller font so the number never runs into the cylinder or off the screen
+  function fitBalance() {
+    const box = document.querySelector('.balance'), val = box.querySelector('.plaque-value:not(.fit-probe)');
+    let probe = box.querySelector('.fit-probe');
+    if (!probe) { probe = document.createElement('span'); probe.className = 'plaque-value fit-probe'; probe.setAttribute('aria-hidden', 'true'); probe.innerHTML = '<span></span><small>FUN</small>'; box.appendChild(probe); }
+    probe.firstChild.textContent = fmt(S.balance);
+    const tall = stage.clientHeight > stage.clientWidth;
+    const room = tall ? stage.clientWidth * 0.225 : stage.clientHeight * 0.26, w = probe.offsetWidth;
+    val.style.setProperty('--fit', w ? Math.max(0.4, Math.min(1, room / w)).toFixed(3) : '1');
+  }
+  function paintBalance(animated) {
+    fitBalance();
+    const el = $('balance');
+    cancelAnimationFrame(balRaf);
+    if (!animated || reduced) { shownBal = S.balance; el.textContent = fmt(shownBal); return; }
+    const from = shownBal, to = S.balance, t0 = performance.now();
+    (function step(now) {
+      const k = Math.min(1, (now - t0) / 800);
+      shownBal = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+      el.textContent = fmt(shownBal);
+      if (k < 1) balRaf = requestAnimationFrame(step);
+    })(t0);
+  }
+  function render(animateBalance) {
+    paintBalance(animateBalance);
+    $('bet').textContent = BETS[S.betIdx]; syncDial();
+    if (typeof S.musicVol !== 'number') S.musicVol = 6;
+    stage.dataset.mode = S.mode; updateMusic();
+    $('fxVol').value = S.volume; $('fxOut').textContent = S.volume; $('musVol').value = S.musicVol; $('musOut').textContent = S.musicVol;
+    if (!SPEEDS[S.speed]) S.speed = 0;
+    $('speedBtn').dataset.speed = S.speed; $('speedBadge').textContent = spd().badge;
+    $('speedBtn').setAttribute('aria-label', 'Speed: ' + spd().name + '. Tap to change.');
+    if (run) stage.dataset.run = run.step > 0 ? 'live' : 'start'; else delete stage.dataset.run;
+    $('modeInstant').setAttribute('aria-pressed', S.mode === 'instant');
+    $('modeMultiply').setAttribute('aria-pressed', S.mode === 'multiply');
+    const step = run ? run.step : 0;
+    document.querySelectorAll('.rung').forEach((r, i) => { r.className = 'rung' + (i < step ? ' on' : i === step ? ' next' : ''); });
+    if (run && run.step > 0) $('cashBtn').innerHTML = '<span class="plaque-label">Cash out</span><span class="plaque-value">' + fmt(run.bet * LADDER[run.step - 1] / 100) + '<small>FUN</small></span>';
+    const dots = $('dots'); dots.textContent = '';
+    for (let i = 0; i < 10; i++) {
+      const li = document.createElement('li'), r = S.rounds[i];
+      if (r) { li.className = r.result; li.title = NAMES[r.result]; li.setAttribute('aria-label', NAMES[r.result]); }
+      dots.appendChild(li);
+    }
+    $('betNow').textContent = BETS[S.betIdx];
+    $('cyl').style.setProperty('--sel', S.betIdx);
+    document.querySelectorAll('.chamber').forEach((c, i) => c.setAttribute('aria-pressed', i === S.betIdx));
+    $('soundBtn').setAttribute('aria-pressed', S.muted);
+    $('soundBtn').setAttribute('aria-label', S.muted ? 'Unmute sound' : 'Mute sound');
+    $('soundWaves').style.display = S.muted ? 'none' : '';
+
+  }
+  function setState(s, outcome) {
+    stage.dataset.state = s;
+    if (outcome) stage.dataset.outcome = outcome; else delete stage.dataset.outcome;
+  }
+
+  /* ================= PixiJS scene ================= */
+  const P = window.PIXI;
+  const E = {
+    lin: (t) => t, out: (t) => 1 - Math.pow(1 - t, 3), inOut: (t) => 0.5 - Math.cos(Math.PI * t) / 2,
+    back: (t) => { const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); },
+  };
+  const scene = { ready: false, turn() { return null; }, cock() {}, fire() {}, flip() { return wait(FLIP_MS); }, win() {}, lose() {}, setBet() {}, reset() { return Promise.resolve(); } };
+
+  function initScene() {
+    if (!P) return;
+    const app = new P.Application({ backgroundAlpha: 0, antialias: true, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2), width: 16, height: 9 });
+    stage.prepend(app.view);
+    const root = new P.Container(); app.stage.addChild(root);
+
+    const canvasTex = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return P.Texture.from(c); };
+    const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+
+    /* ---- shared textures ---- */
+    const T = {};
+    T.soft = canvasTex(128, 128, (c) => { const g = c.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.4, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, 128, 128); });
+    T.sky = canvasTex(4, 256, (c) => { const g = c.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, '#1c1238'); g.addColorStop(.35, '#4a2059'); g.addColorStop(.62, '#93355a'); g.addColorStop(.82, '#dd5f33'); g.addColorStop(1, '#ffb347'); c.fillStyle = g; c.fillRect(0, 0, 4, 256); });
+    T.ground = canvasTex(4, 128, (c) => { const g = c.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, '#b05a2c'); g.addColorStop(.12, '#83401f'); g.addColorStop(.5, '#4f2416'); g.addColorStop(1, '#22100c'); c.fillStyle = g; c.fillRect(0, 0, 4, 128); });
+    T.vig = canvasTex(256, 256, (c) => { const g = c.createRadialGradient(128, 128, 60, 128, 128, 180); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(8,3,8,.78)'); c.fillStyle = g; c.fillRect(0, 0, 256, 256); });
+    T.rays = canvasTex(512, 512, (c) => {
+      c.translate(256, 256);
+      const g = c.createRadialGradient(0, 0, 30, 0, 0, 256); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g;
+      for (let i = 0; i < 14; i++) { c.rotate(Math.PI * 2 / 14); c.beginPath(); c.moveTo(0, 0); c.lineTo(256, -26); c.lineTo(256, 26); c.closePath(); c.fill(); }
+    });
+    T.sheen = canvasTex(64, 4, (c) => { const g = c.createLinearGradient(0, 0, 64, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, 64, 4); });
+    T.flash = canvasTex(256, 256, (c) => {
+      c.translate(128, 128); c.fillStyle = '#fff6d0';
+      c.beginPath(); for (let i = 0; i < 20; i++) { const a = i * Math.PI / 10, r = i % 2 ? 44 : 122 - (i % 4) * 14; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); c.fill();
+    });
+    T.mini = canvasTex(64, 64, (c) => {
+      const g = c.createRadialGradient(24, 22, 2, 32, 32, 31); g.addColorStop(0, '#fff3c4'); g.addColorStop(.5, '#f2c14e'); g.addColorStop(1, '#9a6a15');
+      c.fillStyle = g; c.beginPath(); c.arc(32, 32, 30, 0, 7); c.fill();
+      c.strokeStyle = '#8a5a10'; c.lineWidth = 3; c.beginPath(); c.arc(32, 32, 23, 0, 7); c.stroke();
+    });
+
+    function coinFace(kind) {
+      return canvasTex(512, 512, (c) => {
+        let g = c.createRadialGradient(180, 150, 20, 256, 256, 256);
+        g.addColorStop(0, '#fff3c4'); g.addColorStop(.35, '#f4c858'); g.addColorStop(.8, '#cf9426'); g.addColorStop(1, '#8f5f12');
+        c.fillStyle = g; c.beginPath(); c.arc(256, 256, 254, 0, 7); c.fill();
+        c.lineWidth = 14; c.strokeStyle = '#a8741a'; c.beginPath(); c.arc(256, 256, 243, 0, 7); c.stroke();
+        c.lineWidth = 3; c.strokeStyle = '#ffe9a8'; c.beginPath(); c.arc(256, 256, 234, 0, 7); c.stroke();
+        c.strokeStyle = '#7a4f0e'; c.beginPath(); c.arc(256, 256, 252, 0, 7); c.stroke();
+        c.setLineDash([16, 9]); c.lineCap = 'round'; c.lineWidth = 11; c.strokeStyle = '#9c6c16'; c.beginPath(); c.arc(256, 256, 214, 0, 7); c.stroke();
+        c.lineWidth = 3; c.strokeStyle = 'rgba(255,236,170,.6)'; c.beginPath(); c.arc(254, 253, 214, 0, 7); c.stroke();
+        c.setLineDash([]); c.lineCap = 'butt';
+
+        const relief = c.createLinearGradient(100, 80, 400, 420); relief.addColorStop(0, '#f0bd45'); relief.addColorStop(1, '#a9741a');
+        const emboss = (path, fill) => {
+          c.save(); c.translate(4, 5); c.fillStyle = 'rgba(86,52,4,.8)'; path(); c.fill(); c.restore();
+          c.save(); c.translate(-2, -3); c.fillStyle = 'rgba(255,242,190,.85)'; path(); c.fill(); c.restore();
+          c.fillStyle = fill || relief; path(); c.fill();
+        };
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        if (kind === 'sheriff') {
+          const cx = 256, cy = 250;
+          emboss(() => {
+            c.beginPath();
+            for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 62 : 150; c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+            c.closePath();
+            for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; c.moveTo(cx + Math.cos(a) * 154 + 14, cy + Math.sin(a) * 154); c.arc(cx + Math.cos(a) * 154, cy + Math.sin(a) * 154, 14, 0, 7); }
+          });
+          emboss(() => rr(c, 92, 214, 328, 72, 10), '#f8df92');
+          c.fillStyle = '#6a4409'; c.font = '50px "Alfa Slab One", Rockwell, Georgia, serif'; c.fillText('SHERIFF', 256, 252);
+        } else {
+          const gun = (flip) => () => {
+            c.save(); c.translate(256, 226); c.scale(flip, 1); c.rotate(-0.66);
+            c.beginPath(); c.rect(-150, -14, 172, 26); rr(c, 12, -25, 62, 48, 9);
+            c.moveTo(66, -4); c.lineTo(104, -8); c.lineTo(134, 76); c.lineTo(98, 90); c.closePath();
+            c.restore();
+          };
+          emboss(gun(1)); emboss(gun(-1));
+          c.fillStyle = '#6a4409'; c.font = '48px "Alfa Slab One", Rockwell, Georgia, serif';
+          c.save(); c.fillStyle = 'rgba(255,242,190,.8)'; c.fillText('OUTLAW', 254, 389); c.restore();
+          c.fillText('OUTLAW', 256, 392);
+        }
+      });
+    }
+
+    /* ---- live state ---- */
+    const sc = {};                        // objects of the current build
+    const tweens = [], parts = [], dust = [];
+    let W = 1600, H = 900, portrait = false, scaleK = 1;
+    let turning = null;    // the player turning the coin over by hand
+    let time = 0, angle = 0, flight = null, shake = 0, glintAt = 1500, ptrX = 0, parX = 0, cylPhase = 0, weed = null;
+
+    function tween(o, to, ms, ease, delay) {
+      return new Promise((res) => {
+        const from = {}; for (const k in to) from[k] = o[k];
+        tweens.push({ o, from, to, ms: Math.max(1, ms), t: -(delay || 0), ease: ease || E.out, res });
+      });
+    }
+    function spawn(tex, x, y, o) {
+      const s = new P.Sprite(tex); s.anchor.set(0.5); s.position.set(x, y);
+      s.tint = o.tint === undefined ? 0xffffff : o.tint; if (o.add) s.blendMode = P.BLEND_MODES.ADD;
+      s.scale.set(o.s0); s.alpha = o.a0 === undefined ? 1 : o.a0;
+      (o.layer || sc.fx).addChild(s);
+      parts.push(Object.assign({ s, age: 0, vx: 0, vy: 0, g: 0, drag: 1, spin: 0, s1: o.s0, a0: 1, flip: 0 }, o));
+    }
+
+    /* ---- build everything for the current orientation ---- */
+    function build() {
+      tweens.splice(0).forEach((t) => t.res());
+      parts.length = 0; dust.length = 0; weed = null;
+      root.removeChildren().forEach((c) => c.destroy({ children: true }));
+      W = portrait ? 900 : 1600; H = portrait ? 1600 : 900;
+      sc.bgTex = portrait ? (sc.bgP || sc.bgL) : sc.bgL;
+      const cx = W / 2, hz = H * (sc.bgTex ? (portrait && sc.bgP ? 0.6 : 0.77) : portrait ? 0.58 : 0.62), g = portrait ? 13.5 : 9;
+      const coinR = portrait ? 234 : 150, coinY = H * (portrait ? 0.335 : 0.36), gunTop = H * (portrait ? 0.495 : 0.545);
+      Object.assign(sc, { cx, hz, g, coinR, coinY, gunTop });
+      const L = (name) => { const c = new P.Container(); root.addChild(c); sc[name] = c; return c; };
+      const G = () => new P.Graphics();
+
+      const sky = L('sky'), far = L('far'), mid = L('mid'), ground = L('ground'), near = L('near');
+      if (sc.bgTex) {
+        const b = new P.Sprite(sc.bgTex); const k = Math.max(W / b.texture.width, H / b.texture.height);
+        b.anchor.set(0.5); b.scale.set(k * 1.03); b.position.set(cx, H / 2); sky.addChild(b);
+        // a slight blur on the photo so the coin, gun and buttons stand out; drawn 3% oversize so the softened edges stay off screen
+        const bf = new P.BlurFilter(2.6, 3); bf.repeatEdgePixels = true; b.filters = [bf];
+        // take the glare off the sun: a soft warm shade centred on it, strongest on the disc and fading out into the sky
+        const usingPortraitArt = portrait && sc.bgTex === sc.bgP;
+        const sunDim = new P.Sprite(T.soft); sunDim.anchor.set(0.5); sunDim.position.set(cx, H * (usingPortraitArt ? 0.5 : 0.58));
+        sunDim.width = sunDim.height = (usingPortraitArt ? 820 : 780); sunDim.tint = 0x8a3c16; sunDim.alpha = 0.42; sky.addChild(sunDim);
+      } else {
+        const s = new P.Sprite(T.sky); s.position.set(-100, 0); s.width = W + 200; s.height = hz + 2; sky.addChild(s);
+        const halo = new P.Sprite(T.soft); halo.anchor.set(0.5); halo.position.set(cx, hz); halo.width = halo.height = Math.max(W, H) * 0.9; halo.tint = 0xffb65c; halo.blendMode = P.BLEND_MODES.ADD; halo.alpha = 0.85; sky.addChild(halo); sc.halo = halo;
+        const sun = G(); sun.beginFill(0xffedb8).drawCircle(cx, hz - g * 2, g * 9).endFill(); sky.addChild(sun);
+        [[0.18, 0.2, 520, 0.2], [0.7, 0.13, 640, 0.16], [0.42, 0.34, 420, 0.14], [0.88, 0.4, 380, 0.16]].forEach(([x, y, w, a]) => {
+          const c = new P.Sprite(T.soft); c.anchor.set(0.5); c.position.set(W * x, hz * y); c.width = w; c.height = w * 0.11; c.tint = 0xff9a6a; c.alpha = a; sky.addChild(c);
+        });
+        const mesa = (gr, x, w, h, col) => gr.beginFill(col).drawPolygon([x, hz, x + w * 0.06, hz - h * 0.45, x + w * 0.22, hz - h * 0.5, x + w * 0.27, hz - h, x + w * 0.62, hz - h, x + w * 0.68, hz - h * 0.55, x + w * 0.9, hz - h * 0.5, x + w, hz]).endFill();
+        const f = G(); mesa(f, W * -0.05, W * 0.3, H * 0.13, 0x8a3f5e); mesa(f, W * 0.3, W * 0.16, H * 0.06, 0x8a3f5e); mesa(f, W * 0.72, W * 0.36, H * 0.15, 0x8a3f5e); far.addChild(f);
+        const m = G(); mesa(m, W * 0.05, W * 0.22, H * 0.085, 0x53254a); mesa(m, W * 0.62, W * 0.2, H * 0.07, 0x53254a);
+        // frontier town silhouette
+        const tx = W * 0.74, u = H * 0.012; m.beginFill(0x2a1230);
+        [[0, 5, 6], [5.5, 4, 8], [10, 6, 5.5], [16.5, 4.5, 7]].forEach(([x, w, h]) => { m.drawRect(tx + x * u, hz - h * u, w * u, h * u); m.drawRect(tx + (x + 0.5) * u, hz - (h + 1.2) * u, (w - 1) * u, 1.4 * u); });
+        m.drawRect(tx - 5 * u, hz - 11 * u, 0.5 * u, 11 * u).drawRect(tx - 2 * u, hz - 11 * u, 0.5 * u, 11 * u).drawRect(tx - 5.6 * u, hz - 15 * u, 4.7 * u, 4.4 * u).drawPolygon([tx - 6 * u, hz - 15 * u, tx - 3.25 * u, hz - 17 * u, tx - 0.5 * u, hz - 15 * u]);
+        m.endFill(); mid.addChild(m);
+
+        const gs = new P.Sprite(T.ground); gs.position.set(-100, hz); gs.width = W + 200; gs.height = H - hz + 2; ground.addChild(gs);
+        const path = new P.Sprite(T.soft); path.anchor.set(0.5); path.position.set(cx, hz + (H - hz) * 0.1); path.width = W * 0.9; path.height = (H - hz) * 0.5; path.tint = 0xffa24d; path.alpha = 0.35; path.blendMode = P.BLEND_MODES.ADD; ground.addChild(path);
+        const st = G(); st.beginFill(0x1c0b0a, 0.28);
+        for (let i = 0; i < 16; i++) { const y = hz + (H - hz) * (0.12 + Math.random() * 0.85), k = (y - hz) / (H - hz); st.drawEllipse(Math.random() * W, y, 30 + k * 150 * Math.random(), 2 + k * 5); }
+        st.endFill(); ground.addChild(st);
+        const cactus = (gr, x, y, h) => {
+          const w = h * 0.13; gr.beginFill(0x180a14);
+          gr.drawRoundedRect(x - w / 2, y - h, w, h, w / 2);
+          gr.drawRoundedRect(x - w * 2.6, y - h * 0.62, w * 2.2, w * 0.8, w * 0.4).drawRoundedRect(x - w * 2.6, y - h * 0.82, w * 0.8, h * 0.26, w * 0.4);
+          gr.drawRoundedRect(x + w * 0.4, y - h * 0.46, w * 2.2, w * 0.8, w * 0.4).drawRoundedRect(x + w * 1.8, y - h * 0.72, w * 0.8, h * 0.32, w * 0.4);
+          gr.endFill();
+        };
+        const c = G(); cactus(c, W * 0.2, hz + H * 0.1, H * 0.2); cactus(c, W * 0.86, hz + H * 0.07, H * 0.15); cactus(c, W * 0.34, hz + H * 0.02, H * 0.07); near.addChild(c);
+      }
+      const dustL = L('dustL');
+      for (let i = 0; i < (reduced ? 0 : 30); i++) {
+        const s = new P.Sprite(T.soft); s.anchor.set(0.5); s.tint = 0xffd9a0; s.blendMode = P.BLEND_MODES.ADD;
+        const d = { s, x: Math.random() * W, y: Math.random() * H, v: 6 + Math.random() * 18, sz: 0.03 + Math.random() * 0.09, ph: Math.random() * 6 };
+        s.scale.set(d.sz); dustL.addChild(s); dust.push(d);
+      }
+
+      /* win rays (behind the coin) */
+      const back = L('back');
+      const rays = new P.Sprite(T.rays); rays.anchor.set(0.5); rays.position.set(cx, coinY); rays.width = rays.height = coinR * 6; rays.tint = 0xffd66b; rays.blendMode = P.BLEND_MODES.ADD; rays.alpha = 0; back.addChild(rays); sc.rays = rays;
+
+      /* revolver, standing on its grip with the barrel straight up */
+      const gun = L('gun'); gun.position.set(cx, gunTop); sc.gunY = gunTop;
+      if (sc.gunTex) {
+        // photographed revolver: the barrel is 28.3% of the image width; squashed a little so the cylinder stays on screen
+        const gs = new P.Sprite(sc.gunTex); gs.anchor.set(0.5, 0);
+        const sx = (portrait ? 70 : 50) / (gs.texture.width * 0.283);
+        const art = new P.Container(); art.scale.set(sx, sx * (portrait ? 0.62 : 0.58)); gun.addChild(art);
+        gs.tint = 0xf6dcc6; art.addChild(gs);
+        // second frame with the cylinder turned a step: the two frames swap on every shot
+        let cocked = null;
+        if (sc.cockTex) { cocked = new P.Sprite(sc.cockTex); cocked.anchor.set(0.5, 0); cocked.width = gs.texture.width; cocked.height = gs.texture.height; cocked.tint = 0xf6dcc6; cocked.visible = false; art.addChild(cocked); }
+        // spinning cylinder: its engraved surface scrolls across the two visible sides, with the edges kept in shade so it stays round
+        sc.cylSpin = null;
+        if (sc.stripTex && P.TilingSprite) {
+          const spin = new P.Container(); spin.alpha = 0; art.addChild(spin);
+          // the two visible sides of the cylinder, rounded off at their outer top corners (image coordinates, gun centred on x = 0)
+          const sm = G(); sm.beginFill(0xffffff)
+            .drawPolygon([-84, 1034, -138, 1034, -168, 1052, -184, 1086, -184, 1270, -84, 1270])
+            .drawPolygon([84, 1034, 138, 1034, 168, 1052, 184, 1086, 184, 1270, 84, 1270]).endFill();
+          art.addChild(sm); spin.mask = sm;
+          const tl = new P.TilingSprite(sc.stripTex, 100, 236), tr = new P.TilingSprite(sc.stripTex, 100, 236);
+          tl.position.set(-184, 1034); tr.position.set(84, 1034); tl.tint = tr.tint = 0xffe6d2;
+          tl.tileScale.set(1.18); tr.tileScale.set(1.18);
+          const shL = new P.Sprite(T.sheen), shR = new P.Sprite(T.sheen);
+          [shL, shR].forEach((sh, i) => { sh.tint = 0x2a0f08; sh.alpha = 0.3; sh.width = 70; sh.height = 236; sh.position.set(i ? 184 - 35 : -184 - 35, 1034); });
+          spin.addChild(tl, tr, shL, shR);
+          sc.cylSpin = { _p: 0, get p() { return this._p; }, set p(v) {
+            this._p = v;
+            tl.tilePosition.x = v * 328 * 1.18 * 3; tr.tilePosition.x = v * 328 * 1.18 * 3 - 190;
+            spin.alpha = v <= 0 ? 0 : v < 0.8 ? 1 : Math.max(0, (1 - v) / 0.2);
+          } };
+        }
+        // a streak of light that crosses the cylinder to suggest it turning
+        const cylMask = G(); cylMask.beginFill(0xffffff).drawRoundedRect(-196, 950, 392, 330, 40).endFill(); art.addChild(cylMask);
+        const streak = new P.Sprite(T.sheen); streak.anchor.set(0.5); streak.width = 150; streak.height = 380; streak.position.set(-320, 1115); streak.blendMode = P.BLEND_MODES.ADD; streak.alpha = 0; streak.mask = cylMask; art.addChild(streak);
+        sc.cylStreak = streak;
+        // the hammer is its own piece, hinged at its base: pulled back it sinks into its slot
+        let ham = null;
+        if (sc.hamTex) { ham = new P.Sprite(sc.hamTex); ham.anchor.set(0.5, 1); ham.position.set(0, 1636); ham.tint = 0xf6dcc6; art.addChild(ham); }
+        else if (!sc.hamTex) gs.texture = sc.gunTex;
+        sc.hammer = { _r: 0, get rotation() { return this._r; }, set rotation(v) {
+          this._r = v; const k = Math.max(0, Math.min(1.2, -v / 0.55));
+          if (ham) { ham.scale.set(1 + 0.06 * k, 1 - 0.17 * k); const c = Math.round(255 - 40 * k); ham.tint = (Math.round(c * 0.965) << 16) | (Math.round(c * 0.863) << 8) | Math.round(c * 0.776); }
+        } };
+        sc.turnCyl = () => { if (cocked) { cocked.visible = !cocked.visible; gs.visible = !cocked.visible; } };
+        sc.drawCyl = () => {};
+      } else {
+      const steel = 0x8e97a3, hi = 0xdfe5ec, lo = 0x444b54, dark = 0x24282e, brass = 0xc9973f, wood = 0x5c3421, woodHi = 0x86502f;
+      const grip = G();
+      grip.beginFill(0x2e1a10).drawPolygon([-2.5 * g, 27 * g, 6.5 * g, 27 * g, 18 * g, 41 * g, 10 * g, 47 * g, -0.5 * g, 35 * g]).endFill();
+      grip.beginFill(wood).drawPolygon([-1.6 * g, 27.5 * g, 6 * g, 27.5 * g, 16.8 * g, 40.6 * g, 10.2 * g, 45.6 * g, 0.4 * g, 34.6 * g]).endFill();
+      grip.beginFill(woodHi, 0.75).drawPolygon([0, 28.5 * g, 3 * g, 28.5 * g, 12.6 * g, 41 * g, 10.4 * g, 43 * g]).endFill();
+      grip.beginFill(brass).drawCircle(6.2 * g, 34.5 * g, 0.9 * g).endFill();
+      grip.lineStyle(1.1 * g, brass).drawEllipse(9 * g, 24.5 * g, 3 * g, 3.6 * g); grip.lineStyle(0);
+      grip.beginFill(dark).drawRoundedRect(7.4 * g, 22.6 * g, 0.9 * g, 3.4 * g, 0.4 * g).endFill();
+      const frame = G();
+      frame.beginFill(lo).drawRoundedRect(-6.4 * g, 13.2 * g, 13 * g, 16 * g, 1.6 * g).endFill();
+      frame.beginFill(steel).drawRoundedRect(-6.4 * g, 13.2 * g, 2.2 * g, 16 * g, 1 * g).endFill();
+      frame.beginFill(hi, 0.7).drawRect(-5.8 * g, 14 * g, 0.6 * g, 14 * g).endFill();
+      const barrel = G();
+      barrel.beginFill(lo).drawRoundedRect(2.4 * g, 3.5 * g, 1.9 * g, 10.5 * g, 0.9 * g).endFill();
+      barrel.beginFill(steel).drawRect(-2.6 * g, 0, 5.2 * g, 14 * g).endFill();
+      barrel.beginFill(hi, 0.85).drawRect(-1.8 * g, 0, 1.1 * g, 14 * g).endFill();
+      barrel.beginFill(lo, 0.7).drawRect(1.1 * g, 0, 1.5 * g, 14 * g).endFill();
+      barrel.beginFill(dark).drawRect(-3 * g, 0, 6 * g, 1.1 * g).endFill();
+      barrel.beginFill(brass).drawRect(-3 * g, 12.6 * g, 6 * g, 0.9 * g).endFill();
+      barrel.beginFill(lo).drawPolygon([-2.6 * g, 0.4 * g, -4.2 * g, 2.8 * g, -2.6 * g, 2.8 * g]).endFill();
+      const hammer = G(); hammer.position.set(-5.4 * g, 28.4 * g);
+      hammer.beginFill(steel).drawPolygon([0, 0, -3.4 * g, 2.2 * g, -3 * g, 3.6 * g, 0.8 * g, 2.2 * g]).endFill();
+      const cyl = G();
+      gun.addChild(grip, frame, hammer, barrel, cyl); sc.hammer = hammer; sc.cyl = cyl;
+      sc.drawCyl = () => {
+        cyl.clear();
+        cyl.beginFill(steel).drawRoundedRect(-5.6 * g, 15 * g, 11.2 * g, 12 * g, 2 * g).endFill();
+        cyl.beginFill(hi, 0.55).drawRoundedRect(-4.6 * g, 15.5 * g, 1.3 * g, 11 * g, 0.6 * g).endFill();
+        cyl.beginFill(dark, 0.35).drawRoundedRect(3 * g, 15.5 * g, 2.2 * g, 11 * g, 1 * g).endFill();
+        for (let i = 0; i < 6; i++) {
+          const a = (i + cylPhase) * Math.PI / 3, c = Math.cos(a); if (c < 0.2) continue;
+          const w = 1.7 * g * c, x = 4.9 * g * Math.sin(a);
+          cyl.beginFill(dark, 0.85).drawRoundedRect(x - w / 2, 16.6 * g, w, 7.4 * g, w / 2).endFill();
+        }
+        cyl.beginFill(brass).drawRect(-5.6 * g, 25 * g, 11.2 * g, 0.7 * g).endFill();
+      };
+      sc.drawCyl();
+      }
+
+      /* coin */
+      // the coin's shadow on the muzzle: tight and dark when the coin is low, wide and faint when it rises
+      const csh = new P.Sprite(T.soft); csh.anchor.set(0.5); csh.position.set(cx, gunTop + g * 1.2); csh.tint = 0x120604; csh.alpha = 0.4; root.addChild(csh); sc.csh = csh; sc.cshW = (portrait ? 70 : 50) * 1.7;
+      const glow = new P.Sprite(T.soft); glow.anchor.set(0.5); glow.position.set(cx, coinY); glow.width = glow.height = coinR * 3.6; glow.tint = 0xffc24d; glow.blendMode = P.BLEND_MODES.ADD; glow.alpha = 0.4; root.addChild(glow); sc.glow = glow;
+      const coin = L('coin'); coin.position.set(cx, coinY);
+      const edge = G(), face = new P.Sprite(sc.front), mask = G(), sheen = new P.Sprite(T.sheen);
+      face.anchor.set(0.5); face.width = face.height = coinR * 2; sc.faceK = face.scale.x;
+      mask.beginFill(0xffffff).drawCircle(0, 0, coinR * 0.985).endFill();
+      sheen.anchor.set(0.5); sheen.width = coinR * 0.55; sheen.height = coinR * 3; sheen.rotation = 0.42; sheen.blendMode = P.BLEND_MODES.ADD; sheen.alpha = 0.6; sheen.x = -coinR * 2; sheen.mask = mask;
+      const spec = new P.Sprite(T.soft); spec.anchor.set(0.5); spec.width = coinR * 2.6; spec.height = coinR; spec.tint = 0xfff0cc; spec.blendMode = P.BLEND_MODES.ADD; spec.alpha = 0; spec.mask = mask;
+      coin.addChild(edge, face, mask, spec, sheen); Object.assign(sc, { edge, face, sheen, spec, cmask: mask });
+      sc.blur = new P.BlurFilter(0); sc.blur.blurX = 0;
+
+      const fx = L('fx');
+      const flash = new P.Sprite(T.flash); flash.anchor.set(0.5); flash.position.set(cx, gunTop - g * 2); flash.blendMode = P.BLEND_MODES.ADD; flash.alpha = 0; fx.addChild(flash); sc.flash = flash;
+      const flashGlow = new P.Sprite(T.soft); flashGlow.anchor.set(0.5); flashGlow.position.set(cx, gunTop); flashGlow.tint = 0xffd27a; flashGlow.blendMode = P.BLEND_MODES.ADD; flashGlow.alpha = 0; flashGlow.width = flashGlow.height = coinR * 6; fx.addChild(flashGlow); sc.flashGlow = flashGlow;
+
+      const dim = G(); dim.beginFill(0x0a0408).drawRect(-100, -100, W + 200, H + 200).endFill(); dim.alpha = 0; root.addChild(dim); sc.dim = dim;
+      const vig = new P.Sprite(T.vig); vig.width = W; vig.height = H; root.addChild(vig); if (sc.bgTex) vig.alpha = 0.5;
+      const white = G(); white.beginFill(0xfff3d6).drawRect(-100, -100, W + 200, H + 200).endFill(); white.alpha = 0; root.addChild(white); sc.white = white;
+      drawCoin(angle, false);
+    }
+
+    /* coin seen face-on, turning about its horizontal axis */
+    function drawCoin(deg, spinning) {
+      const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), r = sc.coinR, k = Math.max(Math.abs(c), 0.02);
+      sc.face.texture = c >= 0 ? sc.front : sc.backT;
+      sc.face.scale.set(sc.faceK, sc.faceK * k);
+      // light comes from the sky above and in front: leaning back the face catches it, leaning forward it falls into shade
+      const lit = c >= 0 ? s : -s;
+      // one smooth curve from fully shaded (e = 0) to fully lit (e = 1), with no steps or kinks along the way
+      const u = Math.max(0, Math.min(1, (lit + 0.242) / 0.484)), e = u * u * (3 - 2 * u);
+      const L = 0.86 + 0.07 * e;      // the face only dims a touch; the moving highlight and the rim carry the sense of bending
+      sc.face.tint = (Math.round(255 * L) << 16) | (Math.round(255 * Math.pow(L, 1.05)) << 8) | Math.round(255 * Math.pow(L, 1.12));
+      sc.cmask.scale.y = k;
+      // a soft band of reflected light slides up the face as it leans back, and fades as it leans forward
+      sc.spec.y = -lit * r * 0.62 * k; sc.spec.height = r * (0.5 + 0.5 * k);
+      sc.spec.alpha = (0.06 + 0.26 * e) * (spinning ? 0.6 : 1);
+      sc.sheen.alpha = 0.5 * e;
+      const off = r * 0.085 * s;
+      sc.edge.clear();
+      // the rim: bright where it faces the sky, dark where it faces the ground
+      const mix = (a0, b0) => Math.round(a0 + (b0 - a0) * e), rim = (mix(0xa4, 0xc6) << 16) | (mix(0x6c, 0x8a) << 8) | mix(0x34, 0x46);
+      sc.edge.beginFill(rim).drawEllipse(0, off, r, r * k).drawRect(-r, Math.min(0, off), r * 2, Math.abs(off)).endFill();
+      sc.edge.beginFill(0xf2bc86, 0.35 + 0.2 * e).drawRect(-r * 0.55, Math.min(0, off), r * 0.3, Math.abs(off)).endFill();
+      sc.sheen.visible = !spinning;
+    }
+
+    function resize() {
+      const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return;
+      const p = h > w;
+      app.renderer.resize(w, h);
+      if (p !== portrait || !sc.coin) { portrait = p; build(); }
+      scaleK = w / W; root.scale.set(scaleK);
+    }
+
+    /* ---- per-frame update ---- */
+    app.ticker.add(() => {
+      const dt = Math.min(app.ticker.deltaMS, 50), ds = dt / 1000; time += dt;
+      for (let i = tweens.length - 1; i >= 0; i--) {
+        const t = tweens[i]; t.t += dt; if (t.t < 0) continue;
+        const k = Math.min(1, t.t / t.ms), e = t.ease(k);
+        for (const key in t.to) t.o[key] = t.from[key] + (t.to[key] - t.from[key]) * e;
+        if (k >= 1) { tweens.splice(i, 1); t.res(); }
+      }
+      parX += (ptrX - parX) * 0.06;
+      if (sc.far) { sc.far.x = parX * 8; sc.mid.x = parX * 16; sc.near.x = parX * 30; }
+      if (sc.halo) sc.halo.alpha = 0.8 + Math.sin(time / 1700) * 0.06;
+      dust.forEach((d) => {
+        d.x += d.v * ds; d.y -= d.v * 0.25 * ds + Math.sin(time / 900 + d.ph) * 0.05;
+        if (d.x > W + 20) d.x = -20; if (d.y < -20) d.y = H + 20;
+        d.s.position.set(d.x, d.y); d.s.alpha = 0.18 + 0.16 * Math.sin(time / 700 + d.ph);
+      });
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i]; p.age += dt; const k = p.age / p.life;
+        if (k >= 1) { p.s.destroy(); parts.splice(i, 1); continue; }
+        p.vy += p.g * ds; p.vx *= Math.pow(p.drag, dt / 16.7); p.vy *= Math.pow(p.drag, dt / 16.7);
+        p.s.x += p.vx * ds; p.s.y += p.vy * ds; p.s.rotation += p.spin * ds;
+        const sz = p.s0 + (p.s1 - p.s0) * k;
+        if (p.flip) p.s.scale.set(sz * Math.cos(p.age / 1000 * p.flip), sz); else p.s.scale.set(sz);
+        p.s.alpha = p.a0 * (p.hold ? Math.min(1, (1 - k) / (1 - p.hold)) : 1 - k);
+      }
+      if (flight) {
+        flight.t += dt / flight.ms; const t = Math.min(1, flight.t);
+        const prev = angle; angle = flight.a0 + (flight.a1 - flight.a0) * (1 - Math.pow(1 - t, 2.4));
+        const up = t < 0.86 ? Math.sin(Math.PI * t / 0.86) : -0.07 * Math.sin(Math.PI * (t - 0.86) / 0.14);
+        sc.coin.y = sc.coinY - flight.h * up; sc.coin.scale.set(1 + 0.05 * Math.max(0, up));
+        sc.blur.blurY = reduced ? 0 : Math.min(9, Math.abs(angle - prev) * 0.22);
+        drawCoin(angle, true);
+        if (t >= 1) { const f = flight; flight = null; sc.coin.filters = null; sc.coin.scale.set(1); f.done(); }
+      } else if (sc.coin) {
+        // idle tease: the coin rides up and down and tips as if it is about to flip, but always settles back on the same face
+        const ph = time / 950;
+        let bob = reduced ? 0 : -Math.sin(ph) * sc.coinR * 0.1;
+        if (turning) {
+          turning.t = Math.min(1, turning.t + dt / turning.ms);
+          const e = 1 - Math.pow(1 - turning.t, 3);
+          angle = turning.a0 + 180 * e; bob -= Math.sin(Math.PI * turning.t) * sc.coinR * 0.16;
+          if (turning.t >= 1) { angle = turning.a0 + 180; turning = null; glintAt = time + 150; }
+        }
+        sc.coin.y = sc.coinY + bob;
+        drawCoin(angle + (reduced || turning ? 0 : Math.sin(ph) * 14), !!turning);
+        if (time > glintAt) { glintAt = time + 2800; sc.sheen.x = -sc.coinR * 1.5; tween(sc.sheen, { x: sc.coinR * 1.5 }, 750, E.inOut); }
+      }
+      if (sc.glow) {
+        const rise = (sc.coinY - sc.coin.y) / sc.coinR;          // how far above its resting height, in coin radii
+        sc.glow.y = sc.coin.y; sc.glow.alpha = 0.36 + Math.sin(time / 800) * 0.06;
+        const sp = Math.max(0.7, 1 + rise * 1.6);
+        sc.csh.width = sc.cshW * sp; sc.csh.height = sc.cshW * 0.5 * sp;
+        sc.csh.alpha = Math.max(0, 0.42 - rise * 0.9);
+      }
+      if (sc.rays && sc.rays.alpha > 0) sc.rays.rotation += ds * 0.5;
+      if (weed) {
+        weed.t += dt / 1700;
+        weed.c.x = -90 + (W + 180) * weed.t; weed.c.y = weed.y - Math.abs(Math.sin(weed.t * Math.PI * 4)) * 34; weed.c.rotation += ds * 7;
+        if (weed.t >= 1) { weed.c.destroy({ children: true }); weed = null; }
+      }
+      shake *= Math.pow(0.84, dt / 16.7);
+      root.position.set((Math.random() - 0.5) * shake * scaleK, (Math.random() - 0.5) * shake * scaleK);
+    });
+
+    /* ---- actions the game calls ---- */
+    // turn the coin to its other face; returns the side that will be facing up
+    scene.turn = () => {
+      if (flight || turning || !sc.coin) return null;
+      const a0 = Math.round(angle / 180) * 180;
+      turning = { t: 0, ms: reduced ? 1 : 340, a0 };
+      return (Math.round((a0 + 180) / 180) % 2 === 0) ? 'sheriff' : 'outlaw';
+    };
+    scene.cock = () => {
+      tween(sc.hammer, { rotation: -0.55 }, 130, E.back);
+      if (sc.cylStreak && !reduced) { sc.cylStreak.x = -320; sc.cylStreak.alpha = 0.42; tween(sc.cylStreak, { x: 320 }, 190, E.inOut).then(() => { sc.cylStreak.alpha = 0; }); }
+      if (sc.turnCyl) setTimeout(sc.turnCyl, reduced ? 0 : 95);
+    };
+    scene.fire = () => {
+      const { cx, gunTop, g, coinR } = sc;
+      tween(sc.hammer, { rotation: 0 }, 50, E.lin);
+      const p0 = cylPhase; const cp = { v: 0 };
+      tween(cp, { v: 1 }, 260, E.back).then(() => { cylPhase = p0 + 1; sc.drawCyl(); });
+      const spinCyl = () => { cylPhase = p0 + cp.v; sc.drawCyl(); if (cp.v < 1) requestAnimationFrame(spinCyl); }; spinCyl();
+      // the shot spins the cylinder: three turns of its surface, slowing to a stop on the next chamber
+      if (sc.cylSpin && !reduced) { sc.cylSpin.p = 0.0001; tween(sc.cylSpin, { p: 1 }, 300 + 600 * spd().k, E.out).then(() => { sc.cylSpin.p = 0; }); if (!sfx.spin((300 + 600 * spd().k) / 1000 + 0.25)) for (let i = 1; i <= 5; i++) setTimeout(sfx.ratchet, i * i * 14 * (0.5 + spd().k)); if (sc.turnCyl) sc.turnCyl(); }
+      tween(sc.gun, { y: sc.gunY + g * 4.6 }, 55, E.out).then(() => tween(sc.gun, { y: sc.gunY }, 380, E.back));
+      if (!reduced) {
+        // the muzzle kicks to one side and settles, and smoke keeps curling out for a moment
+        const side = Math.random() < 0.5 ? -1 : 1;
+        tween(sc.gun, { rotation: 0.028 * side }, 60, E.out).then(() => tween(sc.gun, { rotation: 0 }, 420, E.back));
+        [220, 420, 640].forEach((ms) => setTimeout(() => { if (sc.back) spawn(T.soft, sc.cx + (Math.random() - 0.5) * g * 2, sc.gunTop - g, { tint: 0xd8c7bd, a0: 0.22, s0: 0.4, s1: 2.2 + Math.random(), vx: (Math.random() - 0.5) * 50, vy: -70 - Math.random() * 60, drag: 0.985, life: 1500, layer: sc.back }); }, ms * spd().k));
+      }
+      sc.flash.alpha = 1; sc.flash.scale.set(coinR / 160 * 0.5); sc.flash.rotation = Math.random() * 3;
+      tween(sc.flash, { alpha: 0 }, 170, E.lin); tween(sc.flash.scale, { x: coinR / 160 * 1.7, y: coinR / 160 * 1.7 }, 170, E.out);
+      sc.flashGlow.alpha = 0.95; tween(sc.flashGlow, { alpha: 0 }, 380, E.out);
+      if (reduced) return;
+      sc.white.alpha = 0.22; tween(sc.white, { alpha: 0 }, 220, E.out);
+      shake = 26;
+      for (let i = 0; i < 26; i++) {
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, v = 260 + Math.random() * 620;
+        spawn(T.soft, cx, gunTop, { add: true, tint: i % 3 ? 0xffc65a : 0xfff3c4, s0: 0.1 + Math.random() * 0.1, s1: 0.02, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 900, drag: 0.97, life: 380 + Math.random() * 420 });
+      }
+      for (let i = 0; i < 9; i++) {
+        spawn(T.soft, cx + (Math.random() - 0.5) * g * 3, gunTop - g, { tint: 0xd8c7bd, a0: 0.34, s0: 0.5 + Math.random() * 0.4, s1: 2.4 + Math.random() * 1.8, vx: (Math.random() - 0.5) * 70, vy: -60 - Math.random() * 130, drag: 0.985, life: 1300 + Math.random() * 1300, layer: sc.back });
+      }
+    };
+    scene.flip = (result) => new Promise((done) => {
+      const turns = reduced ? 1 : spd().turns;
+      const target = Math.ceil(angle / 360) * 360 + turns * 360 + (result === 'outlaw' ? 180 : 0);
+      sc.coin.filters = reduced ? null : [sc.blur];
+      flight = { t: 0, ms: flipMs(), a0: angle, a1: target, h: reduced ? 0 : sc.coinR * (portrait ? 0.55 : 0.34), done: () => { angle = target; glintAt = time + 250; sfx.land(); done(); } };
+    });
+    scene.win = (level) => {
+      const { cx, coinY, coinR } = sc;
+      sc.rays.alpha = 0; tween(sc.rays, { alpha: 0.75 }, 250, E.out).then(() => tween(sc.rays, { alpha: 0 }, 1300, E.lin, 300));
+      if (reduced) return;
+      const n = 26 + level * 16, k = coinR / 162;
+      for (let i = 0; i < n; i++) {
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.9, v = (620 + Math.random() * 760) * k, sz = (0.34 + Math.random() * 0.3) * k;
+        spawn(T.mini, cx + (Math.random() - 0.5) * coinR, coinY, { s0: sz, s1: sz, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 1700 * k, life: 1500 + Math.random() * 700, hold: 0.8, flip: 9 + Math.random() * 9 });
+      }
+      for (let i = 0; i < 22; i++) {
+        const a = Math.random() * Math.PI * 2, v = 120 + Math.random() * 520;
+        spawn(T.soft, cx, coinY, { add: true, tint: 0xfff0b0, s0: 0.16, s1: 0.02, vx: Math.cos(a) * v, vy: Math.sin(a) * v, drag: 0.95, life: 600 + Math.random() * 500 });
+      }
+      shake = 8 + level * 3;
+    };
+    scene.lose = () => {
+      tween(sc.dim, { alpha: 0.38 }, 200, E.out).then(() => tween(sc.dim, { alpha: 0 }, 700, E.inOut, 500));
+    };
+
+    stage.addEventListener('pointermove', (e) => { const b = stage.getBoundingClientRect(); ptrX = ((e.clientX - b.left) / b.width - 0.5) * -2; });
+    stage.addEventListener('pointerleave', () => { ptrX = 0; });
+
+    const fontReady = (document.fonts && document.fonts.load) ? Promise.race([document.fonts.load('50px "Alfa Slab One"'), wait(1500)]) : Promise.resolve();
+    const art = (key) => ART[key] ? new Promise((res) => { const im = new Image(); im.onload = () => res(P.Texture.from(im)); im.onerror = () => res(null); im.src = ART[key]; }) : Promise.resolve(null);
+    Promise.all([fontReady.catch(() => {}), art('background'), art('coinSheriff'), art('coinOutlaw'), art('backgroundPortrait'), art('revolver'), art('revolverHammer'), art('revolverCocked'), art('cylStrip')]).then(([, bg, front, backT, bgP, gunT, hamT, cockT, stripT]) => {
+      sc.stripTex = stripT;
+      sc.bgL = bg; sc.bgP = bgP; sc.gunTex = gunT; sc.hamTex = hamT; sc.cockTex = cockT; sc.front = front || coinFace('sheriff'); sc.backT = backT || coinFace('outlaw');
+      resize(); new ResizeObserver(resize).observe(stage); scene.ready = true;
+    });
+  }
+
+  /* ---------- one round ---------- */
+  function flipSide() {
+    const b = new Uint8Array(1); crypto.getRandomValues(b);
+    return (b[0] & 1) ? 'sheriff' : 'outlaw';
+  }
+  async function play(pick) {
+    if (stage.dataset.state !== 'idle' || !$('menu').hidden || !$('info').hidden || !$('mix').hidden) return;
+    if (S.mode === 'multiply') return playMulti(pick);
+    const bet = betCents();
+    if (S.balance < bet) { $('notice').hidden = false; $('lowerBtn').hidden = S.betIdx === 0 || S.balance < 100; return; }
+    $('notice').hidden = true;
+    S.balance -= bet; render();
+    setState('firing'); $('status').textContent = '';
+    sfx.cock(); scene.cock(); await wait(reduced ? 0 : 230 * spd().k);
+
+    const result = flipSide();
+    setState('flipping'); sfx.shot(); sfx.ring(); scene.fire();
+    await scene.flip(result);
+
+    const win = result === pick, payout = win ? Math.round(bet * PAYOUT) : 0;
+    S.balance += payout;
+    logFlip(result);
+    render(win); setState('result', win ? 'win' : 'lose');
+    if (win) {
+      $('status').textContent = '';
+      seal('win', '+' + fmt(payout) + ' FUN');
+      sfx.win(); scene.win(S.betIdx);
+    } else {
+      $('status').textContent = '';
+      seal('lose', '\u2212' + fmt(bet) + ' FUN');
+      sfx.lose(); scene.lose();
+    }
+    await hold(win ? 1900 : 1300);
+    $('stamp').hidden = true;
+    await scene.reset();
+    setState('idle'); $('status').textContent = idleText();
+  }
+  // a rubber-stamp seal slammed over the coin: green WIN or red LOSE, with the amount under it
+  function seal(kind, line) {
+    const el = $('stamp');
+    el.className = 'stamp ' + kind;
+    $('stampTitle').textContent = kind === 'win' ? 'WIN' : 'LOSE';
+    $('stampAmt').textContent = line;
+    el.hidden = false;
+    if (!reduced) el.animate([{ transform: 'scale(2.6) rotate(-10deg)', opacity: 0 }, { transform: 'scale(.94)', opacity: 1, offset: .7 }, { transform: 'scale(1)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.3,0,.4,1)' });
+  }
+  function logFlip(result) { S.rounds.unshift({ result }); if (S.rounds.length > 10) S.rounds.length = 10; }
+
+  /* ---------- multiply mode ---------- */
+  async function playMulti(pick) {
+    if (!run) {
+      const bet = betCents();
+      if (S.balance < bet) { $('notice').hidden = false; $('lowerBtn').hidden = S.betIdx === 0 || S.balance < 100; return; }
+      $('notice').hidden = true;
+      S.balance -= bet; run = { step: 0, bet };
+    }
+    render();
+    setState('firing'); $('status').textContent = '';
+    sfx.cock(); scene.cock(); await wait(reduced ? 0 : 230 * spd().k);
+    const result = flipSide();
+    setState('flipping'); sfx.shot(); sfx.ring(); scene.fire();
+    await scene.flip(result);
+    logFlip(result);
+    if (result === pick) {
+      run.step++;
+      const h = LADDER[run.step - 1], prize = run.bet * h / 100;
+      render(); setState('result', 'win');
+      $('status').textContent = '';
+      seal('win', multLabel(h) + ' \u00b7 ' + fmt(prize) + ' FUN');
+      sfx.win(); scene.win(Math.min(2, run.step - 1));
+      await hold(1100);
+      $('stamp').hidden = true;
+      await scene.reset();
+      if (run.step === LADDER.length) { setState('idle'); return cashOut(); }
+      setState('idle'); $('status').textContent = '';
+    } else {
+      const lost = run.bet; run = null;
+      render(); setState('result', 'lose');
+      $('status').textContent = '';
+      seal('lose', '\u2212' + fmt(lost) + ' FUN');
+      sfx.lose(); scene.lose();
+      await hold(1300);
+      $('stamp').hidden = true;
+      await scene.reset();
+      setState('idle'); $('status').textContent = idleText();
+    }
+  }
+  async function cashOut() {
+    if (!run || run.step === 0 || stage.dataset.state !== 'idle') return;
+    const h = LADDER[run.step - 1], prize = run.bet * h / 100, level = Math.min(5, run.step + 1);
+    S.balance += prize; run = null;
+    render(true); setState('result', 'win');
+    $('status').textContent = '';
+    seal('win', '+' + fmt(prize) + ' FUN');
+    sfx.win(); scene.win(level);
+    await hold(1900);
+    $('stamp').hidden = true;
+    setState('idle'); $('status').textContent = idleText();
+  }
+  function setMode(m) {
+    if (run || stage.dataset.state !== 'idle' || S.mode === m) return;
+    S.mode = m; sfx.click(); render(); $('status').textContent = idleText();
+  }
+
+  /* ---------- menu ---------- */
+  function openMenu() { if (stage.dataset.state !== 'idle' || run) return; $('menu').hidden = false; sfx.click(); const on = document.querySelector('.chamber[aria-pressed="true"]'); if (on) on.focus({ preventScroll: true }); }
+  function closeMenu() { $('menu').hidden = true; sfx.click(); $('betBtn').focus(); }
+  function setBet(i) { if (run) return; S.betIdx = Math.max(0, Math.min(BETS.length - 1, i)); $('notice').hidden = true; sfx.click(); render(); }
+
+  // chamber centres measured from art/cylinder.webp, as a percentage of its width and height
+  const CHAMBERS = [[49.78, 16.78], [76.56, 33.25], [76.68, 65.12], [49.75, 82.11], [22.97, 64.88], [23.22, 32.93]];
+  let closeTimer = 0;
+  BETS.forEach((v, i) => {
+    const b = document.createElement('button');
+    b.className = 'chamber'; b.style.setProperty('--x', CHAMBERS[i][0] + '%'); b.style.setProperty('--y', CHAMBERS[i][1] + '%'); b.textContent = v;
+    b.setAttribute('aria-label', 'Bet ' + v + ' FUN');
+    // picking a bullet sets the bet, lets the cylinder turn it to the top, then closes
+    b.addEventListener('click', () => { setBet(i); sfx.latch(); clearTimeout(closeTimer); closeTimer = setTimeout(() => { if (!$('menu').hidden) closeMenu(); }, reduced ? 0 : 520); });
+    $('cyl').appendChild(b);
+  });
+
+  let turnTimer = 0;
+  $('coinTap').addEventListener('click', () => {
+    if (stage.dataset.state !== 'idle' || !$('menu').hidden) return;
+    const side = scene.turn(); if (!side) return;
+    tone(2640, 0.3, 'sine', 0.09); tone(3960, 0.2, 'sine', 0.04);
+  });
+  $('pickOutlaw').addEventListener('click', () => play('outlaw'));
+  $('pickSheriff').addEventListener('click', () => play('sheriff'));
+  $('keyOutlaw').addEventListener('click', () => play('outlaw'));
+  $('keySheriff').addEventListener('click', () => play('sheriff'));
+  // the keycap dips when its arrow key is pressed
+  const keyDip = (id) => { const k = $(id); k.classList.add('down'); setTimeout(() => k.classList.remove('down'), 110); };
+  $('betBtn').addEventListener('click', () => openMenu('bet'));
+  $('modeInstant').addEventListener('click', () => setMode('instant'));
+  $('modeMultiply').addEventListener('click', () => setMode('multiply'));
+  $('cashBtn').addEventListener('click', cashOut);
+  $('musicBtn').addEventListener('click', () => { $('mix').hidden = false; sfx.click(); $('mixClose').focus(); });
+  const closeMix = () => { $('mix').hidden = true; sfx.click(); $('musicBtn').focus(); };
+  $('mixClose').addEventListener('click', closeMix);
+  $('mix').addEventListener('click', (e) => { if (!e.target.closest('.info-panel')) closeMix(); });
+  $('fxVol').addEventListener('input', (e) => { S.volume = +e.target.value; $('fxOut').textContent = S.volume; });
+  $('fxVol').addEventListener('change', () => sfx.latch());
+  $('musVol').addEventListener('input', (e) => { S.musicVol = +e.target.value; $('musOut').textContent = S.musicVol; if (S.musicVol > 0 && S.muted) { S.muted = false; render(); } updateMusic(true); });
+  $('infoBtn').addEventListener('click', () => { $('info').hidden = false; sfx.click(); $('infoClose').focus(); });
+  const closeInfo = () => { $('info').hidden = true; sfx.click(); $('infoBtn').focus(); };
+  $('infoClose').addEventListener('click', closeInfo);
+  $('info').addEventListener('click', (e) => { if (!e.target.closest('.info-panel')) closeInfo(); });
+  $('speedBtn').addEventListener('click', () => { S.speed = ((S.speed || 0) + 1) % SPEEDS.length; sfx.click(); render(); if (stage.dataset.state === 'idle' && !run) { $('status').textContent = 'Speed: ' + spd().name; setTimeout(() => { if (stage.dataset.state === 'idle' && !run) $('status').textContent = idleText(); }, 1100); } });
+  LADDER.forEach((h) => { const li = document.createElement('li'); li.className = 'rung'; li.textContent = multLabel(h); $('ladder').appendChild(li); });
+
+  /* ---------- bet dial: swipe, drag, scroll or tap a bullet to turn the cylinder ---------- */
+  const dial = $('dial'), dialRot = $('dialRot'), dialCh = [];
+  let dialAngle = 0, dialDrag = null, dialMoved = false;
+  // on tall screens the cylinder sits in the right edge: the chosen chamber faces left and a vertical swipe turns it
+  const dialSide = () => stage.clientHeight > stage.clientWidth;
+  const dialOff = () => dialSide() ? -90 : 0;
+  const dialPos = (e) => dialSide() ? -e.clientY : e.clientX;
+  const dialLocked = () => stage.dataset.state !== 'idle' || !!run;
+  const wrap = (n) => ((n % BETS.length) + BETS.length) % BETS.length;
+  BETS.forEach((v, i) => {
+    const b = document.createElement('button');
+    b.className = 'dchamber'; b.setAttribute('role', 'option'); b.tabIndex = -1; b.innerHTML = '<span class="dnum">' + v + '</span>';
+    b.style.setProperty('--x', CHAMBERS[i][0] + '%'); b.style.setProperty('--y', CHAMBERS[i][1] + '%');
+    b.addEventListener('click', () => { if (!dialMoved && !dialLocked() && i !== S.betIdx) { S.betIdx = i; $('notice').hidden = true; sfx.latch(); render(); } });
+    dialRot.appendChild(b); dialCh.push(b);
+  });
+  function paintDial() {
+    dialRot.style.transform = `rotate(${dialAngle.toFixed(2)}deg)`;
+    dialCh.forEach((b, i) => { b.style.transform = `rotate(${(-dialAngle).toFixed(2)}deg)`; b.setAttribute('aria-pressed', i === S.betIdx); });
+  }
+  // chamber i sits i x 60 degrees clockwise from the top, so turning the dial by -i x 60 brings it under the marker
+  function syncDial() {
+    if (!dialDrag) dialAngle += ((dialOff() - S.betIdx * 60 - dialAngle) % 360 + 540) % 360 - 180;
+    paintDial();
+  }
+  const DIAL_GAIN = 1.9;     // how far the cylinder turns for a given finger movement
+  dial.addEventListener('pointerdown', (e) => { if (dialLocked()) return; dial.style.removeProperty('--spin'); dialDrag = { x: dialPos(e), a: dialAngle, lx: dialPos(e), lt: performance.now(), v: 0 }; dialMoved = false; });
+  window.addEventListener('pointermove', (e) => {
+    if (!dialDrag) return;
+    const dx = dialPos(e) - dialDrag.x;
+    if (Math.abs(dx) > 5 && !dialMoved) { dialMoved = true; dial.classList.add('dragging'); }
+    if (!dialMoved) return;
+    const now = performance.now(), dt = Math.max(1, now - dialDrag.lt);
+    dialDrag.v = dialDrag.v * 0.5 + (dialPos(e) - dialDrag.lx) / dt * 0.5; dialDrag.lx = dialPos(e); dialDrag.lt = now;
+    dialAngle = dialDrag.a + dx / (dial.offsetWidth / 2) * 57.3 * DIAL_GAIN;
+    const n = wrap(Math.round((dialOff() - dialAngle) / 60));
+    if (n !== S.betIdx) { S.betIdx = n; $('notice').hidden = true; sfx.ratchet(); render(); } else paintDial();
+  });
+  const dialRelease = () => {
+    if (!dialDrag) return;
+    // a quick flick keeps the cylinder turning a little after the finger lifts
+    const stale = performance.now() - dialDrag.lt > 90, v = stale || !dialMoved ? 0 : dialDrag.v;
+    const before = Math.round((dialOff() - dialAngle) / 60);
+    dialAngle += Math.max(-180, Math.min(180, v * 130 / (dial.offsetWidth / 2) * 57.3 * DIAL_GAIN));   // at most three chambers of coasting
+    const after = Math.round((dialOff() - dialAngle) / 60), steps = Math.min(8, Math.abs(after - before));
+    dialDrag = null; dial.classList.remove('dragging');
+    dial.style.setProperty('--spin', (0.18 + 0.05 * steps).toFixed(2) + 's');
+    if (steps >= 2 && sfx.spin(0.3 + 0.12 * steps)) { /* recorded spin, ending on its own last clicks */ }
+    else { for (let i = 1; i <= steps; i++) setTimeout(sfx.ratchet, i * 42); if (dialMoved) setTimeout(sfx.latch, 60 + steps * 42); }
+    const n = wrap(after);
+    if (n !== S.betIdx) { S.betIdx = n; $('notice').hidden = true; render(); } else syncDial();
+    setTimeout(() => { dialMoved = false; }, 0);
+  };
+  window.addEventListener('pointerup', dialRelease);
+  window.addEventListener('pointercancel', dialRelease);
+  dial.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (Math.abs(d) < 4 || dial.dataset.busy || dialLocked()) return;
+    dial.dataset.busy = '1'; setTimeout(() => { delete dial.dataset.busy; }, 70);
+    if (run) return;
+    S.betIdx = wrap(S.betIdx + (d > 0 ? 1 : -1)); $('notice').hidden = true; sfx.ratchet(); render();
+  }, { passive: false });
+  // a tap anywhere outside the cylinder closes it without changing the bet
+  $('menu').addEventListener('click', (e) => { if (!e.target.closest('.cyl')) closeMenu(); });
+  $('soundBtn').addEventListener('click', () => { S.muted = !S.muted; render(); sfx.click(); });
+  $('resetBtn').addEventListener('click', () => { S.balance = 100000; $('notice').hidden = true; render(); });
+  $('lowerBtn').addEventListener('click', () => {
+    let i = S.betIdx; while (i > 0 && BETS[i] * 100 > S.balance) i--;
+    setBet(i);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!$('mix').hidden) { if (e.key === 'Escape') closeMix(); return; }
+    if (!$('info').hidden) { if (e.key === 'Escape') closeInfo(); return; }
+    if (e.key === 'Escape' && !$('menu').hidden) closeMenu();
+    else if ($('menu').hidden && e.key === 'ArrowLeft') { keyDip('keyOutlaw'); play('outlaw'); }
+    else if ($('menu').hidden && e.key === 'ArrowRight') { keyDip('keySheriff'); play('sheriff'); }
+    else if ($('menu').hidden && stage.dataset.state === 'idle' && e.key === 'ArrowUp') setBet(S.betIdx + 1);
+    else if ($('menu').hidden && stage.dataset.state === 'idle' && e.key === 'ArrowDown') setBet(S.betIdx - 1);
+  });
+
+  new ResizeObserver(() => { fitBalance(); syncDial(); }).observe(stage);
+  if (location.hostname === 'localhost') window.__hnf = { setBalance(c) { S.balance = c; render(); } };   // local test hook only
+  function start(data) {
+    if (data && typeof data.balance === 'number') { S = Object.assign(S, data); roundNo = S.rounds.length ? S.rounds[0].no : 0; }
+    shownBal = S.balance; render();
+    try { initScene(); } catch (err) { console.error(err); }
+    if (!P) $('status').textContent = 'The graphics engine did not load. Reload the page.';
+  }
+  const hot = window.claude && window.claude.hot;
+  if (hot && hot.snapshot) hot.snapshot(() => S);
+  if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+})();
+</script>

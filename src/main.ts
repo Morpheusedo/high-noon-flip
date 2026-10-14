@@ -5,6 +5,7 @@
 import { render, h } from 'preact';
 import { MockServer } from './server/mockServer';
 import type { GameServer } from './server/protocol';
+import { isQaServer } from './server/qa';
 import { assetUrl } from './shell/assets';
 import { AudioManager } from './shell/audio/AudioManager';
 import { readLaunchParams } from './shell/launchParams';
@@ -42,7 +43,11 @@ async function boot(): Promise<void> {
   const settings = createSettings(browserStorage());
   const audio = new AudioManager();
   const sounds = new GameSounds(audio);
-  if (params.debug) Object.assign(window, { hnf: { server, scene, settings, audio } });
+  // QA's console handles; set before loading, so a failure can be armed for init
+  const hnf: Record<string, unknown> | null = params.debug
+    ? { server, scene, settings, audio }
+    : null;
+  if (hnf) Object.assign(window, { hnf });
 
   // sound loads alongside everything else and never holds the game up
   audio.listen();
@@ -87,6 +92,16 @@ async function boot(): Promise<void> {
     byId('ui'),
   );
   loader.hide();
+
+  if (hnf && isQaServer(server)) {
+    hnf.model = model;
+    // a QA tool that fails to load must not take the game down with it
+    import('./debug')
+      .then(({ mountQaPanel }) =>
+        mountQaPanel({ server, model, lang: params.lang, storage: browserStorage() }),
+      )
+      .catch((err: unknown) => console.error('QA panel', err));
+  }
 }
 
 function byId(id: string): HTMLElement {

@@ -23,10 +23,27 @@ game should look, sound and feel; it is not part of the build.
 | `npm run audio`     | Rebuild the sound sprite and music (macOS) |
 
 Launch parameters go in the URL, as an operator would pass them:
-`?lang=de&mode=demo&debug=1&lobbyUrl=https://casino.example`. With `debug=1` (demo mode
-only) the console has `hnf.server` (the mock server: `hnf.server.forceOutcomes('sheriff')`,
-`hnf.server.failNext('NETWORK')`), `hnf.scene` (`hnf.scene.turnCoin()`, `hnf.scene.win(5)`),
-`hnf.settings` (`hnf.settings.set({ ...hnf.settings.get(), speed: 4 })`) and `hnf.audio`.
+`?lang=de&mode=demo&debug=1&lobbyUrl=https://casino.example`.
+
+### QA panel
+
+With `debug=1` in demo mode (never with `mode=real`) a **QA** tab sits at the left edge of
+the page; it or the `` ` `` key opens the panel. It changes the test server, never the
+client, so whatever the screen shows still comes from a server answer:
+
+- **Next flips:** queue Sheriff, Outlaw, or a win or loss against whatever the player picks.
+- **Errors:** any server error code, either before the server (the request changes nothing)
+  or after it (the server settles the round, the answer is lost: the round recovery case).
+  Offline makes every request fail; latency from 0 to 5 s.
+- **Balance:** set the server balance. "Update the screen now" resyncs the client; without
+  it the next bet finds out, as when the balance changes in another tab.
+- **Multiply run:** open a run at any rung with the current bet, or move an open run.
+- **Session:** reset to a first visit (settings stay), or reload mid-round.
+
+The panel is a separate chunk that only `debug=1` downloads. The console has the same
+objects: `hnf.server` (`hnf.server.forceOutcomes('win')`, `hnf.server.failNext('NETWORK',
+'after')`), `hnf.model`, `hnf.scene` (`hnf.scene.win(5)`), `hnf.settings` and `hnf.audio`.
+`hnf` exists before the game loads, so a failure can be armed for `init` from the console.
 
 ## How the client is built
 
@@ -36,7 +53,8 @@ src/
 ├─ locales/           every string the player reads: en.json (the base), ru.json
 ├─ server/
 │  ├─ protocol.ts     the contract with the game server (RGS); start here
-│  └─ mockServer.ts   in-browser stand-in for the RGS, with QA controls
+│  ├─ mockServer.ts   in-browser stand-in for the RGS, with QA controls
+│  └─ qa.ts           what the QA panel may ask of a test server
 ├─ shell/             parts every game needs; will move to a shared package
 │  ├─ launchParams.ts reading and validating the launch URL
 │  ├─ money.ts        minor units → "€198.00" for any currency and language
@@ -48,6 +66,7 @@ src/
 │  ├─ settings.ts     the player's settings (speed, sound), saved; the turbo rule
 │  ├─ audio/          AudioManager: one context, sprite, music layers, volumes, mute
 │  └─ store.ts        observable state; useStore.ts connects it to Preact
+├─ debug/             the QA panel, loaded only with debug=1 in demo mode
 └─ game/
    ├─ model/          RoundModel: the round state machine, the source of truth
    ├─ director.ts     turns phase changes into animations, reports back when done

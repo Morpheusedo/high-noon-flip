@@ -54,7 +54,7 @@ Loader with progress; error dialogs per error code; rules screen built from the 
 (RTP, payouts, ladder, max win, game version); settings; all strings in `locales/en.json`
 and `locales/ru.json`.
 
-### 7. QA panel
+### 7. QA panel — done
 
 `debug/`: shown with `?debug=1` in demo mode only. Force outcomes, force errors,
 set balance, latency, reset the session, jump to a rung.
@@ -135,6 +135,19 @@ low-end phone, a static preview link to send to the provider.
   the speed button, or takes its place where turbo is banned.
 - In portrait the mode switch scales with the stage (no 13 px floor), so it no longer
   runs under the music button on narrow phones, as it did in the prototype.
+- The QA panel changes the test server, never the client: it talks to `QaServer`
+  (`server/qa.ts`), which `MockServer` implements and a provider's staging cheat API can
+  implement later. Where the client would not notice by itself, the panel calls
+  `RoundModel.refresh()`, the same resync an operator's "balance updated" message will use.
+- Forced flips can be a side or a win/loss against the player's pick. A forced error fails
+  either before the server (nothing changes) or after it settles (the answer is lost): the
+  second one is the round recovery case.
+- The panel is a lazy chunk mounted in its own root beside the stage, so it never moves the
+  game's layout and a player's session never downloads it. Keys pressed inside it do not reach
+  the game. It opens with the ` key, matched by position (`ё` on a Russian layout).
+- The panel's labels are English in code, not in `locales/`: it is a tool for QA, not text a
+  player reads, and it must not add keys every language has to translate.
+- `hnf` (console handles) is set before loading, so QA can arm a failure for `init`.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

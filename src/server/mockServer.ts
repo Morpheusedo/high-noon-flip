@@ -3,8 +3,9 @@
  *
  * It follows the same rules a real server would: it validates every request,
  * takes the stake before flipping, keeps an open multiply run across reloads
- * and answers with the new balance. QA and the debug panel can queue the next
- * outcomes or make the next request fail.
+ * and answers with the new balance. It also implements `QaServer`, so QA and
+ * the debug panel can force outcomes and errors, slow the network or open a
+ * run at any rung.
  */
 import {
   ServerError,
@@ -21,6 +22,7 @@ import {
   type ServerErrorCode,
   type Side,
 } from './protocol';
+import type { FailurePoint, ForcedFlip, QaServer, QaSnapshot } from './qa';
 import { readJson, writeJson, type KeyValueStore } from '../shell/storage';
 
 export type { KeyValueStore };
@@ -63,42 +65,106 @@ export interface MockServerOptions {
   flip?: () => Side;
 }
 
-export class MockServer implements GameServer {
+export class MockServer implements GameServer, QaServer {
   private readonly config: GameConfig;
   private readonly jurisdiction: Jurisdiction;
   private readonly store: KeyValueStore | null | undefined;
   private readonly storeKey: string;
-  private readonly latencyMs: number;
+  private readonly startBalance: Minor;
   private readonly flipCoin: () => Side;
+  private readonly listeners = new Set<() => void>();
 
   private state: SavedState;
-  private forcedOutcomes: Side[] = [];
-  private forcedError: ServerErrorCode | null = null;
+  private latencyMs: number;
+  private forced: ForcedFlip[] = [];
+  private failure: QaSnapshot['failure'] = null;
+  private offline = false;
 
   constructor(options: MockServerOptions = {}) {
     this.config = { ...DEFAULT_CONFIG, ...options.config };
     this.jurisdiction = { ...DEFAULT_JURISDICTION, ...options.jurisdiction };
     this.store = options.store;
     this.storeKey = options.storeKey ?? 'hnf.mock-server';
+    this.startBalance = options.balance ?? 100_000;
     this.latencyMs = options.latencyMs ?? 0;
     this.flipCoin = options.flip ?? fairFlip;
-    this.state = this.load() ?? { balance: options.balance ?? 100_000, openRun: null };
+    this.state = this.load() ?? { balance: this.startBalance, openRun: null };
   }
 
-  /* ---------- debug controls ---------- */
+  /* ---------- QaServer ---------- */
 
-  /** The next flips land on these sides, in order, instead of random ones. */
-  forceOutcomes(...sides: Side[]): void {
-    this.forcedOutcomes.push(...sides);
+  snapshot(): QaSnapshot {
+    return clone({
+      balance: this.state.balance,
+      openRun: this.state.openRun,
+      forced: this.forced,
+      failure: this.failure,
+      offline: this.offline,
+      latencyMs: this.latencyMs,
+    });
   }
 
-  /** The next request fails with this error and changes nothing. */
-  failNext(code: ServerErrorCode): void {
-    this.forcedError = code;
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** The next flips land like this, in order, instead of at random. */
+  forceOutcomes(...flips: ForcedFlip[]): void {
+    this.forced.push(...flips);
+    this.changed();
+  }
+
+  clearForced(): void {
+    this.forced = [];
+    this.changed();
+  }
+
+  failNext(code: ServerErrorCode | null, at: FailurePoint = 'before'): void {
+    this.failure = code ? { code, at } : null;
+    this.changed();
+  }
+
+  setOffline(offline: boolean): void {
+    this.offline = offline;
+    this.changed();
+  }
+
+  setLatency(ms: number): void {
+    this.latencyMs = Math.max(0, ms);
+    this.changed();
   }
 
   setBalance(balance: Minor): void {
+    if (!Number.isSafeInteger(balance) || balance < 0) {
+      throw new RangeError(`Balance must be whole minor units, got ${balance}`);
+    }
     this.state.balance = balance;
+    this.save();
+  }
+
+  openRunAt(step: number, bet: Minor): void {
+    // the top rung is never an open run: it pays out by itself
+    if (!Number.isInteger(step) || step < 1 || step >= LADDER_HUNDREDTHS.length) {
+      throw new RangeError(`A run can stay open at steps 1 to ${LADDER_HUNDREDTHS.length - 1}`);
+    }
+    const open = this.state.openRun;
+    if (open) {
+      this.state.openRun = { ...open, step, prize: rungPrize(open.bet, step) };
+    } else {
+      if (!this.config.bets.includes(bet)) throw new ServerError('INVALID_BET');
+      if (bet > this.state.balance) throw new ServerError('INSUFFICIENT_FUNDS');
+      this.state.balance -= bet;
+      this.state.openRun = { roundId: newRoundId(), bet, step, prize: rungPrize(bet, step) };
+    }
+    this.save();
+  }
+
+  reset(): void {
+    this.state = { balance: this.startBalance, openRun: null };
+    this.forced = [];
+    this.failure = null;
+    this.offline = false;
     this.save();
   }
 
@@ -106,7 +172,7 @@ export class MockServer implements GameServer {
 
   async init(): Promise<InitResponse> {
     await this.respond();
-    return clone({
+    return this.answer({
       balance: this.state.balance,
       config: this.config,
       jurisdiction: this.jurisdiction,
@@ -161,30 +227,47 @@ export class MockServer implements GameServer {
     this.state.balance += result.win;
     this.state.openRun = result.openRun;
     this.save();
-    return clone({ ...result, balance: this.state.balance });
+    return this.answer({ ...result, balance: this.state.balance });
   }
 
   private flip(pick: Side): Flip {
-    const outcome = this.forcedOutcomes.shift() ?? this.flipCoin();
+    const forced = this.forced.shift();
+    const outcome =
+      forced === 'win' ? pick : forced === 'lose' ? other(pick) : (forced ?? this.flipCoin());
     return { pick, outcome, won: outcome === pick };
   }
 
-  /** Waits for the simulated network, then throws a queued error if there is one. */
+  /** Waits for the simulated network, then fails if QA asked for it. */
   private async respond(): Promise<void> {
     if (this.latencyMs > 0) await new Promise((r) => setTimeout(r, this.latencyMs));
-    const code = this.forcedError;
-    if (code) {
-      this.forcedError = null;
-      throw new ServerError(code);
-    }
+    if (this.offline) throw new ServerError('NETWORK');
+    if (this.failure?.at === 'before') this.throwFailure(this.failure.code);
+  }
+
+  /** The answer on its way back: lost if QA asked for it, after the server has settled. */
+  private answer<T>(value: T): T {
+    if (this.failure?.at === 'after') this.throwFailure(this.failure.code);
+    return clone(value);
+  }
+
+  private throwFailure(code: ServerErrorCode): never {
+    this.failure = null;
+    this.changed();
+    throw new ServerError(code);
   }
 
   private load(): SavedState | null {
     return readJson(this.store, this.storeKey) as SavedState | null;
   }
 
+  /** Every change to the session goes through here, so the QA panel hears of it. */
   private save(): void {
     writeJson(this.store, this.storeKey, this.state);
+    this.changed();
+  }
+
+  private changed(): void {
+    for (const listener of this.listeners) listener();
   }
 }
 
@@ -197,6 +280,10 @@ function rungPrize(bet: Minor, step: number): Minor {
   const hundredths = LADDER_HUNDREDTHS[step - 1];
   if (hundredths === undefined) throw new ServerError('INTERNAL', `No ladder rung ${step}`);
   return payout(bet, hundredths);
+}
+
+function other(side: Side): Side {
+  return side === 'sheriff' ? 'outlaw' : 'sheriff';
 }
 
 function fairFlip(): Side {

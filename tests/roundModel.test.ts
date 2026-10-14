@@ -178,11 +178,62 @@ describe('errors', () => {
     expect(model.state.openRun).toMatchObject({ step: 1 });
   });
 
+  it('resumes a run whose answer was lost after the server settled it', async () => {
+    const { server, model } = await setup();
+    server.forceOutcomes('sheriff');
+    server.failNext('NETWORK', 'after');
+    model.setMode('multiply');
+    model.setBet(1000);
+    await model.pick('sheriff');
+    expect(model.state.phase).toMatchObject({ name: 'error', code: 'NETWORK' });
+    expect(model.state.balance).toBe(100_000);
+
+    await model.dismissError();
+    expect(model.state).toMatchObject({
+      phase: { name: 'idle' },
+      balance: 99_000,
+      openRun: { step: 1, prize: 1980 },
+    });
+  });
+
   it('cannot dismiss an expired session', async () => {
     const { server, model } = await setup();
     server.failNext('SESSION_EXPIRED');
     await model.pick('sheriff');
     await model.dismissError();
     expect(model.state.phase).toEqual({ name: 'error', code: 'SESSION_EXPIRED', fatal: true });
+  });
+});
+
+describe('refresh', () => {
+  it('picks up a balance and a run changed on the server', async () => {
+    const { server, model } = await setup();
+    server.setBalance(50_000);
+    server.openRunAt(4, 500);
+    await model.refresh();
+    expect(model.state).toMatchObject({
+      phase: { name: 'idle' },
+      balance: 49_500,
+      mode: 'multiply',
+      bet: 500,
+      openRun: { step: 4, prize: 7920 },
+    });
+  });
+
+  it('waits for the round to end', async () => {
+    const { server, model } = await setup();
+    server.forceOutcomes('sheriff');
+    await model.pick('sheriff');
+    const init = vi.spyOn(server, 'init');
+    await model.refresh();
+    expect(init).not.toHaveBeenCalled();
+    expect(model.state.phase.name).toBe('revealing');
+  });
+
+  it('shows the error when the server does not answer', async () => {
+    const { server, model } = await setup();
+    server.failNext('NETWORK');
+    await model.refresh();
+    expect(model.state.phase).toMatchObject({ name: 'error', code: 'NETWORK' });
   });
 });

@@ -169,19 +169,17 @@ export class RoundModel {
       this.update({ phase: { name: 'idle' }, balance: this.confirmedBalance });
       return;
     }
-    this.update({ phase: { name: 'requesting', pick: null } });
-    try {
-      const init = await this.server.init();
-      this.confirmedBalance = init.balance;
-      this.update({
-        phase: { name: 'idle' },
-        balance: init.balance,
-        openRun: init.openRun,
-        ...(init.openRun ? { mode: 'multiply' as const, bet: init.openRun.bet } : {}),
-      });
-    } catch (err) {
-      this.fail(err);
-    }
+    await this.resync();
+  }
+
+  /**
+   * Asks the server again for the balance and any open run, between rounds only.
+   * For a balance that changed outside the game: a deposit the operator reports,
+   * or QA changing the test server.
+   */
+  async refresh(): Promise<void> {
+    if (!isIdle(this.state)) return;
+    await this.resync();
   }
 
   /* ---------- called by the director ---------- */
@@ -201,6 +199,23 @@ export class RoundModel {
   }
 
   /* ---------- internals ---------- */
+
+  /** Locks the controls while it fetches the session again, as on a fresh load. */
+  private async resync(): Promise<void> {
+    this.update({ phase: { name: 'requesting', pick: null } });
+    try {
+      const init = await this.server.init();
+      this.confirmedBalance = init.balance;
+      this.update({
+        phase: { name: 'idle' },
+        balance: init.balance,
+        openRun: init.openRun,
+        ...(init.openRun ? { mode: 'multiply' as const, bet: init.openRun.bet } : {}),
+      });
+    } catch (err) {
+      this.fail(err);
+    }
+  }
 
   private async send(request: () => Promise<RoundResponse>, stake: Minor): Promise<void> {
     let response: RoundResponse;

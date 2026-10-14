@@ -37,6 +37,21 @@ export function toMajor(amount: Minor, currency: Currency): number {
 }
 
 /**
+ * A typed amount in major units as minor units: "12.5" EUR is 1250. Takes a dot
+ * or a comma as the decimal mark and no group separators. Null for anything
+ * else, including more decimals than the currency has.
+ */
+export function toMinor(text: string, currency: Currency): Minor | null {
+  const match = /^(\d+)(?:[.,](\d*))?$/.exec(text.trim());
+  if (!match) return null;
+  const [, whole = '', fraction = ''] = match;
+  if (fraction.length > currency.decimals) return null;
+  // in strings, not floats: 0.29 * 100 is 28.999999999999996
+  const minor = Number(whole + fraction.padEnd(currency.decimals, '0'));
+  return Number.isSafeInteger(minor) ? minor : null;
+}
+
+/**
  * "€198.00", "198,00 €" or "1 980 FUN" depending on the currency and the locale.
  * Play-money and crypto codes that Intl does not know get the code after the number.
  */

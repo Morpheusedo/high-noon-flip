@@ -133,3 +133,95 @@ describe('recovery and failures', () => {
     expect((await server.init()).config.bets).not.toContain(1);
   });
 });
+
+describe('QA controls', () => {
+  it('forces a win or a loss against whatever the player picks', async () => {
+    const server = new MockServer({ balance: 100_000 });
+    server.forceOutcomes('win', 'lose');
+    const won = await server.play({ mode: 'instant', bet: 100, pick: 'outlaw' });
+    expect(won.flip).toEqual({ pick: 'outlaw', outcome: 'outlaw', won: true });
+    const lost = await server.play({ mode: 'instant', bet: 100, pick: 'outlaw' });
+    expect(lost.flip).toEqual({ pick: 'outlaw', outcome: 'sheriff', won: false });
+    expect(server.snapshot().forced).toEqual([]);
+  });
+
+  it('settles a request whose answer it then loses', async () => {
+    const server = new MockServer({ balance: 100_000 });
+    server.forceOutcomes('sheriff');
+    server.failNext('NETWORK', 'after');
+    await rejectsWith(server.play({ mode: 'multiply', bet: 1000, pick: 'sheriff' }), 'NETWORK');
+    // the stake is taken and the run is open: the client must learn it from a resync
+    const init = await server.init();
+    expect(init.balance).toBe(99_000);
+    expect(init.openRun).toMatchObject({ step: 1, prize: 1980 });
+    expect(server.snapshot().failure).toBeNull();
+  });
+
+  it('fails every request while offline', async () => {
+    const server = new MockServer();
+    server.setOffline(true);
+    await rejectsWith(server.init(), 'NETWORK');
+    await rejectsWith(server.init(), 'NETWORK');
+    server.setOffline(false);
+    await expect(server.init()).resolves.toMatchObject({ balance: 100_000 });
+  });
+
+  it('opens a run at a rung and staked once', async () => {
+    const server = new MockServer({ balance: 100_000 });
+    server.openRunAt(3, 1000);
+    expect(server.snapshot()).toMatchObject({
+      balance: 99_000,
+      openRun: { bet: 1000, step: 3, prize: 7920 },
+    });
+    // moving an open run keeps its bet and takes no second stake
+    server.openRunAt(7, 100);
+    expect(server.snapshot()).toMatchObject({
+      balance: 99_000,
+      openRun: { bet: 1000, step: 7, prize: 126_720 },
+    });
+    server.forceOutcomes('win');
+    const { roundId } = server.snapshot().openRun ?? { roundId: '' };
+    const top = await server.action({ roundId, type: 'pick', pick: 'sheriff' });
+    expect(top).toMatchObject({ win: 253_440, openRun: null, balance: 99_000 + 253_440 });
+  });
+
+  it('refuses a rung the run cannot stay open at, or a stake it cannot take', () => {
+    const server = new MockServer({ balance: 500 });
+    expect(() => server.openRunAt(8, 100)).toThrow(RangeError);
+    expect(() => server.openRunAt(0, 100)).toThrow(RangeError);
+    expect(() => server.openRunAt(1, 123)).toThrow(ServerError);
+    expect(() => server.openRunAt(1, 1000)).toThrow(ServerError);
+    expect(server.snapshot()).toMatchObject({ balance: 500, openRun: null });
+  });
+
+  it('refuses a balance that is not whole minor units', () => {
+    const server = new MockServer();
+    expect(() => server.setBalance(1.5)).toThrow(RangeError);
+    expect(() => server.setBalance(-1)).toThrow(RangeError);
+  });
+
+  it('resets to a first visit and tells its listeners about every change', async () => {
+    const store = memoryStore();
+    const server = new MockServer({ store, balance: 100_000 });
+    let changes = 0;
+    server.subscribe(() => changes++);
+    server.setBalance(500);
+    server.openRunAt(1, 100);
+    server.forceOutcomes('win');
+    server.failNext('INTERNAL');
+    server.setOffline(true);
+    server.setLatency(500);
+    expect(changes).toBe(6);
+
+    server.reset();
+    expect(server.snapshot()).toEqual({
+      balance: 100_000,
+      openRun: null,
+      forced: [],
+      failure: null,
+      offline: false,
+      latencyMs: 500,
+    });
+    expect((await new MockServer({ store }).init()).openRun).toBeNull();
+  });
+});

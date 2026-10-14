@@ -111,7 +111,9 @@ export function Rules({ config, jurisdiction, bet, demo, lang, fmt, onClose }: P
 
         <p class="rules-legal">{t('rules.malfunction')}</p>
         {demo && <p class="dialog-note">{t('rules.demo')}</p>}
-        <p class="dialog-note">{t('rules.version', { version: __APP_VERSION__ })}</p>
+        <p class="dialog-note">
+          {t('rules.version', { version: __APP_VERSION__, build: __BUILD_HASH__ })}
+        </p>
       </div>
       <button class="btn" data-autofocus onClick={onClose}>
         {t('common.close')}

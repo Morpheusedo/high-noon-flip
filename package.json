@@ -9,7 +9,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
+    "smoke": "npm run build && playwright test --project portrait --project landscape",
+    "lowend": "npm run build && playwright test --project low-end",
+    "size": "node scripts/size.mjs",
+    "preview:deploy": "node scripts/deploy-preview.mjs",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "audio": "node scripts/build-audio.mjs"
@@ -21,7 +25,9 @@
   "devDependencies": {
     "@babel/core": "7.29.7",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.0",
     "@preact/preset-vite": "2.10.6",
+    "@types/node": "24.19.2",
     "eslint": "10.11.0",
     "eslint-config-prettier": "10.1.8",
     "globals": "17.13.0",

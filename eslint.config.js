@@ -4,7 +4,7 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['dist', 'prototype', 'coverage'] },
+  { ignores: ['dist', 'prototype', 'coverage', 'test-results', 'playwright-report', '.netlify'] },
   js.configs.recommended,
   ...tseslint.configs.strict,
   prettier,
@@ -16,8 +16,8 @@ export default tseslint.config(
     },
   },
   {
-    // build scripts run in Node and report to the terminal
-    files: ['scripts/**'],
+    // build scripts and test tools run in Node and report to the terminal
+    files: ['scripts/**', 'e2e/**', 'tests/node/**', '*.config.ts'],
     languageOptions: { globals: globals.node },
     rules: { 'no-console': 'off' },
   },

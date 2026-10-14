@@ -1,0 +1,12 @@
+# The preview link for the provider, see docs/PREVIEW.md. `npm run preview:deploy`
+# uploads a build that passed the smoke test here; Netlify never builds it itself.
+[build]
+  publish = "dist"
+
+# No X-Frame-Options: the provider may open the game in a frame of its test lobby.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

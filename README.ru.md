@@ -14,18 +14,41 @@
 
 ## Команды
 
-| Команда             | Что делает                                         |
-| ------------------- | -------------------------------------------------- |
-| `npm install`       | Установить зависимости                             |
-| `npm run dev`       | Dev-сервер на http://localhost:5173                |
-| `npm test`          | Юнит-тесты (Vitest)                                |
-| `npm run typecheck` | Проверка типов TypeScript                          |
-| `npm run lint`      | ESLint                                             |
-| `npm run format`    | Prettier                                           |
-| `npm run build`     | Проверка типов, затем статическая сборка в `dist/` |
-| `npm run audio`     | Пересобрать звуковой спрайт и музыку (macOS)       |
+| Команда                  | Что делает                                         |
+| ------------------------ | -------------------------------------------------- |
+| `npm install`            | Установить зависимости                             |
+| `npm run dev`            | Dev-сервер на http://localhost:5173                |
+| `npm test`               | Юнит-тесты (Vitest)                                |
+| `npm run typecheck`      | Проверка типов TypeScript                          |
+| `npm run lint`           | ESLint                                             |
+| `npm run format`         | Prettier                                           |
+| `npm run build`          | Проверка типов, затем статическая сборка в `dist/` |
+| `npm run smoke`          | Сборка, затем смоук-тест в браузере                |
+| `npm run lowend`         | Сборка, затем замер на имитации слабого телефона   |
+| `npm run size`           | Размер `dist/` по видам файлов, как их отдаёт CDN  |
+| `npm run preview:deploy` | Проверки, смоук, затем preview на Netlify          |
+| `npm run audio`          | Пересобрать звуковой спрайт и музыку (macOS)       |
 
-Перед коммитом: `npm run typecheck && npm run lint && npm test`.
+Перед коммитом: `npm run typecheck && npm run lint && npm test`. Браузерным тестам один
+раз нужен Chromium от Playwright: `npx playwright install chromium`.
+
+### Сборки и preview
+
+Экран правил называет сборку: «Версия игры 0.1.0, сборка a1b2c3d». Версия берётся из
+`package.json`, сборка — из git (`scripts/buildInfo.ts`): короткий хеш коммита, с
+суффиксом «-dirty», если есть незакоммиченные изменения; `GIT_COMMIT`, если CI собирает
+без git; иначе «unknown». По этой строке поддержка и QA провайдера точно знают, о какой
+сборке баг-репорт.
+
+`npm run smoke` поднимает `dist/` через `vite preview` и играет в него в Playwright на
+телефоне 360 × 640 в портрете и ландшафте: загрузка, ставка Instant, серия Multiply и
+cash out, потерянный ответ (NETWORK) и восстановление, открытая серия после перезагрузки,
+элементы управления на экране до и после поворота. Исходы форсируются через `hnf`, так
+что каждый прогон одинаковый; любая ошибка в консоли или упавший запрос валят тест.
+
+`npm run lowend` меряет время загрузки, байты, FPS и память с замедленными CPU и сетью;
+бюджеты, результаты и чек-лист для реального телефона — в `docs/LOW_END_CHECK.md`.
+Preview-ссылка для провайдера — в `docs/PREVIEW.md`.
 
 ### Параметры запуска
 
@@ -121,15 +144,24 @@ src/
       ├─ Notices.tsx      штамп результата, нехватка баланса, диалоги ошибок
       ├─ Dialog.tsx       общая рамка всех диалогов
       ├─ text.ts          useText(): словарь игрока для компонентов
+      ├─ art.ts           список картинок интерфейса, чтобы лоадер загрузил их заранее
       └─ art/             картинки интерфейса; Vite собирает их с хэшами в именах
 tests/                юнит-тесты модели, director, мок-сервера и shell
-docs/ROADMAP.md       план работ, что сделано и какие решения приняты
+   └─ node/           тесты скриптов сборки, которые работают в Node
+e2e/                  Playwright: смоук-тест и замер на слабом телефоне
+docs/
+   ├─ ROADMAP.md      план работ, что сделано и какие решения приняты
+   ├─ LOW_END_CHECK.md  бюджеты для слабого телефона, результаты, чек-лист устройства
+   └─ PREVIEW.md      preview-ссылка для провайдера
 public/assets/        картинки сцены и звуки, грузятся во время работы
    ├─ images/scene-layout.json  позиции на сцене и замеры на арте
    └─ audio/          собирает `npm run audio`: спрайт sfx.m4a, петли музыки, audio.json
 assets-src/audio/     исходники звуков для сборки аудио; в игру не попадают
-scripts/              скрипты сборки (звуковой спрайт)
+scripts/              звуковой спрайт, хеш сборки, отчёт о размере, деплой preview
 index.html            экран загрузки; стили встроены, чтобы он появился раньше скриптов
+playwright.config.ts  проекты браузерных тестов: portrait, landscape, low-end
+netlify.toml          заголовки preview-сайта
+tsconfig.node.json    типы для кода, который работает в Node (конфиги, скрипты, e2e)
 ```
 
 ### Как проходит раунд
@@ -199,7 +231,7 @@ idle ──выбор / cash out──▶ requesting ──ответ серве
 
 ## Стек
 
-TypeScript (strict), Vite, PixiJS 8, Preact, Vitest, ESLint, Prettier.
+TypeScript (strict), Vite, PixiJS 8, Preact, Vitest, Playwright, ESLint, Prettier.
 Версии зафиксированы точно в `package.json`.
 
 ## Как вести работу

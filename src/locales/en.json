@@ -96,5 +96,5 @@
   "rules.more.connection": "If the connection drops, every flip the server has settled stays settled. An open Multiply run is kept and comes back when you return.",
   "rules.malfunction": "Malfunction voids all pays and plays.",
   "rules.demo": "Demo: play money, no real wins or losses.",
-  "rules.version": "Game version {version}"
+  "rules.version": "Game version {version}, build {build}"
 }

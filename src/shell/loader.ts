@@ -113,3 +113,28 @@ export function loadFonts(faces: readonly string[], timeoutMs = 3000): Promise<v
   );
   return Promise.race([all, new Promise<void>((r) => setTimeout(r, timeoutMs))]);
 }
+
+/**
+ * Fetches images that stylesheets use, so the interface shows with its art in place
+ * instead of filling in piece by piece after the loading screen. Reports 0..1 as
+ * they arrive. A missing image is a loading error, as missing scene art is.
+ */
+export async function preloadImages(
+  urls: readonly string[],
+  onProgress: (fraction: number) => void,
+): Promise<void> {
+  let done = 0;
+  onProgress(urls.length === 0 ? 1 : 0);
+  await Promise.all(
+    urls.map(async (url) => {
+      const image = new Image();
+      image.src = url;
+      try {
+        await image.decode();
+      } catch {
+        throw new Error(`Image not loaded: ${url}`);
+      }
+      onProgress(++done / urls.length);
+    }),
+  );
+}

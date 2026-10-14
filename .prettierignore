@@ -2,3 +2,6 @@ dist
 prototype
 public
 package-lock.json
+test-results
+playwright-report
+.netlify

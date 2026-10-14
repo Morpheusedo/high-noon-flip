@@ -9,7 +9,7 @@ import { isQaServer } from './server/qa';
 import { assetUrl } from './shell/assets';
 import { AudioManager } from './shell/audio/AudioManager';
 import { readLaunchParams } from './shell/launchParams';
-import { LoadProgress, loadFonts, loaderScreen } from './shell/loader';
+import { LoadProgress, loadFonts, loaderScreen, preloadImages } from './shell/loader';
 import { createSettings, type Settings } from './shell/settings';
 import { browserStorage } from './shell/storage';
 import { englishText, loadText, type Text } from './locales';
@@ -18,6 +18,7 @@ import { RoundModel } from './game/model/RoundModel';
 import { startDirector } from './game/director';
 import { GameSounds, startMusicDirector } from './game/sound';
 import { App } from './game/ui/App';
+import { UI_ART } from './game/ui/art';
 import { TextContext } from './game/ui/text';
 import './styles.css';
 
@@ -49,13 +50,11 @@ async function boot(): Promise<void> {
     : null;
   if (hnf) Object.assign(window, { hnf });
 
-  // sound loads alongside everything else and never holds the game up
   audio.listen();
   const applyVolumes = (s: Settings) =>
     audio.setVolumes({ muted: s.muted, sfx: s.sfxVolume, music: s.musicVolume });
   applyVolumes(settings.get());
   settings.subscribe(applyVolumes);
-  void audio.load((file) => assetUrl(`audio/${file}`));
 
   // the bar's weights are rough shares of the wait: the art is most of it
   const [loadedText, init] = await Promise.all([
@@ -67,6 +66,7 @@ async function boot(): Promise<void> {
     }),
     progress.track(server.init(), 2),
     scene.mount(byId('scene'), progress.add(8)),
+    preloadImages(UI_ART, progress.add(4)),
     progress.track(loadFonts(FONTS), 1),
   ]);
 
@@ -92,6 +92,9 @@ async function boot(): Promise<void> {
     byId('ui'),
   );
   loader.hide();
+  // Sound starts once the game is up and never holds it: on a slow network its
+  // megabyte would take the bandwidth the art needs (docs/LOW_END_CHECK.md).
+  void audio.load((file) => assetUrl(`audio/${file}`));
 
   if (hnf && isQaServer(server)) {
     hnf.model = model;

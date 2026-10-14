@@ -11,16 +11,22 @@ game should look, sound and feel; it is not part of the build.
 
 ## Commands
 
-| Command             | What it does                               |
-| ------------------- | ------------------------------------------ |
-| `npm install`       | Install dependencies                       |
-| `npm run dev`       | Dev server at http://localhost:5173        |
-| `npm test`          | Unit tests (Vitest)                        |
-| `npm run typecheck` | TypeScript check                           |
-| `npm run lint`      | ESLint                                     |
-| `npm run format`    | Prettier                                   |
-| `npm run build`     | Type check, then a static build in `dist/` |
-| `npm run audio`     | Rebuild the sound sprite and music (macOS) |
+| Command                  | What it does                                     |
+| ------------------------ | ------------------------------------------------ |
+| `npm install`            | Install dependencies                             |
+| `npm run dev`            | Dev server at http://localhost:5173              |
+| `npm test`               | Unit tests (Vitest)                              |
+| `npm run typecheck`      | TypeScript check                                 |
+| `npm run lint`           | ESLint                                           |
+| `npm run format`         | Prettier                                         |
+| `npm run build`          | Type check, then a static build in `dist/`       |
+| `npm run smoke`          | Build, then the browser smoke test               |
+| `npm run lowend`         | Build, then measure it on a simulated slow phone |
+| `npm run size`           | Size of `dist/` by kind, as served               |
+| `npm run preview:deploy` | Checks, smoke, then a preview on Netlify         |
+| `npm run audio`          | Rebuild the sound sprite and music (macOS)       |
+
+The browser tests need Playwright's Chromium once: `npx playwright install chromium`.
 
 Launch parameters go in the URL, as an operator would pass them:
 `?lang=de&mode=demo&debug=1&lobbyUrl=https://casino.example`.
@@ -44,6 +50,23 @@ The panel is a separate chunk that only `debug=1` downloads. The console has the
 objects: `hnf.server` (`hnf.server.forceOutcomes('win')`, `hnf.server.failNext('NETWORK',
 'after')`), `hnf.model`, `hnf.scene` (`hnf.scene.win(5)`), `hnf.settings` and `hnf.audio`.
 `hnf` exists before the game loads, so a failure can be armed for `init` from the console.
+
+### Builds and the preview
+
+The rules screen names the build: "Game version 0.1.0, build a1b2c3d". The version
+comes from `package.json`, the build from git (`scripts/buildInfo.ts`): the short
+commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without git,
+"unknown" otherwise.
+
+`npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
+360 x 640 phone, portrait and landscape: loading, an Instant bet, a Multiply run and its
+cash out, a lost answer (NETWORK) and its recovery, a run resumed after a reload, the
+controls on screen before and after a rotation. Outcomes are forced through `hnf`, so
+every run is the same; any console error or failed request fails it.
+
+`npm run lowend` measures load time, bytes, frame rate and memory with the CPU and
+network slowed down; `docs/LOW_END_CHECK.md` has its budgets, the results and the
+checklist for a real phone. `docs/PREVIEW.md` covers the provider's preview link.
 
 ## How the client is built
 
@@ -93,15 +116,24 @@ src/
       ├─ Notices.tsx      result stamp, insufficient funds, error dialogs
       ├─ Dialog.tsx       the frame every dialog uses
       ├─ text.ts          useText(): the player's dictionary for components
+      ├─ art.ts           the list of interface images, for the loader to fetch first
       └─ art/             interface images, bundled and hashed by Vite
 tests/                unit tests for the model, the director, the server mock and the shell
-docs/ROADMAP.md       the plan, what is done, and the decisions taken
+   └─ node/           tests of the build scripts, which run in Node
+e2e/                  Playwright: the smoke test and the slow-phone measurement
+docs/
+   ├─ ROADMAP.md      the plan, what is done, and the decisions taken
+   ├─ LOW_END_CHECK.md  slow-phone budgets, results, and the real-device checklist
+   └─ PREVIEW.md      the preview link for the provider
 public/assets/        scene images and sounds, loaded at run time
    ├─ images/scene-layout.json  positions on the stage and measurements on the art
    └─ audio/          built by `npm run audio`: sfx.m4a sprite, music loops, audio.json
 assets-src/audio/     the sound sources the audio build reads; not shipped
-scripts/              build scripts (the audio sprite)
+scripts/              the audio sprite, the build hash, the size report, the preview deploy
 index.html            the loading screen, styled inline so it shows before any script
+playwright.config.ts  browser test projects: portrait, landscape, low-end
+netlify.toml          headers of the preview site
+tsconfig.node.json    types for the code that runs in Node (configs, scripts, e2e)
 ```
 
 Rules the code follows:
@@ -132,5 +164,5 @@ Rules the code follows:
 
 ## Stack
 
-TypeScript (strict), Vite, PixiJS 8, Preact, Vitest, ESLint, Prettier.
+TypeScript (strict), Vite, PixiJS 8, Preact, Vitest, Playwright, ESLint, Prettier.
 Versions are pinned exactly in `package.json`.

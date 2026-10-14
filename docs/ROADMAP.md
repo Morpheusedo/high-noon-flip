@@ -59,10 +59,12 @@ and `locales/ru.json`.
 `debug/`: shown with `?debug=1` in demo mode only. Force outcomes, force errors,
 set balance, latency, reset the session, jump to a rung.
 
-### 8. Preview build
+### 8. Preview build — done
 
-Version and build hash on the rules screen, a Playwright smoke test, a check on a
-low-end phone, a static preview link to send to the provider.
+Version and build hash on the rules screen, a Playwright smoke test (`npm run smoke`),
+a check on a simulated slow phone (`npm run lowend`, `docs/LOW_END_CHECK.md`) with a
+checklist for a real one, and a Netlify preview link (`npm run preview:deploy`,
+`docs/PREVIEW.md`).
 
 ## Decisions
 
@@ -109,15 +111,19 @@ low-end phone, a static preview link to send to the provider.
   frame) when the operator gave `lobbyUrl`, and "Reload". Escape never closes an error.
   Unknown codes read as a general error. Insufficient funds keeps its own notice.
 - The loading screen is inline in `index.html`. Progress weights: text 1, init 2, scene art
-  8, fonts 1 (fonts give up after 3 s). Sound is not counted. A failed load shows the
-  reason and "Reload".
+  8, interface art 4, fonts 1 (fonts give up after 3 s). Sound is not counted. A failed
+  load shows the reason and "Reload".
 - The rules show exact multipliers (×15.84, not the ladder's ×15.8): a regulator checks them
   against the math. Max win is the top multiplier of any mode times the highest bet, rounded
   down as the server pays. "Malfunction voids all pays and plays" is always shown.
-- `__APP_VERSION__` comes from `package.json` through Vite `define`; step 8 adds the hash.
+- `__APP_VERSION__` comes from `package.json` and `__BUILD_HASH__` from git, both through
+  Vite `define`. The hash is `GIT_COMMIT` if a CI sets it, else the short commit of this
+  project's own repository (not a parent one), "-dirty" with uncommitted changes, else
+  "unknown". The rules show both: "Game version 0.1.0, build a1b2c3d".
 - Sound: `shell/audio/AudioManager` is shared (one context, unlock on the first touch,
   silent while the tab is hidden, effects and music buses); `game/sound.ts` is this
-  game's sound design. Sound loads in the background and never holds the game up.
+  game's sound design. Sound starts loading once the game is up and never holds it: on a
+  slow network its 1.2 MB took bandwidth from the art (ready in 11.9 s instead of 9.4 s).
 - The 20 recorded effects are one sprite, built by `npm run audio` from
   `assets-src/audio/`; the build decodes the result and fails if any clip moved by more
   than 6 ms. Music stays two loop files: long loops do not belong in a sprite.
@@ -148,6 +154,26 @@ low-end phone, a static preview link to send to the provider.
 - The panel's labels are English in code, not in `locales/`: it is a tool for QA, not text a
   player reads, and it must not add keys every language has to translate.
 - `hnf` (console handles) is set before loading, so QA can arm a failure for `init`.
+- Interface art (CSS images) is fetched behind the loader (`game/ui/art.ts`, a Vite glob of
+  `ui/art/*.webp`), so the interface never fills in after the loading screen. A missing
+  interface image is a loading error, as missing scene art is.
+- Smoke test: Playwright 1.64.0 (pinned, a week old when taken), on `vite preview` of
+  `dist/`, a Moto G4 (360 x 640) in portrait and landscape. Device scale 1: headless WebGL
+  is software, and 3x only slows it, the CSS layout is the same. Taps, not clicks: the
+  picks hop and the cash out tab pulses, so Playwright's "wait until still" never ends.
+  Result stamps are recorded by a MutationObserver: at 4x one is gone before a poll.
+  Google Fonts are stubbed: the test must not depend on a third party.
+- Code that runs in Node (configs, scripts, e2e, `tests/node`) is checked with
+  `tsconfig.node.json`, so Node types never leak into the game's code.
+- The slow-phone check runs in installed Google Chrome, which draws with the GPU;
+  Playwright's headless shell draws WebGL in software at ~5 fps, which says nothing.
+  Profile: CPU 4x, Lighthouse mobile network. It cannot slow the GPU: a real phone is still
+  needed before a build goes to the provider (`docs/LOW_END_CHECK.md`).
+- Preview on Netlify: each build a draft at its own address named by version and commit,
+  deployed from a local build that passed the smoke test (Netlify never builds). The
+  deploy refuses uncommitted changes. Free plan: the link is unlisted and `noindex`, not
+  password-protected. `netlify-cli` runs through `npx` at a pinned version instead of
+  joining the dependencies.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 
@@ -155,7 +181,8 @@ low-end phone, a static preview link to send to the provider.
 
 1. Is there a client SDK and a protocol spec?
 2. Must the game use the provider's own UI bar?
-3. Build requirements: hosting, size budget, supported browsers and devices.
+3. Build requirements: hosting, size budget, supported browsers and devices. Our defaults
+   until then are in `docs/LOW_END_CHECK.md`.
 4. Target markets (decides turbo, autoplay, session clock).
 5. Languages and currencies, including crypto.
 6. Who writes the math and the rules text, and who certifies. The rules text and its

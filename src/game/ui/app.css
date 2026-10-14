@@ -1,0 +1,23 @@
+.boot-readout {
+  position: absolute;
+  left: 50%;
+  top: 6%;
+  translate: -50% 0;
+  padding: 1.2cqmin 3cqmin;
+  border-radius: 1.6cqmin;
+  background: rgba(18, 9, 14, 0.6);
+  text-align: center;
+  font-size: clamp(12px, 2.6cqmin, 18px);
+}
+
+.boot-readout p {
+  margin: 0.3em 0;
+}
+
+.boot-title {
+  margin: 0 0 0.3em;
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: clamp(16px, 4.4cqmin, 36px);
+  color: var(--gold);
+}

@@ -1,0 +1,67 @@
+/* One fixed-ratio stage: 16:9, or 9:16 on tall screens. The Pixi canvas paints the
+   scene; the interface sits on top as HTML so text stays sharp and translatable. */
+:root {
+  color-scheme: dark;
+  --bg: #120b10;
+  --cream: #f7ead0;
+  --muted: #d3bd9c;
+  --gold: #f2c14e;
+  --brass: #c9973f;
+  --lose: #f59377;
+  --font-title: 'Rye', 'Alfa Slab One', Georgia, serif;
+  --font-body: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: var(--font-body);
+}
+
+.shell {
+  height: 100%;
+  box-sizing: border-box;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  container: shell / size;
+  display: grid;
+  place-items: center;
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  container: stage / size;
+  border-radius: 10px;
+  background: #2a1410;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@container shell (max-aspect-ratio: 4/5) {
+  .stage {
+    width: min(100cqw, calc(100cqh * 9 / 16));
+    aspect-ratio: 9 / 16;
+  }
+}
+
+.scene,
+.ui {
+  position: absolute;
+  inset: 0;
+}
+
+.scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

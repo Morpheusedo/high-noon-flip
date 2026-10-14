@@ -1,48 +1,210 @@
 /**
  * The Pixi side of the game: everything painted on the canvas.
  *
- * For now it only lays out the background for the current orientation. The
- * revolver, the coin and the effects move here from the prototype next.
+ * The scene works in design units: a 1600 x 900 stage, or 900 x 1600 on tall
+ * screens (see `scene-layout.json`), scaled to the canvas. Turning the device
+ * rebuilds every part for the other orientation.
+ *
+ * The director drives it through the public methods below; each one that takes
+ * time returns a promise that resolves when the animation is over.
  */
-import { Application, Assets, Sprite, type Texture } from 'pixi.js';
-import { assetUrl } from '../../shell/assets';
+import { Application, Container } from 'pixi.js';
+import type { Side } from '../../server/protocol';
+import type { Presenter } from '../director';
+import { Background } from './Background';
+import { Coin, type CoinPose } from './Coin';
+import { Effects } from './Effects';
+import { loadArt, type ArtTextures, type Motion, type SceneContext } from './context';
+import { loadLayout, type Orientation, type SceneLayout } from './layout';
+import { Particles } from './particles';
+import { Revolver } from './Revolver';
+import type { FxTextures } from './textures';
+import { Tweens } from './tween';
 
-export class GameScene {
+/** Longest frame step the animations take, so a stall does not make things jump. */
+const MAX_STEP_MS = 50;
+
+/** Everything built for one orientation; thrown away when it changes. */
+interface Parts {
+  orientation: Orientation;
+  background: Background;
+  revolver: Revolver;
+  coin: Coin;
+  effects: Effects;
+  /** Smoke: behind the revolver. */
+  smoke: Particles;
+}
+
+export class GameScene implements Presenter {
   private readonly app = new Application();
-  private background: Sprite | null = null;
-  private textures: { landscape: Texture; portrait: Texture } | null = null;
+  private readonly root = new Container();
+  private readonly tweens = new Tweens();
+  private readonly reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
+  private readonly motion: Motion = motionOf(this.reducedQuery);
+  private layout: SceneLayout | null = null;
+  private assets: { art: ArtTextures; fx: FxTextures } | null = null;
+  private parts: Parts | null = null;
+  private readonly coinPose: CoinPose = { angle: 0 };
+  private time = 0;
 
   async mount(host: HTMLElement): Promise<void> {
-    await this.app.init({
-      resizeTo: host,
-      backgroundAlpha: 0,
-      antialias: true,
-      autoDensity: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
-    });
-    host.appendChild(this.app.canvas);
-
-    const [landscape, portrait] = await Promise.all([
-      Assets.load<Texture>(assetUrl('images/background.jpg')),
-      Assets.load<Texture>(assetUrl('images/background-portrait.jpg')),
+    const [layout] = await Promise.all([
+      loadLayout(),
+      this.app.init({
+        resizeTo: host,
+        backgroundAlpha: 0,
+        antialias: true,
+        autoDensity: true,
+        resolution: Math.min(window.devicePixelRatio || 1, 2),
+      }),
     ]);
-    this.textures = { landscape, portrait };
-    this.background = new Sprite(landscape);
-    this.background.anchor.set(0.5);
-    this.app.stage.addChild(this.background);
+    this.layout = layout;
+    this.assets = await loadArt(layout);
+    host.appendChild(this.app.canvas);
+    this.app.stage.addChild(this.root);
 
-    this.app.renderer.on('resize', () => this.layout());
-    this.layout();
+    this.app.renderer.on('resize', () => this.fit());
+    this.reducedQuery.addEventListener('change', () => {
+      this.build();
+      this.fit();
+    });
+    this.listenForParallax(host.parentElement ?? host);
+    this.app.ticker.add((ticker) => this.update(Math.min(ticker.deltaMS, MAX_STEP_MS)));
+    this.fit();
   }
 
-  private layout(): void {
-    const bg = this.background;
-    if (!bg || !this.textures) return;
+  /* ---------- what the director calls ---------- */
+
+  get reducedMotion(): boolean {
+    return this.motion.reduced;
+  }
+
+  /** Hammer back, cylinder a chamber on. */
+  cock(ms: number): Promise<void> {
+    return this.parts?.revolver.cock(ms) ?? Promise.resolve();
+  }
+
+  /** Lets the hammer down without a shot. */
+  release(): void {
+    this.parts?.revolver.release();
+  }
+
+  /** The shot; `pace` is the speed's time factor (1 at normal speed). */
+  fire(spinMs: number, pace: number): void {
+    this.parts?.revolver.fire(spinMs, pace);
+    this.parts?.effects.muzzle();
+  }
+
+  /** Flies the coin to land on `side`; resolves when it lands. */
+  flip(side: Side, ms: number, turns: number): Promise<void> {
+    return this.parts?.coin.flipTo(side, ms, turns) ?? Promise.resolve();
+  }
+
+  /** Turns the coin over by hand, for looks; returns the face now up, or null while it is busy. */
+  turnCoin(): Side | null {
+    return this.parts?.coin.turnOver() ?? null;
+  }
+
+  /** Rays and a coin shower; `level` 0 to 5 sets how big. */
+  win(level: number): void {
+    this.parts?.effects.win(level);
+  }
+
+  lose(): void {
+    this.parts?.effects.lose();
+  }
+
+  /** Resolves after `ms` of scene time: pauses with the scene when the tab is hidden. */
+  wait(ms: number): Promise<void> {
+    return this.tweens.wait(ms);
+  }
+
+  /* ---------- building ---------- */
+
+  private build(): void {
+    const { layout, assets } = this;
+    if (!layout || !assets) return;
     const { width, height } = this.app.screen;
-    bg.texture = height > width ? this.textures.portrait : this.textures.landscape;
-    // cover: fill the stage, crop what does not fit
-    const scale = Math.max(width / bg.texture.width, height / bg.texture.height);
-    bg.scale.set(scale);
-    bg.position.set(width / 2, height / 2);
+    const orientation: Orientation = height > width ? 'portrait' : 'landscape';
+
+    // settle every running animation so nothing waits on a part that is about to go
+    this.tweens.finishAll();
+    for (const child of this.root.removeChildren()) child.destroy({ children: true });
+
+    const ctx: SceneContext = {
+      stage: layout[orientation],
+      layout,
+      art: assets.art,
+      fx: assets.fx,
+      tweens: this.tweens,
+      motion: this.motion,
+    };
+    const background = new Background(ctx);
+    const smokeLayer = new Container();
+    const smoke = new Particles(smokeLayer);
+    const revolver = new Revolver(ctx, smoke);
+    const coin = new Coin(ctx, this.coinPose);
+    const effects = new Effects(ctx);
+    this.root.addChild(
+      background.view,
+      effects.back,
+      smokeLayer,
+      revolver.view,
+      coin.shadow,
+      coin.glow,
+      coin.view,
+      effects.front,
+      effects.dim,
+      background.vignette,
+      effects.white,
+    );
+    this.parts = { orientation, background, revolver, coin, effects, smoke };
   }
+
+  /** Fits the design stage to the canvas; rebuilds when the orientation flips. */
+  private fit(): void {
+    const { width, height } = this.app.screen;
+    if (!width || !height) return;
+    const orientation: Orientation = height > width ? 'portrait' : 'landscape';
+    if (this.parts?.orientation !== orientation) this.build();
+    const parts = this.parts;
+    if (!parts || !this.layout) return;
+    const stage = this.layout[orientation];
+    const scale = Math.min(width / stage.width, height / stage.height);
+    this.root.scale.set(scale);
+    parts.background.bake(scale * this.app.renderer.resolution);
+  }
+
+  /* ---------- every frame ---------- */
+
+  private update(dtMs: number): void {
+    const parts = this.parts;
+    if (!parts) return;
+    this.time += dtMs;
+    this.tweens.update(dtMs);
+    parts.background.update(dtMs, this.time);
+    parts.revolver.update();
+    parts.coin.update(this.time);
+    parts.smoke.update(dtMs);
+    const jolt = parts.effects.update(dtMs);
+    this.root.position.set(jolt.x * this.root.scale.x, jolt.y * this.root.scale.y);
+  }
+
+  private listenForParallax(target: HTMLElement): void {
+    // only where a mouse hovers: on touch screens the scene would jump on every tap
+    if (!matchMedia('(hover: hover)').matches) return;
+    target.addEventListener('pointermove', (e) => {
+      const box = target.getBoundingClientRect();
+      this.parts?.background.pointAt(((e.clientX - box.left) / box.width - 0.5) * 2);
+    });
+    target.addEventListener('pointerleave', () => this.parts?.background.pointAt(0));
+  }
+}
+
+function motionOf(query: MediaQueryList): Motion {
+  return {
+    get reduced() {
+      return query.matches;
+    },
+  };
 }

@@ -1,10 +1,9 @@
 /* Temporary test panel; replaced by the western interface. */
 .test-panel {
   position: absolute;
-  left: 50%;
-  top: 5%;
-  translate: -50% 0;
-  width: min(92%, 640px);
+  left: 2%;
+  top: 3%;
+  width: min(34%, 420px);
   box-sizing: border-box;
   padding: 1.6cqmin 3cqmin;
   border-radius: 1.6cqmin;

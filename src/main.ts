@@ -5,6 +5,7 @@ import { render, h } from 'preact';
 import { MockServer } from './server/mockServer';
 import type { GameServer } from './server/protocol';
 import { readLaunchParams } from './shell/launchParams';
+import { createSettings } from './shell/settings';
 import { GameScene } from './game/scene/GameScene';
 import { RoundModel } from './game/model/RoundModel';
 import { startDirector } from './game/director';
@@ -15,12 +16,14 @@ async function boot(): Promise<void> {
   const params = readLaunchParams();
   // the provider adapter replaces MockServer here once its SDK is known
   const server: GameServer = new MockServer({ store: localStorage, latencyMs: 150 });
-  if (params.debug) Object.assign(window, { hnf: { server } });
+  const scene = new GameScene();
+  const settings = createSettings();
+  if (params.debug) Object.assign(window, { hnf: { server, scene, settings } });
 
   const model = new RoundModel(server, await server.init());
-  await new GameScene().mount(byId('scene'));
-  startDirector(model);
-  render(h(App, { model, lang: params.lang }), byId('ui'));
+  await scene.mount(byId('scene'));
+  startDirector(model, scene, settings);
+  render(h(App, { model, settings, lang: params.lang }), byId('ui'));
 }
 
 function byId(id: string): HTMLElement {

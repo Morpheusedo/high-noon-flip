@@ -20,7 +20,7 @@ with recovery and QA controls, money formatting, launch params.
 `error`. Locks controls by phase, resumes an open run, resyncs after unclear errors.
 `game/director.ts` is a timer placeholder; `game/ui/App.tsx` is a plain test panel.
 
-### 3. Pixi scene and the real director
+### 3. Pixi scene and the real director — done
 
 Port from the prototype into classes under `game/scene/`:
 
@@ -39,7 +39,9 @@ Positions measured on the art go in a layout config next to the art, not in code
 
 Replace the test panel with components under `game/ui/`: balance and bet plaques, bet
 dial, Sheriff and Outlaw emblems with keycaps, mode switch, multiply ladder, cash out
-tab, result stamp, last-flips strip, insufficient-funds notice. Both orientations.
+tab, result stamp, last-flips strip, insufficient-funds notice, speed button (hidden
+where turbo is banned), a tap target over the coin that calls `scene.turnCoin()`. Both
+orientations.
 Open design question: the dial has 6 chambers but operators send 10 to 20 bet levels.
 
 ### 5. Sound
@@ -71,6 +73,22 @@ low-end phone, a static preview link to send to the provider.
 - State lives in `RoundModel` and reaches the screen through `Store`; views never write it.
 - One reactivity mechanism: `shell/store.ts` + `useStore` (no signals library).
 - TypeScript 6.0, not 7: typescript-eslint does not support 7 yet.
+- The scene runs in design units (1600 x 900, 900 x 1600) and rebuilds on rotation; the
+  face of the coin survives the rebuild. Art measurements live in
+  `public/assets/images/scene-layout.json`, checked on load.
+- Own tweens on the Pixi ticker, not GSAP: the director awaits them, and they pause with
+  the tab. A newer tween of a field takes over; sequences use delays, not promise chains.
+- No drawn fallbacks for missing art: missing art is a loading error.
+- The blurred background is baked into a texture once per resize, not blurred each frame.
+  Ask the artist for a pre-blurred photo later.
+- Parallax moves the photo within its 3% overscan; only with a hovering pointer, never
+  with reduced motion.
+- Speed is a player setting (`shell/settings.ts`), read once per round. Pace factors 1,
+  0.5, 0.24 as in the prototype; `turboAllowed: false` forces 1x.
+- `minRoundMs` counts from the bet request; a shortfall extends the result pause, the
+  animations are never slowed.
+- Win effect size: the bet's position among the operator's levels mapped to 0..5; a cash
+  out by the run length.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

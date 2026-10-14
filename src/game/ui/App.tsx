@@ -13,17 +13,22 @@ import {
   type RoundModel,
 } from '../model/RoundModel';
 import type { Currency } from '../../server/protocol';
+import { SPEEDS, type Settings } from '../../shell/settings';
+import type { Store } from '../../shell/store';
 import { formatMoney } from '../../shell/money';
 import { useStore } from '../../shell/useStore';
 import './app.css';
 
 interface Props {
   model: RoundModel;
+  settings: Store<Settings>;
   lang: string;
 }
 
-export function App({ model, lang }: Props) {
+export function App({ model, settings, lang }: Props) {
   const s = useStore(model.store);
+  const { speed } = useStore(settings);
+  const turbo = s.jurisdiction.turboAllowed;
   const { currency, bets } = s.config;
   const money = (amount: number) => formatMoney(amount, currency, lang);
   const { phase } = s;
@@ -53,6 +58,17 @@ export function App({ model, lang }: Props) {
             onClick={() => model.setBet(b)}
           >
             {money(b)}
+          </button>
+        ))}
+      </p>
+      <p class="row">
+        {SPEEDS.map((v) => (
+          <button
+            disabled={v !== 1 && !turbo}
+            aria-pressed={(turbo ? speed : 1) === v}
+            onClick={() => settings.set({ ...settings.get(), speed: v })}
+          >
+            {v}×
           </button>
         ))}
       </p>

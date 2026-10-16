@@ -27,16 +27,14 @@ import { readJson, writeJson, type KeyValueStore } from '../shell/storage';
 
 export type { KeyValueStore };
 
-/** Payouts in hundredths, so the math stays in whole numbers. 198 = x1.98. */
-const INSTANT_HUNDREDTHS = 198;
-/** Each correct pick doubles the prize; every rung keeps the 99% return. */
+/** Payouts in hundredths, so the math stays in whole numbers. 198 = x1.98.
+ * Each correct pick doubles the prize; every rung keeps the 99% return. */
 const LADDER_HUNDREDTHS = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => 198 * 2 ** i);
 
 const DEFAULT_CONFIG: GameConfig = {
   currency: { code: 'FUN', decimals: 2 },
   bets: [100, 500, 1000, 2500, 5000, 10000],
   defaultBet: 100,
-  instantMultiplier: INSTANT_HUNDREDTHS / 100,
   ladder: LADDER_HUNDREDTHS.map((h) => h / 100),
   rtp: 0.99,
 };
@@ -190,14 +188,10 @@ export class MockServer implements GameServer, QaServer {
     this.state.balance -= request.bet;
     const flip = this.flip(request.pick);
 
-    let win = 0;
-    let openRun: OpenRun | null = null;
-    if (request.mode === 'instant') {
-      if (flip.won) win = payout(request.bet, INSTANT_HUNDREDTHS);
-    } else if (flip.won) {
-      openRun = { roundId, bet: request.bet, step: 1, prize: rungPrize(request.bet, 1) };
-    }
-    return this.finish({ roundId, flip, win, openRun });
+    const openRun: OpenRun | null = flip.won
+      ? { roundId, bet: request.bet, step: 1, prize: rungPrize(request.bet, 1) }
+      : null;
+    return this.finish({ roundId, flip, win: 0, openRun });
   }
 
   async action(request: ActionRequest): Promise<RoundResponse> {

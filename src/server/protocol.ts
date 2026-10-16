@@ -14,8 +14,6 @@ export type Minor = number;
 
 export type Side = 'sheriff' | 'outlaw';
 
-export type Mode = 'instant' | 'multiply';
-
 export interface Currency {
   /** ISO 4217 code, or an operator code such as FUN for play money. */
   code: string;
@@ -29,9 +27,7 @@ export interface GameConfig {
   /** Allowed stakes, ascending. */
   bets: Minor[];
   defaultBet: Minor;
-  /** Instant mode pays bet x this multiplier on a correct pick. */
-  instantMultiplier: number;
-  /** Multiply mode: the prize multiplier after 1, 2, 3 ... correct picks in a row. */
+  /** The prize multiplier after 1, 2, 3 ... correct picks in a row. */
   ladder: number[];
   /** Return to player, as a fraction: 0.99 is 99%. */
   rtp: number;
@@ -63,8 +59,11 @@ export interface InitResponse {
   openRun: OpenRun | null;
 }
 
-export type PlayRequest =
-  { mode: 'instant'; bet: Minor; pick: Side } | { mode: 'multiply'; bet: Minor; pick: Side };
+/** Stakes `bet` and makes the first pick of a run. */
+export interface PlayRequest {
+  bet: Minor;
+  pick: Side;
+}
 
 export type ActionRequest =
   { roundId: string; type: 'pick'; pick: Side } | { roundId: string; type: 'cashout' };
@@ -108,7 +107,7 @@ export class ServerError extends Error {
 
 export interface GameServer {
   init(): Promise<InitResponse>;
-  /** Instant round, or the first pick of a multiply run. */
+  /** The first pick of a multiply run. */
   play(request: PlayRequest): Promise<RoundResponse>;
   /** Next pick or cash out in an open multiply run. */
   action(request: ActionRequest): Promise<RoundResponse>;

@@ -6,22 +6,20 @@
 import type { GameConfig, Minor } from '../server/protocol';
 
 export interface RulesFacts {
-  instantMultiplier: number;
   /** Multiplier and prize at `bet` per rung; rung i is reached after i + 1 correct picks. */
   ladder: { picks: number; multiplier: number; prize: Minor }[];
   minBet: Minor;
   maxBet: Minor;
   rtp: number;
-  /** The highest multiplier any mode pays, and what it pays at the highest bet. */
+  /** The top rung's multiplier, and what it pays at the highest bet. */
   maxWin: { multiplier: number; amount: Minor };
 }
 
 export function rulesFacts(config: GameConfig, bet: Minor): RulesFacts {
   const minBet = config.bets[0] ?? 0;
   const maxBet = config.bets.at(-1) ?? 0;
-  const top = Math.max(config.instantMultiplier, ...config.ladder);
+  const top = Math.max(...config.ladder);
   return {
-    instantMultiplier: config.instantMultiplier,
     ladder: config.ladder.map((multiplier, i) => ({
       picks: i + 1,
       multiplier,

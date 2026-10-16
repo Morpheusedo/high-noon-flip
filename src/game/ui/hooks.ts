@@ -57,7 +57,7 @@ export function useCountUp(value: number, reduced: boolean): number {
 
 /**
  * Shrinks the text in `ref` so it fits its own `max-width`: a long balance
- * gets a smaller font instead of running into the bet dial. Sets `--fit`.
+ * gets a smaller font instead of running into the bet. Sets `--fit`.
  */
 export function useFitText(ref: MutableRef<HTMLElement | null>, text: string): void {
   useLayoutEffect(() => {

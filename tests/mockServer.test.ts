@@ -16,44 +16,42 @@ const rejectsWith = async (p: Promise<unknown>, code: string) => {
   await expect(p).rejects.toMatchObject({ code });
 };
 
-describe('instant mode', () => {
-  it('pays 1.98x on a correct pick', async () => {
+describe('first pick', () => {
+  it('takes the stake and opens a run on a correct pick', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes('sheriff');
-    const res = await server.play({ mode: 'instant', bet: 1000, pick: 'sheriff' });
+    const res = await server.play({ bet: 1000, pick: 'sheriff' });
     expect(res.flip).toEqual({ pick: 'sheriff', outcome: 'sheriff', won: true });
-    expect(res.win).toBe(1980);
-    expect(res.balance).toBe(100_000 - 1000 + 1980);
-    expect(res.openRun).toBeNull();
+    expect(res.win).toBe(0);
+    expect(res.balance).toBe(99_000);
+    expect(res.openRun).toMatchObject({ roundId: res.roundId, bet: 1000, step: 1, prize: 1980 });
   });
 
   it('keeps the stake on a wrong pick', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes('outlaw');
-    const res = await server.play({ mode: 'instant', bet: 1000, pick: 'sheriff' });
+    const res = await server.play({ bet: 1000, pick: 'sheriff' });
     expect(res.win).toBe(0);
     expect(res.balance).toBe(99_000);
+    expect(res.openRun).toBeNull();
   });
 
   it('rejects a bet that is not in the config', async () => {
     const server = new MockServer();
-    await rejectsWith(server.play({ mode: 'instant', bet: 123, pick: 'sheriff' }), 'INVALID_BET');
+    await rejectsWith(server.play({ bet: 123, pick: 'sheriff' }), 'INVALID_BET');
   });
 
   it('rejects a bet above the balance', async () => {
     const server = new MockServer({ balance: 50 });
-    await rejectsWith(
-      server.play({ mode: 'instant', bet: 100, pick: 'sheriff' }),
-      'INSUFFICIENT_FUNDS',
-    );
+    await rejectsWith(server.play({ bet: 100, pick: 'sheriff' }), 'INSUFFICIENT_FUNDS');
   });
 });
 
-describe('multiply mode', () => {
+describe('multiply run', () => {
   it('climbs the ladder and cashes out', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes('sheriff', 'outlaw');
-    const first = await server.play({ mode: 'multiply', bet: 1000, pick: 'sheriff' });
+    const first = await server.play({ bet: 1000, pick: 'sheriff' });
     expect(first.balance).toBe(99_000);
     expect(first.openRun).toMatchObject({ step: 1, prize: 1980 });
 
@@ -72,7 +70,7 @@ describe('multiply mode', () => {
   it('loses the stake on a wrong pick and closes the run', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes('sheriff', 'sheriff');
-    const first = await server.play({ mode: 'multiply', bet: 1000, pick: 'sheriff' });
+    const first = await server.play({ bet: 1000, pick: 'sheriff' });
     const lost = await server.action({ roundId: first.roundId, type: 'pick', pick: 'outlaw' });
     expect(lost.win).toBe(0);
     expect(lost.openRun).toBeNull();
@@ -86,7 +84,7 @@ describe('multiply mode', () => {
   it('pays the top rung by itself', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes(...Array(8).fill('sheriff'));
-    const first = await server.play({ mode: 'multiply', bet: 100, pick: 'sheriff' });
+    const first = await server.play({ bet: 100, pick: 'sheriff' });
     let res = first;
     for (let i = 0; i < 7; i++)
       res = await server.action({ roundId: first.roundId, type: 'pick', pick: 'sheriff' });
@@ -98,11 +96,8 @@ describe('multiply mode', () => {
   it('refuses a new round while a run is open', async () => {
     const server = new MockServer();
     server.forceOutcomes('sheriff');
-    await server.play({ mode: 'multiply', bet: 100, pick: 'sheriff' });
-    await rejectsWith(
-      server.play({ mode: 'instant', bet: 100, pick: 'sheriff' }),
-      'ROUND_IN_PROGRESS',
-    );
+    await server.play({ bet: 100, pick: 'sheriff' });
+    await rejectsWith(server.play({ bet: 100, pick: 'sheriff' }), 'ROUND_IN_PROGRESS');
   });
 });
 
@@ -111,7 +106,7 @@ describe('recovery and failures', () => {
     const store = memoryStore();
     const before = new MockServer({ store, balance: 100_000 });
     before.forceOutcomes('outlaw');
-    const first = await before.play({ mode: 'multiply', bet: 1000, pick: 'outlaw' });
+    const first = await before.play({ bet: 1000, pick: 'outlaw' });
 
     const after = new MockServer({ store });
     const init = await after.init();
@@ -122,7 +117,7 @@ describe('recovery and failures', () => {
   it('changes nothing when a request fails', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.failNext('NETWORK');
-    await rejectsWith(server.play({ mode: 'instant', bet: 100, pick: 'sheriff' }), 'NETWORK');
+    await rejectsWith(server.play({ bet: 100, pick: 'sheriff' }), 'NETWORK');
     expect((await server.init()).balance).toBe(100_000);
   });
 
@@ -138,9 +133,9 @@ describe('QA controls', () => {
   it('forces a win or a loss against whatever the player picks', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes('win', 'lose');
-    const won = await server.play({ mode: 'instant', bet: 100, pick: 'outlaw' });
+    const won = await server.play({ bet: 100, pick: 'outlaw' });
     expect(won.flip).toEqual({ pick: 'outlaw', outcome: 'outlaw', won: true });
-    const lost = await server.play({ mode: 'instant', bet: 100, pick: 'outlaw' });
+    const lost = await server.action({ roundId: won.roundId, type: 'pick', pick: 'outlaw' });
     expect(lost.flip).toEqual({ pick: 'outlaw', outcome: 'sheriff', won: false });
     expect(server.snapshot().forced).toEqual([]);
   });
@@ -149,7 +144,7 @@ describe('QA controls', () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes('sheriff');
     server.failNext('NETWORK', 'after');
-    await rejectsWith(server.play({ mode: 'multiply', bet: 1000, pick: 'sheriff' }), 'NETWORK');
+    await rejectsWith(server.play({ bet: 1000, pick: 'sheriff' }), 'NETWORK');
     // the stake is taken and the run is open: the client must learn it from a resync
     const init = await server.init();
     expect(init.balance).toBe(99_000);

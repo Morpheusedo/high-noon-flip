@@ -1,6 +1,7 @@
 /**
- * Wooden plaques along the bottom: the balance, the total bet (tap to choose
- * from every level), and in a multiply run the ladder and the cash out tab.
+ * Wooden plaques along the bottom: the balance, the bet in the middle (− and +
+ * step through the levels, the amount opens them all), the ladder above it, and
+ * in a run the cash out in the bet's place.
  */
 import { useRef } from 'preact/hooks';
 import type { Minor } from '../../server/protocol';
@@ -25,7 +26,7 @@ interface BalanceProps {
   fmt: Formats;
 }
 
-/** Counts up when a win lands; long balances get a smaller font so they never run into the dial. */
+/** Counts up when a win lands; long balances get a smaller font so they never run into the bet. */
 export function Balance({ balance, demo, reducedMotion, fmt }: BalanceProps) {
   const { t } = useText();
   const shown = useCountUp(balance, reducedMotion);
@@ -42,30 +43,69 @@ export function Balance({ balance, demo, reducedMotion, fmt }: BalanceProps) {
   );
 }
 
-interface BetPlaqueProps {
+interface StakeProps {
+  bets: Minor[];
   bet: Minor;
   disabled: boolean;
   fmt: Formats;
+  onChange(bet: Minor): void;
+  /** Opens every level at once. */
   onOpen(): void;
 }
 
-export function BetPlaque({ bet, disabled, fmt, onOpen }: BetPlaqueProps) {
+/** The bet, in the middle at the bottom: − and + step one level, the amount opens the list. */
+export function Stake({ bets, bet, disabled, fmt, onChange, onOpen }: StakeProps) {
   const { t } = useText();
+  const index = bets.indexOf(bet);
+  const step = (dir: 1 | -1) => {
+    const next = bets[index + dir];
+    if (next !== undefined) onChange(next);
+  };
   return (
-    <button
-      class="plaque bet"
-      aria-label={t('bet.changeLabel')}
-      disabled={disabled}
-      onClick={onOpen}
+    <div class="stake" role="group" aria-label={t('bet')} data-locked={disabled || undefined}>
+      <button
+        class="stake-step"
+        aria-label={t('bet.lower')}
+        disabled={disabled || index <= 0}
+        onClick={() => step(-1)}
+      >
+        <StepIcon plus={false} />
+      </button>
+      <button
+        class="stake-value"
+        aria-label={t('bet.changeLabel', { amount: fmt.full(bet) })}
+        disabled={disabled}
+        onClick={onOpen}
+      >
+        <span class="plaque-label">{t('bet')}</span>
+        <span class="plaque-value">
+          <Amount value={bet} fmt={fmt} />
+        </span>
+      </button>
+      <button
+        class="stake-step"
+        aria-label={t('bet.raise')}
+        disabled={disabled || index < 0 || index >= bets.length - 1}
+        onClick={() => step(1)}
+      >
+        <StepIcon plus />
+      </button>
+    </div>
+  );
+}
+
+function StepIcon({ plus }: { plus: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="3.2"
+      stroke-linecap="round"
+      aria-hidden="true"
     >
-      <span class="plaque-label">
-        {t('bet.total')}
-        <span class="chg"> · {t('bet.change')}</span>
-      </span>
-      <span class="plaque-value">
-        <Amount value={bet} fmt={fmt} />
-      </span>
-    </button>
+      <path d={plus ? 'M5 12h14M12 5v14' : 'M5 12h14'} />
+    </svg>
   );
 }
 

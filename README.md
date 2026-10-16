@@ -3,8 +3,8 @@
 [Русская версия](README.ru.md)
 
 A western coin flip: pick Sheriff or Outlaw, the revolver fires and flips the coin.
-Two modes: **Instant** (one flip, pays 1.98x) and **Multiply** (each correct pick doubles
-the prize up to 253.44x; cash out at any time).
+Each correct pick doubles the prize, from 1.98x up to 253.44x; cash out at any time, and
+one wrong pick loses the stake.
 
 `prototype/` holds the original single-file prototype. It is the reference for how the
 game should look, sound and feel; it is not part of the build.
@@ -59,7 +59,7 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 "unknown" otherwise.
 
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
-360 x 640 phone, portrait and landscape: loading, an Instant bet, a Multiply run and its
+360 x 640 phone, portrait and landscape: loading, the bet's − and + and its list, a run and its
 cash out, a lost answer (NETWORK) and its recovery, a run resumed after a reload, the
 controls on screen before and after a rotation. Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
@@ -106,11 +106,10 @@ src/
    │  └─ tween.ts         tweens and waits on the scene clock
    └─ ui/             Preact: the HTML interface over the canvas
       ├─ App.tsx          lays out the controls, keyboard shortcuts
-      ├─ TopBar.tsx       title, last flips, Instant / Multiply, speed
+      ├─ TopBar.tsx       title, last flips, speed
       ├─ Emblems.tsx      Sheriff and Outlaw picks, keycaps, the tap over the coin
-      ├─ Plaques.tsx      balance, total bet, multiply ladder, cash out
-      ├─ BetDial.tsx      the cylinder bet dial; its arithmetic is in dial.ts
-      ├─ BetPicker.tsx    every bet level at once, from the bet plaque
+      ├─ Plaques.tsx      balance, the bet (− amount +), ladder, cash out
+      ├─ BetPicker.tsx    every bet level at once, from the bet amount
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed)
       ├─ Rules.tsx        the info button and the rules screen
       ├─ Notices.tsx      result stamp, insufficient funds, error dialogs
@@ -150,9 +149,9 @@ Rules the code follows:
 - **The round waits for the animations.** The director awaits the scene, whose clock pauses
   with the tab, and enforces the market's shortest round time on top.
 - **Art comes with its measurements.** Positions measured on an image live in
-  `scene-layout.json` (scene) or `ui/art/cylinder.json` (bet dial) next to it, not in code.
-- **Bets come from the operator.** The dial is an endless drum over any number of levels;
-  the client never assumes six.
+  `scene-layout.json` next to it, not in code.
+- **Bets come from the operator.** − and + step through whatever levels the config sends,
+  and the list shows them all; the client never assumes a number of them.
 - **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet. A held key does not repeat, so it cannot act as
   autoplay.
 - **No string in code.** Every text the player reads is a key in `src/locales/en.json`.

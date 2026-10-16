@@ -1,8 +1,8 @@
 /**
- * The top of the screen: the title sign with the last flips under it, the
- * Instant / Multiply switch and the speed button.
+ * The top of the screen: the title sign with the last flips under it, and the
+ * speed button.
  */
-import type { Mode, Side } from '../../server/protocol';
+import type { Side } from '../../server/protocol';
 import { SPEEDS, type Speed } from '../../shell/settings';
 import { HISTORY_SIZE } from '../model/RoundModel';
 import { useText } from './text';
@@ -23,30 +23,6 @@ export function TitleSign({ history }: { history: Side[] }) {
           );
         })}
       </ol>
-    </div>
-  );
-}
-
-interface ModeSwitchProps {
-  mode: Mode;
-  disabled: boolean;
-  onChange(mode: Mode): void;
-}
-
-export function ModeSwitch({ mode, disabled, onChange }: ModeSwitchProps) {
-  const { t } = useText();
-  return (
-    <div class="mode" role="group" aria-label={t('mode.group')}>
-      {(['instant', 'multiply'] as const).map((m) => (
-        <button
-          class="mode-btn"
-          aria-pressed={mode === m}
-          disabled={disabled}
-          onClick={() => onChange(m)}
-        >
-          {t(`mode.${m}`)}
-        </button>
-      ))}
     </div>
   );
 }

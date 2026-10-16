@@ -66,6 +66,12 @@ a check on a simulated slow phone (`npm run lowend`, `docs/LOW_END_CHECK.md`) wi
 checklist for a real one, and a Netlify preview link (`npm run preview:deploy`,
 `docs/PREVIEW.md`).
 
+### 9. Multiply only, the bet in the middle — done
+
+Instant is gone from the server contract, the model, the interface, the rules and the
+texts. The cylinder dial and the "Total bet" plaque are replaced by one bet block in the
+middle at the bottom (− amount +), with the cash out in its place during a run.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -88,12 +94,14 @@ checklist for a real one, and a Netlify preview link (`npm run preview:deploy`,
   0.5, 0.24 as in the prototype; `turboAllowed: false` forces 1x.
 - `minRoundMs` counts from the bet request; a shortfall extends the result pause, the
   animations are never slowed.
-- Win effect size: the bet's position among the operator's levels mapped to 0..5; a cash
-  out by the run length.
-- The bet dial is an endless drum: one chamber (60°) is one level, each chamber shows the
-  level nearest to it and is relabelled only on the far side, out of view. It stops at
-  the lowest and highest bet, never wraps. Flicks coast at most two levels; longer jumps
-  (Home, End, the bet list) snap. The bet plaque opens every level as a grid.
+- Win effect size: a cash out by the run length, 1 to 5.
+- Multiply only (step 9): one mode is one thing to learn, and the ladder is the game.
+  `PlayRequest` has no `mode`; `GameConfig` has no `instantMultiplier`. If a provider's
+  RGS keeps modes, the adapter sends `multiply`.
+- The bet is one block in the middle at the bottom (step 9): "− BET 1.00 FUN +". − and +
+  step one level and close at the ends; the amount opens every level as a grid. In a run
+  the cash out takes its place, since the bet cannot change then. The cylinder dial in
+  the corner did not read as a bet control to players, so it is gone.
 - Interface images live in `src/game/ui/art/` so Vite hashes them and CSS paths follow
   the CDN base; `public/assets/` keeps only what Pixi loads at run time.
 - Strings live in `src/locales/*.json`, flat keys (`"rules.bets"`), `{name}` placeholders,

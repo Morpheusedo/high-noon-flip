@@ -66,8 +66,8 @@ export function startDirector(
     model.finishReveal();
   }
 
-  async function show(gen: number, state: RoundState, outcome: Outcome, flip: Flip | null) {
-    const { kind, level } = celebration(state, outcome, flip, stepBefore);
+  async function show(gen: number, state: RoundState, outcome: Outcome) {
+    const { kind, level } = celebration(state, outcome, stepBefore);
     if (outcome.kind === 'lose') {
       scene.lose();
       sounds.lose();
@@ -97,7 +97,7 @@ export function startDirector(
         void reveal(gen, phase.flip);
         break;
       case 'result':
-        void show(gen, state, phase.outcome, phase.flip);
+        void show(gen, state, phase.outcome);
         break;
       case 'error':
         scene.release();
@@ -119,7 +119,6 @@ export function startDirector(
 export function celebration(
   state: RoundState,
   outcome: Outcome,
-  flip: Flip | null,
   stepBefore: number,
 ): { kind: HoldKind; level: number } {
   switch (outcome.kind) {
@@ -130,16 +129,6 @@ export function celebration(
       return { kind: 'step', level: Math.min(2, (state.openRun?.step ?? 1) - 1) };
     case 'win':
       // a cash out, or the top rung of a run
-      if (!flip || state.mode === 'multiply')
-        return { kind: 'cashout', level: Math.min(MAX_WIN_LEVEL, stepBefore + 1) };
-      return { kind: 'win', level: betLevel(state) };
+      return { kind: 'cashout', level: Math.min(MAX_WIN_LEVEL, stepBefore + 1) };
   }
-}
-
-/** Where the bet sits among the operator's levels, spread over 0 to 5 whatever their number. */
-function betLevel(state: RoundState): number {
-  const { bets } = state.config;
-  const index = bets.indexOf(state.bet);
-  if (bets.length < 2 || index < 0) return 0;
-  return Math.round((index / (bets.length - 1)) * MAX_WIN_LEVEL);
 }

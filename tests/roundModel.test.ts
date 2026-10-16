@@ -16,7 +16,7 @@ function present(model: RoundModel) {
   return result;
 }
 
-describe('instant round', () => {
+describe('first pick', () => {
   it('goes idle → requesting → revealing → result → idle', async () => {
     const { server, model } = await setup();
     server.forceOutcomes('sheriff');
@@ -28,13 +28,18 @@ describe('instant round', () => {
       name: 'revealing',
       flip: { pick: 'sheriff', outcome: 'sheriff', won: true },
     });
-    // the win is known but not shown until the coin lands
+    // the run is known but not shown until the coin lands
     expect(model.state.balance).toBe(99_900);
+    expect(model.state.openRun).toBeNull();
 
     const result = present(model);
-    expect(result).toMatchObject({ name: 'result', outcome: { kind: 'win', amount: 198 } });
+    expect(result).toMatchObject({
+      name: 'result',
+      outcome: { kind: 'step', prize: 198, multiplier: 1.98 },
+    });
     expect(phases).toEqual(['requesting', 'revealing', 'result', 'idle']);
-    expect(model.state.balance).toBe(100_098);
+    expect(model.state.balance).toBe(99_900);
+    expect(model.state.openRun).toMatchObject({ step: 1, prize: 198 });
     expect(model.state.history).toEqual(['sheriff']);
   });
 
@@ -85,10 +90,9 @@ describe('instant round', () => {
 });
 
 describe('multiply run', () => {
-  it('climbs, locks the setup and cashes out', async () => {
+  it('climbs, locks the bet and cashes out', async () => {
     const { server, model } = await setup();
     server.forceOutcomes('sheriff', 'outlaw');
-    model.setMode('multiply');
     model.setBet(1000);
 
     await model.pick('sheriff');
@@ -99,8 +103,7 @@ describe('multiply run', () => {
     expect(canCashOut(model.state)).toBe(true);
 
     model.setBet(100);
-    model.setMode('instant');
-    expect(model.state).toMatchObject({ bet: 1000, mode: 'multiply' });
+    expect(model.state.bet).toBe(1000);
 
     await model.pick('outlaw');
     expect(present(model)).toMatchObject({ outcome: { kind: 'step', prize: 3960 } });
@@ -119,7 +122,6 @@ describe('multiply run', () => {
   it('loses the stake, not the prize, on a wrong pick', async () => {
     const { server, model } = await setup();
     server.forceOutcomes('sheriff', 'sheriff');
-    model.setMode('multiply');
     await model.pick('sheriff');
     present(model);
     await model.pick('outlaw');
@@ -136,14 +138,12 @@ describe('multiply run', () => {
     };
     const first = await setup({ store: kv });
     first.server.forceOutcomes('outlaw');
-    first.model.setMode('multiply');
     first.model.setBet(500);
     await first.model.pick('outlaw');
 
     const server = new MockServer({ store: kv });
     const model = new RoundModel(server, await server.init());
     expect(model.state).toMatchObject({
-      mode: 'multiply',
       bet: 500,
       openRun: { step: 1, prize: 990 },
     });
@@ -168,7 +168,6 @@ describe('errors', () => {
   it('keeps an open run after a failed pick', async () => {
     const { server, model } = await setup();
     server.forceOutcomes('sheriff');
-    model.setMode('multiply');
     await model.pick('sheriff');
     present(model);
 
@@ -182,7 +181,6 @@ describe('errors', () => {
     const { server, model } = await setup();
     server.forceOutcomes('sheriff');
     server.failNext('NETWORK', 'after');
-    model.setMode('multiply');
     model.setBet(1000);
     await model.pick('sheriff');
     expect(model.state.phase).toMatchObject({ name: 'error', code: 'NETWORK' });
@@ -214,7 +212,6 @@ describe('refresh', () => {
     expect(model.state).toMatchObject({
       phase: { name: 'idle' },
       balance: 49_500,
-      mode: 'multiply',
       bet: 500,
       openRun: { step: 4, prize: 7920 },
     });

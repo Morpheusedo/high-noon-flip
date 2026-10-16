@@ -7,7 +7,7 @@
  */
 import type { Speed } from '../shell/settings';
 
-export type HoldKind = 'win' | 'lose' | 'step' | 'cashout';
+export type HoldKind = 'lose' | 'step' | 'cashout';
 
 export interface Timings {
   /** Time factor of the speed: 1 at normal, smaller when faster. */
@@ -26,7 +26,7 @@ export interface Timings {
 
 const PACE: Record<Speed, number> = { 1: 1, 2: 0.5, 4: 0.24 };
 const TURNS: Record<Speed, number> = { 1: 6, 2: 3, 4: 1 };
-const HOLD_MS: Record<HoldKind, number> = { win: 1900, lose: 1300, step: 1100, cashout: 1900 };
+const HOLD_MS: Record<HoldKind, number> = { lose: 1300, step: 1100, cashout: 1900 };
 /** No result is shown for less than this, at any speed. */
 const MIN_HOLD_MS = 380;
 

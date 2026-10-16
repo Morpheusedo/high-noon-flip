@@ -10,7 +10,7 @@ describe('timingsFor', () => {
       spinMs: 900,
       flipMs: 1900,
       turns: 6,
-      hold: { win: 1900, lose: 1300, step: 1100, cashout: 1900 },
+      hold: { lose: 1300, step: 1100, cashout: 1900 },
     });
   });
 
@@ -18,7 +18,7 @@ describe('timingsFor', () => {
     const t = timingsFor(4, false);
     expect(t.flipMs).toBe(456);
     expect(t.turns).toBe(1);
-    expect(t.hold).toEqual({ win: 456, lose: 380, step: 380, cashout: 456 });
+    expect(t.hold).toEqual({ lose: 380, step: 380, cashout: 456 });
   });
 
   it('drops show-only waits for reduced motion', () => {

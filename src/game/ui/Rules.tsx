@@ -62,14 +62,7 @@ export function Rules({ config, jurisdiction, bet, demo, lang, fmt, onClose }: P
           })}
         </p>
 
-        <h3>{t('mode.instant')}</h3>
-        <p>
-          {parts('rules.instant.body', {
-            multiplier: <b>{fmt.exactMultiplier(facts.instantMultiplier)}</b>,
-          })}
-        </p>
-
-        <h3>{t('mode.multiply')}</h3>
+        <h3>{t('ladder')}</h3>
         <p>{parts('rules.multiply.body', { cashOut: <b>{t('cashOut')}</b> })}</p>
         <table class="rules-ladder">
           <thead>

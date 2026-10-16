@@ -14,7 +14,6 @@ describe('music', () => {
     expect(musicIntensity(model.state)).toBe(1);
 
     model.setBet(100);
-    model.setMode('multiply');
     server.forceOutcomes('sheriff', 'sheriff');
     await model.pick('sheriff');
     model.finishReveal();

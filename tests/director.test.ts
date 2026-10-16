@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { celebration, startDirector, type Presenter } from '../src/game/director';
+import { celebration, MAX_WIN_LEVEL, startDirector, type Presenter } from '../src/game/director';
 import { RoundModel } from '../src/game/model/RoundModel';
 import { MockServer, type MockServerOptions } from '../src/server/mockServer';
 import type { RoundSounds } from '../src/game/sound';
@@ -69,7 +69,8 @@ describe('director', () => {
     expect(phase()).toBe('result');
     expect(calls.at(-1)).toBe('win 0');
 
-    await advance(1899);
+    // a correct pick is a step up the ladder: a short pause
+    await advance(1099);
     expect(phase()).toBe('result');
     await advance(1);
     expect(phase()).toBe('idle');
@@ -166,7 +167,6 @@ describe('director', () => {
 
   it('celebrates a cash out by the length of the run', async () => {
     const { server, model, calls, phase } = await setup();
-    model.setMode('multiply');
     server.forceOutcomes('sheriff', 'sheriff');
     for (let i = 0; i < 2; i++) {
       await model.pick('sheriff');
@@ -190,16 +190,11 @@ describe('director', () => {
 });
 
 describe('celebration', () => {
-  it('spreads any number of bet levels over the win effect sizes', async () => {
-    const bets = Array.from({ length: 20 }, (_, i) => (i + 1) * 100);
-    const server = new MockServer({ config: { bets, defaultBet: 1100 } });
+  it('grows with the run up to the biggest effect', async () => {
+    const server = new MockServer();
     const model = new RoundModel(server, await server.init());
-    const flip = { pick: 'sheriff', outcome: 'sheriff', won: true } as const;
     const win = { kind: 'win', amount: 1 } as const;
-    expect(celebration(model.state, win, flip, 0)).toEqual({ kind: 'win', level: 3 });
-    model.setBet(2000);
-    expect(celebration(model.state, win, flip, 0).level).toBe(5);
-    model.setBet(100);
-    expect(celebration(model.state, win, flip, 0).level).toBe(0);
+    expect(celebration(model.state, win, 0)).toEqual({ kind: 'cashout', level: 1 });
+    expect(celebration(model.state, win, 7)).toEqual({ kind: 'cashout', level: MAX_WIN_LEVEL });
   });
 });

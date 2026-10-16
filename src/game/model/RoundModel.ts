@@ -23,7 +23,6 @@ import {
   type InitResponse,
   type Jurisdiction,
   type Minor,
-  type Mode,
   type OpenRun,
   type RoundResponse,
   type ServerErrorCode,
@@ -35,7 +34,7 @@ import { Store } from '../../shell/store';
 export const HISTORY_SIZE = 10;
 
 export type Outcome =
-  /** Money was paid: an instant win, a cash out or the top rung. */
+  /** Money was paid: a cash out or the top rung. */
   | { kind: 'win'; amount: Minor }
   /** The stake is gone. */
   | { kind: 'lose'; amount: Minor }
@@ -55,7 +54,6 @@ export interface RoundState {
   /** The balance the player should see right now. */
   balance: Minor;
   bet: Minor;
-  mode: Mode;
   openRun: OpenRun | null;
   /** Past outcomes, newest first. */
   history: Side[];
@@ -83,7 +81,7 @@ export const isIdle = (s: RoundState): boolean => s.phase.name === 'idle';
 export const canPick = (s: RoundState): boolean =>
   isIdle(s) && (s.openRun !== null || s.balance >= s.bet);
 export const canCashOut = (s: RoundState): boolean => isIdle(s) && s.openRun !== null;
-/** Bet and mode are locked while a multiply run is open. */
+/** The bet is locked while a run is open. */
 export const canChangeSetup = (s: RoundState): boolean => isIdle(s) && s.openRun === null;
 /** The highest bet the balance covers, or null when it covers none. */
 export const affordableBet = (s: RoundState): Minor | null =>
@@ -103,9 +101,8 @@ export class RoundModel {
     this.store = new Store<RoundState>({
       phase: { name: 'idle' },
       balance: init.balance,
-      // a run left open last session comes back with its own bet and mode
+      // a run left open last session comes back with its own bet
       bet: init.openRun?.bet ?? init.config.defaultBet,
-      mode: init.openRun ? 'multiply' : 'instant',
       openRun: init.openRun,
       history: [],
       config: init.config,
@@ -138,7 +135,7 @@ export class RoundModel {
       () =>
         run
           ? this.server.action({ roundId: run.roundId, type: 'pick', pick: side })
-          : this.server.play({ mode: s.mode, bet: s.bet, pick: side }),
+          : this.server.play({ bet: s.bet, pick: side }),
       stake,
     );
   }
@@ -154,11 +151,6 @@ export class RoundModel {
   setBet(bet: Minor): void {
     if (!canChangeSetup(this.state) || !this.state.config.bets.includes(bet)) return;
     this.update({ bet });
-  }
-
-  setMode(mode: Mode): void {
-    if (!canChangeSetup(this.state)) return;
-    this.update({ mode });
   }
 
   /** Closes the error. After an error that may have left things out of step, asks the server again. */
@@ -210,7 +202,7 @@ export class RoundModel {
         phase: { name: 'idle' },
         balance: init.balance,
         openRun: init.openRun,
-        ...(init.openRun ? { mode: 'multiply' as const, bet: init.openRun.bet } : {}),
+        ...(init.openRun ? { bet: init.openRun.bet } : {}),
       });
     } catch (err) {
       this.fail(err);

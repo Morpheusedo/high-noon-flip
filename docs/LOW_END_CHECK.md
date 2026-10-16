@@ -86,7 +86,7 @@ the computer's address on the same Wi-Fi.
 
 | Check                    | How                                                           | Pass                                                                                          |
 | ------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Cold load on mobile data | Clear site data, 4G, stopwatch from tap to the bet dial       | under 10 s; under 5 s on Wi-Fi                                                                |
+| Cold load on mobile data | Clear site data, 4G, stopwatch from tap to the bet            | under 10 s; under 5 s on Wi-Fi                                                                |
 | Frames at rest           | Remote DevTools → Rendering → Frame rendering stats           | 50+ fps                                                                                       |
 | Frames in a round        | Same, through flips, a long win, a 5-rung multiply run        | never under 30 fps; no visible hitch                                                          |
 | Memory                   | Remote DevTools → Memory, after load and after 50 rounds      | JS heap grows < 5 MB                                                                          |

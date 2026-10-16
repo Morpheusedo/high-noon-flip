@@ -62,51 +62,6 @@
   background-image: url(./art/logo-outlaw.webp);
 }
 
-/* Instant / Multiply */
-.mode {
-  position: absolute;
-  left: 3%;
-  top: 4.5%;
-  z-index: 4;
-  display: flex;
-  gap: 0.5cqmin;
-  padding: 0.6cqmin;
-  border-radius: 99px;
-  background: rgba(12, 6, 9, 0.62);
-  border: 1px solid rgba(201, 151, 63, 0.55);
-}
-
-.mode-btn {
-  padding: 0.5em 1.15em;
-  border: 0;
-  border-radius: 99px;
-  background: none;
-  color: var(--muted);
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: clamp(13px, 3cqmin, 20px);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.mode-btn[aria-pressed='true'] {
-  background: linear-gradient(var(--brass-hi), var(--brass));
-  color: #2a1a02;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-}
-
-.mode-btn:hover:not([aria-pressed='true']):not(:disabled) {
-  color: var(--cream);
-}
-
-.mode:has(.mode-btn:disabled) {
-  opacity: 0.5;
-}
-
-.mode-btn:disabled {
-  cursor: default;
-}
-
 /* round brass buttons in the corners; speed sits left of the sound button */
 .tool {
   --tool: clamp(34px, 8.4cqmin, 60px);
@@ -186,20 +141,6 @@
 
   .dots li {
     width: clamp(15px, 5.6cqmin, 64px);
-  }
-
-  .mode {
-    left: 50%;
-    top: 10.8%;
-    translate: -50% 0;
-  }
-
-  /* scales with the stage, with no floor, so it always fits between the sound buttons on
-     the left and the speed button on the right */
-  .mode-btn {
-    padding: 0.5em 0.95em;
-    font-size: clamp(10px, 3.6cqmin, 20px);
-    letter-spacing: 0.06em;
   }
 
   /* speed in the top right corner, sound in the top left */

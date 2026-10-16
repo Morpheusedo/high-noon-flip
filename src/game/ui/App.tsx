@@ -22,16 +22,15 @@ import {
   type RoundModel,
 } from '../model/RoundModel';
 import type { UiSounds } from '../sound';
-import { BetDial, type DialFeedback } from './BetDial';
 import { BetPicker } from './BetPicker';
 import { CoinTap, Emblems } from './Emblems';
 import { formats } from './format';
 import { useReducedMotion } from './hooks';
 import { ErrorDialog, FundsNotice, ResultStamp } from './Notices';
-import { Balance, BetPlaque, CashOut, Ladder } from './Plaques';
+import { Balance, CashOut, Ladder, Stake } from './Plaques';
 import { Rules, RulesButton } from './Rules';
 import { SettingsButton, SettingsPanel, SoundButton } from './Settings';
-import { ModeSwitch, SpeedButton, TitleSign } from './TopBar';
+import { SpeedButton, TitleSign } from './TopBar';
 import './app.css';
 
 interface Props {
@@ -53,7 +52,7 @@ const KEY_DIP_MS = 110;
 /** At most one panel is open over the game; each returns the focus to the button that opened it. */
 type Panel = 'bets' | 'settings' | 'rules';
 const OPENER: Record<Panel, string> = {
-  bets: '.plaque.bet',
+  bets: '.stake-value',
   settings: '.tool.settings',
   rules: '.tool.rules',
 };
@@ -90,15 +89,6 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
   const set = (patch: Partial<typeof prefs>) => settings.set({ ...settings.get(), ...patch });
 
   const changeBet = (bet: Minor) => model.setBet(bet);
-  // the dial ticks per chamber; a flick across two or more ends on the recorded spin
-  const dialFeedback: DialFeedback = {
-    tick: () => sounds.tick(),
-    settle: (coasted) => {
-      if (coasted >= 2) return sounds.spin(coasted);
-      for (let i = 1; i <= coasted; i++) setTimeout(() => sounds.tick(), i * 42);
-      setTimeout(() => sounds.latch(), 60 + coasted * 42);
-    },
-  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -143,21 +133,11 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       ref={hud}
       class="hud"
       data-phase={phase.name}
-      data-mode={s.mode}
       data-run={openRun ? 'live' : undefined}
       data-outcome={outcome === 'lose' ? 'lose' : outcome ? 'win' : undefined}
       data-turbo={turbo ? undefined : 'off'}
     >
       <TitleSign history={s.history} />
-      <ModeSwitch
-        mode={s.mode}
-        disabled={!setupOpen}
-        onChange={(m) => {
-          if (m === s.mode) return;
-          model.setMode(m);
-          sounds.click();
-        }}
-      />
       {turbo && (
         <SpeedButton
           speed={speed}
@@ -181,8 +161,7 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       <Emblems disabled={!idle} pressed={pressed} onPick={(side) => void model.pick(side)} />
 
       <Balance balance={s.balance} demo={demo} reducedMotion={reducedMotion} fmt={fmt} />
-      <BetPlaque bet={s.bet} disabled={!setupOpen} fmt={fmt} onOpen={() => open('bets')} />
-      {s.mode === 'multiply' && <Ladder ladder={config.ladder} step={step} fmt={fmt} />}
+      <Ladder ladder={config.ladder} step={step} fmt={fmt} />
       {openRun ? (
         <CashOut
           prize={openRun.prize}
@@ -191,14 +170,16 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
           onCashOut={() => void model.cashOut()}
         />
       ) : (
-        <BetDial
+        <Stake
           bets={config.bets}
           bet={s.bet}
           disabled={!setupOpen}
-          label={fmt.full}
-          short={fmt.short}
-          onChange={changeBet}
-          feedback={dialFeedback}
+          fmt={fmt}
+          onChange={(bet) => {
+            changeBet(bet);
+            sounds.tick();
+          }}
+          onOpen={() => open('bets')}
         />
       )}
 

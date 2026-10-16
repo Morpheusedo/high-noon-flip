@@ -115,29 +115,38 @@ test('loads and names its version and build', async ({ page }) => {
   await expect(page.locator('.rules-panel')).toHaveCount(0);
 });
 
-test('plays an Instant bet', async ({ page }) => {
+test('changes the bet with − and +, and from the list', async ({ page }) => {
   await openGame(page);
-  const before = await balances(page);
-  const shownBefore = await shownBalance(page);
-  await page.evaluate(() => window.hnf?.server.forceOutcomes('win'));
+  const bet = () => page.evaluate(() => window.hnf?.model?.state.bet);
+  const bets = await page.evaluate(() => window.hnf?.model?.state.config.bets ?? []);
+  const value = page.locator('.stake-value .plaque-value');
+  await expect(page.getByRole('button', { name: 'Lower the bet' })).toBeDisabled();
 
-  expect(await playRound(page, () => tap(page.locator('.pick.sheriff')))).toBe('win');
+  await tap(page.getByRole('button', { name: 'Raise the bet' }));
+  expect(await bet()).toBe(bets[1]);
+  await tap(page.getByRole('button', { name: 'Lower the bet' }));
+  expect(await bet()).toBe(bets[0]);
 
-  const after = await balances(page);
-  expect(after.server).toBeGreaterThan(before.server);
-  expect(after.client).toBe(after.server);
-  expect(await shownBalance(page)).not.toBe(shownBefore);
+  const shown = await value.textContent();
+  await tap(page.locator('.stake-value'));
+  await tap(page.locator('.picker .bullet').last());
+  await expect(page.locator('.picker')).toHaveCount(0);
+  expect(await bet()).toBe(bets.at(-1));
+  await expect(value).not.toHaveText(shown ?? '');
+  await expect(page.getByRole('button', { name: 'Raise the bet' })).toBeDisabled();
 });
 
-test('plays a Multiply run and cashes out', async ({ page }) => {
+test('plays a run and cashes out', async ({ page }) => {
   await openGame(page);
-  await tap(page.locator('.mode').getByRole('button', { name: 'Multiply' }));
+  const shownBefore = await shownBalance(page);
   await page.evaluate(() => window.hnf?.server.forceOutcomes('win', 'win'));
 
   for (const step of [1, 2]) {
     await tap(page.locator('.pick.outlaw'));
     await waitIdle(page);
     expect(await page.evaluate(() => window.hnf?.model?.state.openRun?.step)).toBe(step);
+    // in a run the cash out takes the bet's place
+    await expect(page.locator('.stake')).toHaveCount(0);
   }
   const before = await balances(page);
   expect(await playRound(page, () => tap(page.locator('.cashout')))).toBe('win');
@@ -146,6 +155,8 @@ test('plays a Multiply run and cashes out', async ({ page }) => {
   expect(await page.evaluate(() => window.hnf?.model?.state.openRun)).toBeNull();
   expect(after.server).toBeGreaterThan(before.server);
   expect(after.client).toBe(after.server);
+  expect(await shownBalance(page)).not.toBe(shownBefore);
+  await expect(page.locator('.stake')).toBeVisible();
 });
 
 test('recovers a round whose answer was lost (NETWORK)', async ({ page }) => {
@@ -166,7 +177,7 @@ test('recovers a round whose answer was lost (NETWORK)', async ({ page }) => {
   expect(after.client).toBe(after.server);
 });
 
-test('resumes an open Multiply run after a reload', async ({ page }) => {
+test('resumes an open run after a reload', async ({ page }) => {
   await openGame(page);
   await page.evaluate(() => {
     const hnf = window.hnf;
@@ -199,8 +210,7 @@ const CONTROLS = [
   '.pick.sheriff',
   '.pick.outlaw',
   '.plaque.balance',
-  '.plaque.bet',
-  '.mode',
+  '.stake',
   '.tool.rules',
   '.tool.settings',
 ];

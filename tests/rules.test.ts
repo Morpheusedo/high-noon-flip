@@ -6,7 +6,6 @@ describe('rules facts', () => {
   it('come from the config the server sends', async () => {
     const { config } = await new MockServer().init();
     const facts = rulesFacts(config, 100);
-    expect(facts.instantMultiplier).toBe(1.98);
     expect(facts.ladder.map((r) => r.prize)).toEqual([
       198, 396, 792, 1584, 3168, 6336, 12672, 25344,
     ]);

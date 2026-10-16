@@ -1,6 +1,6 @@
 /**
  * Every bet level at once, as rows of bullets: the quick way to a far-off
- * level when the operator sends many. Opens from the bet plaque.
+ * level when the operator sends many. Opens from the bet amount.
  */
 import { useEffect, useRef } from 'preact/hooks';
 import type { Minor } from '../../server/protocol';

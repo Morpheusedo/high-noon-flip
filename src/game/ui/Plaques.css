@@ -56,25 +56,90 @@
   line-height: calc(clamp(15px, 4.8cqmin, 36px) * 1.2);
 }
 
-.plaque.bet {
-  left: 38.5cqmin;
-  min-width: 24cqmin;
+/* the bet, in the middle at the bottom: − plaque + */
+.stake {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  translate: -50% 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 1.4cqmin;
+  transition: opacity 0.2s;
 }
 
-.plaque.bet:hover:not(:disabled) {
+/* locked while a round plays */
+.stake[data-locked] {
+  opacity: 0.55;
+}
+
+.stake-value {
+  box-sizing: border-box;
+  min-width: 30cqmin;
+  padding: 1.5cqmin 4cqmin 1.7cqmin;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2cqmin;
+  border: 0;
+  color: inherit;
+  background: url(./art/plaque.webp) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
+}
+
+.stake-value .plaque-label {
+  color: var(--gold);
+}
+
+.stake-value:hover:not(:disabled) {
   filter: brightness(1.15) drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
 }
 
-.plaque.bet:disabled {
-  opacity: 0.55;
+.stake-step {
+  --step: clamp(34px, 8.4cqmin, 60px);
+  width: var(--step);
+  aspect-ratio: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #3a2606;
+  background: url(./art/btn-brass.webp) center / 100% 100% no-repeat;
+  box-shadow:
+    0 0.2em 0.5em rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.stake-step svg {
+  width: 46%;
+  height: 46%;
+}
+
+.stake-step:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.stake-step:active:not(:disabled) {
+  translate: 0 1px;
+}
+
+/* the lowest or the highest bet: that way is closed */
+.stake:not([data-locked]) .stake-step:disabled {
+  opacity: 0.4;
+}
+
+.stake button:disabled {
   cursor: default;
 }
 
-/* multiply mode: a row of rungs to climb */
+/* a row of rungs to climb, over the bet */
 .ladder {
   position: absolute;
   left: 50%;
-  bottom: 15.5%;
+  bottom: 17%;
   translate: -50% 0;
   z-index: 4;
   display: flex;
@@ -291,24 +356,16 @@
     font-size: clamp(13px, 5cqmin, 32px);
   }
 
-  /* two wooden tabs sliding in from the left edge: total bet on top, balance under it */
-  .plaque.bet,
+  /* the balance: a wooden tab sliding in from the left edge, over the bet */
   .balance {
     left: -3cqmin;
+    bottom: 13%;
+    width: auto;
     min-width: 34cqmin;
     padding: 1.35cqmin 3cqmin 1.5cqmin 5.7cqmin;
     z-index: 5;
     align-items: flex-start;
     filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.6));
-  }
-
-  .plaque.bet {
-    bottom: 13.9%;
-  }
-
-  .balance {
-    bottom: 7%;
-    width: auto;
     --room: 22.5cqmin;
   }
 
@@ -317,8 +374,18 @@
     line-height: normal;
   }
 
-  .chg {
-    display: none;
+  .stake {
+    bottom: 2.5%;
+    gap: 2cqmin;
+  }
+
+  .stake-value {
+    min-width: 36cqmin;
+    padding: 1.4cqmin 4cqmin 1.6cqmin;
+  }
+
+  .stake-step {
+    --step: clamp(36px, 11cqmin, 80px);
   }
 
   /* the ladder becomes a column down the left side */
@@ -353,20 +420,15 @@
     flex: none;
   }
 
-  /* cash out: a wooden tab from the right edge, mirroring the balance on the left */
+  /* cash out: in the bet's place */
   .cashout {
-    left: auto;
-    right: -3cqmin;
-    bottom: 7%;
-    translate: none;
-    min-width: 34cqmin;
-    box-sizing: border-box;
-    padding: 1.35cqmin 5.7cqmin 1.5cqmin 3cqmin;
+    bottom: 2.5%;
+    min-width: 50cqmin;
+    padding: 1.8cqmin 5cqmin 2cqmin;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: center;
     gap: 0.2cqmin;
-    text-align: right;
   }
 
   .cashout .plaque-label {
@@ -374,7 +436,7 @@
   }
 
   .cashout .plaque-value {
-    font-size: clamp(13px, 5cqmin, 32px);
+    font-size: clamp(13px, 5.4cqmin, 34px);
   }
 }
 

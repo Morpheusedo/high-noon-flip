@@ -72,6 +72,13 @@ Instant is gone from the server contract, the model, the interface, the rules an
 texts. The cylinder dial and the "Total bet" plaque are replaced by one bet block in the
 middle at the bottom (− amount +), with the cash out in its place during a run.
 
+### 10. Typed bets — done
+
+With `customBet` in the config the bet list has a field for an exact amount (7.35 FUN),
+checked against the range, the grid and the balance before it becomes the bet. Without
+it nothing changes. The rules name the range and the step, and the maximum win follows
+the highest typed stake.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -102,6 +109,28 @@ middle at the bottom (− amount +), with the cash out in its place during a run
   step one level and close at the ends; the amount opens every level as a grid. In a run
   the cash out takes its place, since the bet cannot change then. The cylinder dial in
   the corner did not read as a bet control to players, so it is gone.
+- Typed bets (step 10) are switched on by the server, not the client: `GameConfig.customBet`
+  `{ min, max, step }` in minor units, absent or null for levels only. `server/bets.ts`
+  `isValidBet` is the one rule: a level, or `min..max` with `(bet - min) % step === 0`.
+  `RoundModel.setBet` and `MockServer` both use it, so the client never offers a stake the
+  server refuses. The demo takes 0.10 to 100.00 FUN in steps of 0.05.
+- The field lives in the bet list, above the bullets: one place to change the bet. It
+  reads the number in the player's language (`parseAmount` in `shell/money.ts`): the
+  language's decimal mark, its grouping, and a lone other mark as a decimal one when it
+  cannot be grouping ("7,35" in English), since a phone keyboard offers the device's mark,
+  not the game's. More decimals than the currency has is not an amount (JPY "1.5").
+- Below the minimum, above the maximum or above the balance: a message with the limit as
+  an amount, and the dialog stays. Off the step: rounded down to the grid, shown in the
+  field with a note, and OK once more makes it the bet. A stake is never changed silently.
+- − and + (and ↑ ↓) still step through the levels; from a typed amount between two levels
+  they go to the next one up or down. "Lower the bet" after insufficient funds offers the
+  highest level the balance covers, and the balance on the grid only below every level:
+  never an odd all-in amount while a level fits.
+- With a phone keyboard up the bet list pads itself into the visible part of the stage
+  (`visualViewport`) and shows only the title and the field. It follows the viewport, not
+  the focus: a tap on OK blurs the field, and a layout that moved on blur would move OK from
+  under the finger. Checked with a simulated viewport; a real phone keyboard is still on the
+  device checklist.
 - Interface images live in `src/game/ui/art/` so Vite hashes them and CSS paths follow
   the CDN base; `public/assets/` keeps only what Pixi loads at run time.
 - Strings live in `src/locales/*.json`, flat keys (`"rules.bets"`), `{name}` placeholders,
@@ -195,5 +224,8 @@ middle at the bottom (− amount +), with the cash out in its place during a run
 5. Languages and currencies, including crypto.
 6. Who writes the math and the rules text, and who certifies. The rules text and its
    Russian translation are ours for now and need the provider's compliance review.
-7. Fonts come from Google Fonts. EU operators may reject requests to Google from inside
+7. Does the RGS accept arbitrary stakes, and with what minimum, maximum and step per
+   currency? Until it says so, `customBet` stays off in a real integration and the game
+   offers the levels alone.
+8. Fonts come from Google Fonts. EU operators may reject requests to Google from inside
    the game (GDPR); self-host them before a real-money launch.

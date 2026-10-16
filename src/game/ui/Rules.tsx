@@ -49,6 +49,9 @@ export function Rules({ config, jurisdiction, bet, demo, lang, fmt, onClose }: P
     [lang],
   );
   const top = facts.ladder.at(-1);
+  const custom = facts.customBet;
+  // typed amounts that span every level say all there is to say about the limits
+  const typedOnly = custom?.min === facts.minBet && custom.max === facts.maxBet;
 
   return (
     <Dialog label={t('rules.title')} panelClass="rules-panel" onClose={onClose}>
@@ -89,7 +92,15 @@ export function Rules({ config, jurisdiction, bet, demo, lang, fmt, onClose }: P
 
         <h3>{t('rules.limits.title')}</h3>
         <p>
-          {t('rules.limits.bets', { min: fmt.full(facts.minBet), max: fmt.full(facts.maxBet) })}{' '}
+          {typedOnly
+            ? ''
+            : `${t('rules.limits.bets', { min: fmt.full(facts.minBet), max: fmt.full(facts.maxBet) })} `}
+          {custom &&
+            `${t('rules.limits.typed', {
+              min: fmt.full(custom.min),
+              max: fmt.full(custom.max),
+              step: fmt.full(custom.step),
+            })} `}
           {parts('rules.limits.maxWin', {
             multiplier: <b>{fmt.exactMultiplier(facts.maxWin.multiplier)}</b>,
             amount: <b>{fmt.full(facts.maxWin.amount)}</b>,

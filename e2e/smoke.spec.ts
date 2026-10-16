@@ -136,6 +136,28 @@ test('changes the bet with − and +, and from the list', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Raise the bet' })).toBeDisabled();
 });
 
+test('takes a typed bet and plays it', async ({ page }) => {
+  await openGame(page);
+  await tap(page.locator('.stake-value'));
+  const field = page.getByRole('textbox', { name: 'Your bet in FUN' });
+  // off the 0.05 grid: rounded down and shown before it is the bet
+  await field.fill('7.37');
+  await field.press('Enter');
+  await expect(field).toHaveValue('7.35');
+  await expect(page.locator('.picker-note')).toContainText('7.35 FUN');
+  await tap(page.locator('.picker-ok'));
+  await expect(page.locator('.picker')).toHaveCount(0);
+  await expect(page.locator('.stake-value .plaque-value')).toHaveText(/^7\.35\s*FUN$/);
+
+  const before = await balances(page);
+  await page.evaluate(() => window.hnf?.server.forceOutcomes('win'));
+  await tap(page.locator('.pick.sheriff'));
+  await waitIdle(page);
+  const server = await page.evaluate(() => window.hnf?.server.snapshot());
+  expect(server?.openRun?.bet).toBe(735);
+  expect(server?.balance).toBe(before.server - 735);
+});
+
 test('plays a run and cashes out', async ({ page }) => {
   await openGame(page);
   const shownBefore = await shownBalance(page);

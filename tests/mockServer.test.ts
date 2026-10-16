@@ -36,9 +36,24 @@ describe('first pick', () => {
     expect(res.openRun).toBeNull();
   });
 
-  it('rejects a bet that is not in the config', async () => {
+  it('rejects a bet off the typed-bet grid or outside its range', async () => {
     const server = new MockServer();
-    await rejectsWith(server.play({ bet: 123, pick: 'sheriff' }), 'INVALID_BET');
+    // 0.10 to 100.00 in steps of 0.05
+    for (const bet of [123, 5, 10_005, 0, -100, 7.5])
+      await rejectsWith(server.play({ bet, pick: 'sheriff' }), 'INVALID_BET');
+  });
+
+  it('takes a typed bet on the grid', async () => {
+    const server = new MockServer({ balance: 100_000 });
+    server.forceOutcomes('outlaw');
+    const res = await server.play({ bet: 735, pick: 'sheriff' });
+    expect(res.balance).toBe(100_000 - 735);
+  });
+
+  it('takes only levels without typed bets in the config', async () => {
+    const server = new MockServer({ config: { customBet: null } });
+    await rejectsWith(server.play({ bet: 735, pick: 'sheriff' }), 'INVALID_BET');
+    expect((await server.init()).config.customBet).toBeNull();
   });
 
   it('rejects a bet above the balance', async () => {

@@ -1,6 +1,6 @@
 /** Number formats the interface needs on top of `shell/money.ts`. */
 import type { Currency, Minor } from '../../server/protocol';
-import { formatAmount, formatMoney, toMajor } from '../../shell/money';
+import { formatAmount, formatInput, formatMoney, parseAmount, toMajor } from '../../shell/money';
 
 export interface Formats {
   /** The number alone: "1,000.00". */
@@ -11,6 +11,10 @@ export interface Formats {
   full(value: Minor): string;
   /** The currency code shown small next to an amount. */
   code: string;
+  /** As a player would type it: "7.35", "7,35". */
+  input(value: Minor): string;
+  /** What a player typed, in their language's way of writing numbers; null if it is not an amount. */
+  parse(text: string): Minor | null;
   /** "×1.98", "×15.8", "×253": fewer decimals as the number grows. */
   multiplier(value: number): string;
   /** "×15.84", "×253.44": every decimal the payout has, for the rules. */
@@ -34,6 +38,8 @@ export function formats(currency: Currency, lang: string): Formats {
     },
     full: (value) => formatMoney(value, currency, lang),
     code: currency.code,
+    input: (value) => formatInput(value, currency, lang),
+    parse: (text) => parseAmount(text, currency, lang),
     multiplier: (value) => `×${(value < 10 ? two : value < 100 ? one : none).format(value)}`,
     exactMultiplier: (value) => `×${exact.format(value)}`,
   };

@@ -24,13 +24,27 @@ export interface Currency {
 /** Game settings the operator and provider choose; the client only displays them. */
 export interface GameConfig {
   currency: Currency;
-  /** Allowed stakes, ascending. */
+  /** Bet levels, ascending: what − and + step through and the bet list shows. */
   bets: Minor[];
   defaultBet: Minor;
+  /**
+   * Any stake from `min` to `max` on a grid of `step` (`(bet - min) % step === 0`),
+   * besides the levels in `bets`: the player may type an amount. Only the RGS can
+   * say it takes such stakes, so without this the game offers the levels alone.
+   * `isValidBet` in `bets.ts` is the rule both sides apply.
+   */
+  customBet?: CustomBet | null;
   /** The prize multiplier after 1, 2, 3 ... correct picks in a row. */
   ladder: number[];
   /** Return to player, as a fraction: 0.99 is 99%. */
   rtp: number;
+}
+
+/** The range of typed stakes, in minor units of the session currency. */
+export interface CustomBet {
+  min: Minor;
+  max: Minor;
+  step: Minor;
 }
 
 /** Market rules that switch client features on or off. */

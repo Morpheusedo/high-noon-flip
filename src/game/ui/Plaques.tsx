@@ -4,6 +4,7 @@
  * in a run the cash out in the bet's place.
  */
 import { useRef } from 'preact/hooks';
+import { nextLevel } from '../../server/bets';
 import type { Minor } from '../../server/protocol';
 import type { Formats } from './format';
 import { useCountUp, useFitText } from './hooks';
@@ -53,21 +54,22 @@ interface StakeProps {
   onOpen(): void;
 }
 
-/** The bet, in the middle at the bottom: − and + step one level, the amount opens the list. */
+/**
+ * The bet, in the middle at the bottom: − and + step one level, the amount opens
+ * the list (and the field for an exact amount, where the server takes one).
+ */
 export function Stake({ bets, bet, disabled, fmt, onChange, onOpen }: StakeProps) {
   const { t } = useText();
-  const index = bets.indexOf(bet);
-  const step = (dir: 1 | -1) => {
-    const next = bets[index + dir];
-    if (next !== undefined) onChange(next);
-  };
+  // from a typed amount between two levels, to the level above or below it
+  const lower = nextLevel(bets, bet, -1);
+  const higher = nextLevel(bets, bet, 1);
   return (
     <div class="stake" role="group" aria-label={t('bet')} data-locked={disabled || undefined}>
       <button
         class="stake-step"
         aria-label={t('bet.lower')}
-        disabled={disabled || index <= 0}
-        onClick={() => step(-1)}
+        disabled={disabled || lower === null}
+        onClick={() => lower !== null && onChange(lower)}
       >
         <StepIcon plus={false} />
       </button>
@@ -85,8 +87,8 @@ export function Stake({ bets, bet, disabled, fmt, onChange, onOpen }: StakeProps
       <button
         class="stake-step"
         aria-label={t('bet.raise')}
-        disabled={disabled || index < 0 || index >= bets.length - 1}
-        onClick={() => step(1)}
+        disabled={disabled || higher === null}
+        onClick={() => higher !== null && onChange(higher)}
       >
         <StepIcon plus />
       </button>

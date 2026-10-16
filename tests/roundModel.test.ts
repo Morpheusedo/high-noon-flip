@@ -71,21 +71,49 @@ describe('first pick', () => {
 
   it('learns the real balance when the server refuses a bet the client thought it could cover', async () => {
     const { server, model } = await setup();
-    server.setBalance(50);
+    // below the lowest level and the lowest typed bet
+    server.setBalance(5);
     model.setBet(500);
     await model.pick('sheriff');
     expect(model.state.phase).toMatchObject({ name: 'error', code: 'INSUFFICIENT_FUNDS' });
     await model.dismissError();
     expect(model.state.phase.name).toBe('idle');
-    expect(model.state.balance).toBe(50);
+    expect(model.state.balance).toBe(5);
     expect(affordableBet(model.state)).toBeNull();
   });
 
-  it('accepts only bets from the config', async () => {
+  it('accepts only bets the config allows', async () => {
     const { model } = await setup();
     model.setBet(1000);
     model.setBet(123);
     expect(model.state.bet).toBe(1000);
+  });
+
+  it('plays a typed bet when the server takes them', async () => {
+    const { server, model } = await setup();
+    server.forceOutcomes('sheriff');
+    model.setBet(735);
+    expect(model.state.bet).toBe(735);
+    await model.pick('sheriff');
+    present(model);
+    expect(model.state.balance).toBe(100_000 - 735);
+    expect(server.snapshot().openRun).toMatchObject({ bet: 735, prize: 1455 });
+  });
+
+  it('takes only levels when the server takes no typed bets', async () => {
+    const { model } = await setup({ config: { customBet: null } });
+    model.setBet(735);
+    expect(model.state.bet).toBe(100);
+  });
+
+  it('offers the highest level the balance covers, else the balance on the grid', async () => {
+    const { server, model } = await setup();
+    server.setBalance(2_733);
+    await model.refresh();
+    expect(affordableBet(model.state)).toBe(2_500);
+    server.setBalance(87);
+    await model.refresh();
+    expect(affordableBet(model.state)).toBe(85);
   });
 });
 

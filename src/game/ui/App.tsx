@@ -10,6 +10,7 @@
  * one bet, so a key held down can never act as autoplay.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { nextLevel } from '../../server/bets';
 import type { Minor, Side } from '../../server/protocol';
 import type { Settings } from '../../shell/settings';
 import type { Store } from '../../shell/store';
@@ -107,9 +108,8 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       const dir = e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0;
       if (dir && canChangeSetup(state)) {
         e.preventDefault();
-        const { bets } = state.config;
-        const next = bets[bets.indexOf(state.bet) + dir];
-        if (next !== undefined) {
+        const next = nextLevel(state.config.bets, state.bet, dir);
+        if (next !== null) {
           model.setBet(next);
           sounds.tick();
         }
@@ -188,7 +188,7 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
         (phase.code === 'INSUFFICIENT_FUNDS' ? (
           <FundsNotice
             broke={lower === null}
-            canLower={lower !== null && s.bet > (config.bets[0] ?? s.bet)}
+            canLower={lower !== null && lower < s.bet}
             onLower={async () => {
               // the balance is fetched again first, so the bet goes to what it really covers
               await model.dismissError();
@@ -235,8 +235,9 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       )}
       {panel === 'bets' && (
         <BetPicker
-          bets={config.bets}
+          config={config}
           bet={s.bet}
+          balance={s.balance}
           fmt={fmt}
           onChoose={(bet) => {
             changeBet(bet);

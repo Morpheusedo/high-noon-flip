@@ -59,8 +59,8 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 "unknown" otherwise.
 
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
-360 x 640 phone, portrait and landscape: loading, the bet's − and + and its list, a run and its
-cash out, a lost answer (NETWORK) and its recovery, a run resumed after a reload, the
+360 x 640 phone, portrait and landscape: loading, the bet's − and + and its list, a typed bet
+played to the server, a run and its cash out, a lost answer (NETWORK) and its recovery, a run resumed after a reload, the
 controls on screen before and after a rotation. Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
 
@@ -76,11 +76,12 @@ src/
 ├─ locales/           every string the player reads: en.json (the base), ru.json
 ├─ server/
 │  ├─ protocol.ts     the contract with the game server (RGS); start here
+│  ├─ bets.ts         which stakes the server takes: levels and typed amounts
 │  ├─ mockServer.ts   in-browser stand-in for the RGS, with QA controls
 │  └─ qa.ts           what the QA panel may ask of a test server
 ├─ shell/             parts every game needs; will move to a shared package
 │  ├─ launchParams.ts reading and validating the launch URL
-│  ├─ money.ts        minor units → "€198.00" for any currency and language
+│  ├─ money.ts        minor units ↔ "€198.00" for any currency and language
 │  ├─ assets.ts       asset URLs that work under any CDN path
 │  ├─ i18n.ts         dictionaries: placeholders, plurals, language fallback
 │  ├─ loader.ts       the loading screen's progress and its error state
@@ -109,7 +110,7 @@ src/
       ├─ TopBar.tsx       title, last flips, speed
       ├─ Emblems.tsx      Sheriff and Outlaw picks, keycaps, the tap over the coin
       ├─ Plaques.tsx      balance, the bet (− amount +), ladder, cash out
-      ├─ BetPicker.tsx    every bet level at once, from the bet amount
+      ├─ BetPicker.tsx    every bet level at once, and a field for an exact amount
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed)
       ├─ Rules.tsx        the info button and the rules screen
       ├─ Notices.tsx      result stamp, insufficient funds, error dialogs
@@ -151,7 +152,10 @@ Rules the code follows:
 - **Art comes with its measurements.** Positions measured on an image live in
   `scene-layout.json` next to it, not in code.
 - **Bets come from the operator.** − and + step through whatever levels the config sends,
-  and the list shows them all; the client never assumes a number of them.
+  and the list shows them all; the client never assumes a number of them. When the config
+  has `customBet` (the server takes any stake in a range, on a grid), the list also has a
+  field for an exact amount, read as the player's language writes numbers. `server/bets.ts`
+  holds the rule, and the client and the mock server both use it.
 - **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet. A held key does not repeat, so it cannot act as
   autoplay.
 - **No string in code.** Every text the player reads is a key in `src/locales/en.json`.

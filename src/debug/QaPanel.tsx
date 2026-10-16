@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { Minor, ServerErrorCode } from '../server/protocol';
 import type { FailurePoint, ForcedFlip, QaServer, QaSnapshot } from '../server/qa';
+import { betLimits } from '../server/bets';
 import { toMinor } from '../shell/money';
 import { readJson, writeJson, type KeyValueStore } from '../shell/storage';
 import { useStore } from '../shell/useStore';
@@ -103,7 +104,7 @@ export function QaPanel({ server, model, lang, storage }: Props) {
     );
   };
 
-  const lowest = s.config.bets[0] ?? 0;
+  const lowest = betLimits(s.config).min;
 
   return (
     <div class="qa" data-open={open || undefined} onKeyDown={(e) => e.stopPropagation()}>

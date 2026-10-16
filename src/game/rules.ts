@@ -3,21 +3,24 @@
  * client does not hold the math: if the provider changes a payout or the RTP,
  * the rules follow with no client release.
  */
-import type { GameConfig, Minor } from '../server/protocol';
+import { betLimits } from '../server/bets';
+import type { CustomBet, GameConfig, Minor } from '../server/protocol';
 
 export interface RulesFacts {
   /** Multiplier and prize at `bet` per rung; rung i is reached after i + 1 correct picks. */
   ladder: { picks: number; multiplier: number; prize: Minor }[];
+  /** The lowest and highest stake, levels and typed amounts together. */
   minBet: Minor;
   maxBet: Minor;
+  /** The range of typed stakes, when the server takes them. */
+  customBet: CustomBet | null;
   rtp: number;
-  /** The top rung's multiplier, and what it pays at the highest bet. */
+  /** The top rung's multiplier, and what it pays at the highest stake. */
   maxWin: { multiplier: number; amount: Minor };
 }
 
 export function rulesFacts(config: GameConfig, bet: Minor): RulesFacts {
-  const minBet = config.bets[0] ?? 0;
-  const maxBet = config.bets.at(-1) ?? 0;
+  const { min: minBet, max: maxBet } = betLimits(config);
   const top = Math.max(...config.ladder);
   return {
     ladder: config.ladder.map((multiplier, i) => ({
@@ -27,6 +30,7 @@ export function rulesFacts(config: GameConfig, bet: Minor): RulesFacts {
     })),
     minBet,
     maxBet,
+    customBet: config.customBet ?? null,
     rtp: config.rtp,
     maxWin: { multiplier: top, amount: payout(maxBet, top) },
   };

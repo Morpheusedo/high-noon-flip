@@ -28,6 +28,7 @@ import {
   type ServerErrorCode,
   type Side,
 } from '../../server/protocol';
+import { isValidBet, snapToGrid } from '../../server/bets';
 import { Store } from '../../shell/store';
 
 /** How many past outcomes the strip under the title shows. */
@@ -83,9 +84,13 @@ export const canPick = (s: RoundState): boolean =>
 export const canCashOut = (s: RoundState): boolean => isIdle(s) && s.openRun !== null;
 /** The bet is locked while a run is open. */
 export const canChangeSetup = (s: RoundState): boolean => isIdle(s) && s.openRun === null;
-/** The highest bet the balance covers, or null when it covers none. */
+/**
+ * The highest level the balance covers. Below every level, with typed bets on, the
+ * balance itself on the grid: never an odd all-in amount while a level fits.
+ * Null when the balance covers no bet at all.
+ */
 export const affordableBet = (s: RoundState): Minor | null =>
-  s.config.bets.filter((b) => b <= s.balance).at(-1) ?? null;
+  s.config.bets.filter((b) => b <= s.balance).at(-1) ?? snapToGrid(s.config, s.balance);
 
 export class RoundModel {
   readonly store: Store<RoundState>;
@@ -149,7 +154,7 @@ export class RoundModel {
   }
 
   setBet(bet: Minor): void {
-    if (!canChangeSetup(this.state) || !this.state.config.bets.includes(bet)) return;
+    if (!canChangeSetup(this.state) || !isValidBet(this.state.config, bet)) return;
     this.update({ bet });
   }
 

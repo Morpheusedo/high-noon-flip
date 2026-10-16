@@ -22,6 +22,7 @@ import {
   type ServerErrorCode,
   type Side,
 } from './protocol';
+import { isValidBet } from './bets';
 import type { FailurePoint, ForcedFlip, QaServer, QaSnapshot } from './qa';
 import { readJson, writeJson, type KeyValueStore } from '../shell/storage';
 
@@ -35,6 +36,8 @@ const DEFAULT_CONFIG: GameConfig = {
   currency: { code: 'FUN', decimals: 2 },
   bets: [100, 500, 1000, 2500, 5000, 10000],
   defaultBet: 100,
+  // typed stakes for the demo: 0.10 to 100.00 in steps of 0.05
+  customBet: { min: 10, max: 10_000, step: 5 },
   ladder: LADDER_HUNDREDTHS.map((h) => h / 100),
   rtp: 0.99,
 };
@@ -150,7 +153,7 @@ export class MockServer implements GameServer, QaServer {
     if (open) {
       this.state.openRun = { ...open, step, prize: rungPrize(open.bet, step) };
     } else {
-      if (!this.config.bets.includes(bet)) throw new ServerError('INVALID_BET');
+      if (!isValidBet(this.config, bet)) throw new ServerError('INVALID_BET');
       if (bet > this.state.balance) throw new ServerError('INSUFFICIENT_FUNDS');
       this.state.balance -= bet;
       this.state.openRun = { roundId: newRoundId(), bet, step, prize: rungPrize(bet, step) };
@@ -181,7 +184,7 @@ export class MockServer implements GameServer, QaServer {
   async play(request: PlayRequest): Promise<RoundResponse> {
     await this.respond();
     if (this.state.openRun) throw new ServerError('ROUND_IN_PROGRESS');
-    if (!this.config.bets.includes(request.bet)) throw new ServerError('INVALID_BET');
+    if (!isValidBet(this.config, request.bet)) throw new ServerError('INVALID_BET');
     if (request.bet > this.state.balance) throw new ServerError('INSUFFICIENT_FUNDS');
 
     const roundId = newRoundId();

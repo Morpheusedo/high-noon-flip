@@ -156,8 +156,10 @@ Rules the code follows:
 - **Bets come from the operator.** − and + step through whatever levels the config sends,
   and the list shows them all; the client never assumes a number of them. When the config
   has `customBet` (the server takes any stake in a range, on a grid), the list also has a
-  field for an exact amount, read as the player's language writes numbers. `server/bets.ts`
-  holds the rule, and the client and the mock server both use it.
+  field for an exact amount, read as the player's language writes numbers. One tap on the
+  bet opens it focused with the bet selected, so the player types at once and a phone
+  raises its keyboard from that tap. `server/bets.ts` holds the rule, and the client and the
+  mock server both use it.
 - **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space cash out. A held key does not repeat, so it
   cannot act as autoplay. A button reached with Tab keeps its own Space.
 - **No string in code.** Every text the player reads is a key in `src/locales/en.json`.

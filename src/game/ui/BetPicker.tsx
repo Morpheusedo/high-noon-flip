@@ -3,12 +3,13 @@
  * level when the operator sends many. Opens from the bet amount.
  *
  * When the server takes typed stakes (`customBet`), a field above the bullets
- * takes an exact amount. It reads the number as the player's language writes it
+ * takes an exact amount. It opens focused with the bet selected, so the player
+ * types over it at once. It reads the number as the player's language writes it
  * and checks it against the config and the balance before anything is sent; the
  * server still has the last word.
  */
 import type { RefObject } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { isValidBet, snapToGrid } from '../../server/bets';
 import type { CustomBet, GameConfig, Minor } from '../../server/protocol';
 import type { Formats } from './format';
@@ -29,10 +30,22 @@ export function BetPicker({ config, bet, balance, fmt, onChoose, onClose }: Prop
   const grid = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const keyboard = useKeyboardInset(root);
-  useEffect(() => {
+  const keyboardAtPress = useRef(false);
+  // in the same commit as the mount: the stand-in the opening tap focused hands
+  // the keyboard over to the field (see `App`)
+  useLayoutEffect(() => {
+    const input = root.current?.querySelector<HTMLInputElement>('.picker-field input');
+    if (input) {
+      input.focus({ preventScroll: true });
+      // typing replaces the bet; setSelectionRange, since iOS ignores select() here
+      input.setSelectionRange(0, input.value.length);
+      return;
+    }
     grid.current
       ?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')
       ?.focus({ preventScroll: true });
+  }, []);
+  useEffect(() => {
     // also while typing: Escape leaves the bet as it was
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -52,9 +65,21 @@ export function BetPicker({ config, bet, balance, fmt, onChoose, onClose }: Prop
       role="dialog"
       aria-modal="true"
       aria-label={t('bet.choose')}
-      // a tap outside the bullets and the field closes it without changing the bet
+      // a tap outside the bullets and the field closes it without changing the bet;
+      // with a phone keyboard up it only puts the keyboard away, so the bullets show.
+      // Read at the press: the field may lose the focus, and the keyboard start to
+      // go, before the click arrives
+      onPointerDown={() => {
+        keyboardAtPress.current = keyboard !== null;
+      }}
       onClick={(e) => {
-        if (!(e.target as HTMLElement).closest('.picker-grid, .picker-type')) onClose();
+        if ((e.target as HTMLElement).closest('.picker-grid, .picker-type')) return;
+        if (!keyboardAtPress.current) {
+          onClose();
+          return;
+        }
+        const typing = document.activeElement;
+        if (typing instanceof HTMLInputElement) typing.blur();
       }}
     >
       <div class="picker-panel">
@@ -66,6 +91,7 @@ export function BetPicker({ config, bet, balance, fmt, onChoose, onClose }: Prop
           <TypedBet
             config={config}
             custom={config.customBet}
+            bet={bet}
             balance={balance}
             fmt={fmt}
             onChoose={onChoose}
@@ -93,15 +119,17 @@ export function BetPicker({ config, bet, balance, fmt, onChoose, onClose }: Prop
 interface TypedProps {
   config: GameConfig;
   custom: CustomBet;
+  /** Shown in the field to begin with, selected: typing replaces it. */
+  bet: Minor;
   balance: Minor;
   fmt: Formats;
   onChoose(bet: Minor): void;
 }
 
 /** The exact-amount field: "7.35 FUN [OK]", with the reason underneath when it cannot be the bet. */
-function TypedBet({ config, custom, balance, fmt, onChoose }: TypedProps) {
+function TypedBet({ config, custom, bet, balance, fmt, onChoose }: TypedProps) {
   const { t } = useText();
-  const [text, setText] = useState('');
+  const [text, setText] = useState(() => fmt.input(bet));
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
   const field = useRef<HTMLInputElement>(null);
 

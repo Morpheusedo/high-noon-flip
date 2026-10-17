@@ -97,7 +97,10 @@ the computer's address on the same Wi-Fi.
 | Background and back      | Lock the phone mid-round, unlock; switch apps and back        | sound stops and resumes; round ends; scene draws (no black canvas after a lost WebGL context) |
 | Low memory               | Open the game, then a few heavy apps, return                  | the tab reloads into the open run                                                             |
 | Sound                    | First tap unlocks; mute button; volume sliders                | no crackle, no delay over ~100 ms                                                             |
-| Typed bet                | Bet list → the field, both orientations, type 7,35 and 7.35   | keyboard offers a decimal mark; field and its message stay in sight above it; OK takes it     |
+| Typed bet                | One tap on the bet, both orientations, type 7,35 and 7.35     | keyboard up from that tap; typing replaces the bet; in sight; a tap outside shows the bullets |
+
+Check the typed bet on the iPhone too where the provider targets iOS: Safari raises the
+keyboard only from a tap, and a regression there shows on no Android phone.
 
 Write the results into the table under **Results** above with the phone's model, Android
 and Chrome versions, the build (rules screen: version and build) and the date.

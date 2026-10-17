@@ -26,6 +26,7 @@
   "bet.lower": "Lower the bet",
   "bet.raise": "Raise the bet",
   "bet.changeLabel": "Bet {amount}. Tap to see every bet.",
+  "bet.changeLabelTyped": "Bet {amount}. Tap to type a bet or pick one.",
   "bet.choose": "Choose your bet",
   "bet.chooseHint": "Tap a bullet to set your bet",
   "bet.typed.label": "Your bet in {currency}",

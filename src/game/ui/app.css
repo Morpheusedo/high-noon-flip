@@ -4,3 +4,18 @@
   inset: 0;
   font-family: var(--font-body);
 }
+
+/* takes the focus inside the tap that opens the bet field, so a phone raises its
+   keyboard (see `App`); unseen, and 16px so iOS does not zoom to it */
+.focus-stand-in {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px;
+  pointer-events: none;
+}

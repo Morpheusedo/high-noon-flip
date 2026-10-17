@@ -144,10 +144,14 @@ test('changes the bet with − and +, and from the list', async ({ page }) => {
 
 test('takes a typed bet and plays it', async ({ page }) => {
   await openGame(page);
+  // one tap on the bet and the player types: the field has the focus, the bet selected
   await tap(page.locator('.stake-value'));
   const field = page.getByRole('textbox', { name: 'Your bet in FUN' });
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue('1.00');
   // off the 0.05 grid: rounded down and shown before it is the bet
-  await field.fill('7.37');
+  await page.keyboard.type('7.37');
+  await expect(field).toHaveValue('7.37');
   await field.press('Enter');
   await expect(field).toHaveValue('7.35');
   await expect(page.locator('.picker-note')).toContainText('7.35 FUN');

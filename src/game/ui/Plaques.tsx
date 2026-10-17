@@ -49,6 +49,8 @@ export function Balance({ balance, demo, reducedMotion, delay, fmt }: BalancePro
 interface StakeProps {
   bets: Minor[];
   bet: Minor;
+  /** The server takes typed stakes: the amount opens the field, ready to type in. */
+  typed: boolean;
   disabled: boolean;
   fmt: Formats;
   onChange(bet: Minor): void;
@@ -60,7 +62,7 @@ interface StakeProps {
  * The bet, in the middle at the bottom: − and + step one level, the amount opens
  * the list (and the field for an exact amount, where the server takes one).
  */
-export function Stake({ bets, bet, disabled, fmt, onChange, onOpen }: StakeProps) {
+export function Stake({ bets, bet, typed, disabled, fmt, onChange, onOpen }: StakeProps) {
   const { t } = useText();
   // from a typed amount between two levels, to the level above or below it
   const lower = nextLevel(bets, bet, -1);
@@ -77,7 +79,9 @@ export function Stake({ bets, bet, disabled, fmt, onChange, onOpen }: StakeProps
       </button>
       <button
         class="stake-value"
-        aria-label={t('bet.changeLabel', { amount: fmt.full(bet) })}
+        aria-label={t(typed ? 'bet.changeLabelTyped' : 'bet.changeLabel', {
+          amount: fmt.full(bet),
+        })}
         disabled={disabled}
         onClick={onOpen}
       >

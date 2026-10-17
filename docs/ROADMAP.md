@@ -93,6 +93,13 @@ multiplier larger still, the prize under them, and along the bottom the next fli
 and what it pays ("Next flip: 50% chance to win 7.92 FUN"). The chance comes from the
 server's config.
 
+### 13. Type the bet at once — done
+
+With `customBet` on, one tap on the bet amount opens the list with the field focused and
+the bet selected, so the player types over it, and a phone raises its keyboard from that
+same tap. Enter or OK sets the bet as in step 10; with the keyboard up, a tap outside the
+field puts the keyboard away and shows the bullets. Without `customBet` nothing changes.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -145,6 +152,24 @@ server's config.
   the focus: a tap on OK blurs the field, and a layout that moved on blur would move OK from
   under the finger. Checked with a simulated viewport; a real phone keyboard is still on the
   device checklist.
+- One tap on the bet puts the player in the field (step 13): the field opens focused with
+  the bet selected, so typing replaces it; the bullets stay below it. Without `customBet`
+  the tap focuses the current bullet, as before.
+- iOS Safari raises the keyboard only for a `focus()` run inside the tap's own handler, and
+  the field mounts with the list, after the handler has returned. So the tap focuses a
+  stand-in field kept in the interface (`.focus-stand-in`, unseen, `inputmode="decimal"`
+  like the real one, 16px so iOS does not zoom), and the real field takes the focus over in
+  a layout effect on mount; a phone keeps its keyboard when focus moves from one text field
+  to another. Chosen over keeping the list mounted and hidden: a hidden dialog would sit in
+  the accessibility tree and keep its viewport listeners for the whole session. Checked in
+  Chrome, where both focuses land inside the click's dispatch; a real iPhone is still on the
+  device checklist.
+- The selection is made with `setSelectionRange`, not `select()`, which iOS ignores on a
+  field focused by script.
+- With a phone keyboard up, a tap outside the field puts the keyboard away instead of closing
+  the list, so the bullets come back one tap after the field; a second tap outside closes it.
+  Whether the keyboard was up is read on `pointerdown`: Chrome and Android blur the field on
+  the press, before the click arrives.
 - Interface images live in `src/game/ui/art/` so Vite hashes them and CSS paths follow
   the CDN base; `public/assets/` keeps only what Pixi loads at run time.
 - Strings live in `src/locales/*.json`, flat keys (`"rules.bets"`), `{name}` placeholders,

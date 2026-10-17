@@ -96,8 +96,13 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
   const setupOpen = canChangeSetup(s);
   const step = openRun?.step ?? 0;
   const hud = useRef<HTMLDivElement>(null);
+  const standIn = useRef<HTMLInputElement>(null);
   const open = (p: Panel) => {
     sounds.click();
+    // iOS raises the keyboard only for a focus inside the tap's own handler, and the
+    // bet field mounts after it: a stand-in field takes the focus now, the keyboard
+    // comes up, and the real field takes the focus (and the keyboard) over on mount
+    if (p === 'bets' && config.customBet) standIn.current?.focus({ preventScroll: true });
     setPanel(p);
   };
   // back to the button that opened it, so a keyboard player keeps their place
@@ -264,6 +269,7 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
         <Stake
           bets={config.bets}
           bet={s.bet}
+          typed={config.customBet != null}
           disabled={!setupOpen}
           fmt={fmt}
           onChange={(bet) => {
@@ -271,6 +277,17 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
             sounds.tick();
           }}
           onOpen={() => open('bets')}
+        />
+      )}
+
+      {config.customBet && (
+        <input
+          ref={standIn}
+          class="focus-stand-in"
+          type="text"
+          inputMode="decimal"
+          tabIndex={-1}
+          aria-hidden="true"
         />
       )}
 

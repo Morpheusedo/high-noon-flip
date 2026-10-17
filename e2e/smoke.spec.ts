@@ -177,9 +177,12 @@ test('plays a run and cashes out', async ({ page }) => {
     // in a run the cash out takes the bet's place
     await expect(page.locator('.stake')).toHaveCount(0);
   }
-  // the prize on the table and the next one: 1.00 FUN at x3.96, then x7.92
-  await expect(cashOut.locator('.plaque-value')).toHaveText(/^3\.96\s*FUN$/);
-  await expect(cashOut.locator('.cashout-next')).toHaveText('Next win 7.92 FUN');
+  // the rung, the prize on the table, and the next flip: 1.00 FUN at x3.96, then x7.92
+  await expect(cashOut.locator('.cashout-multiplier')).toHaveText('×3.96');
+  await expect(cashOut.locator('.cashout-amount')).toHaveText(/^3\.96\s*FUN$/);
+  await expect(cashOut.locator('.cashout-next')).toHaveText(
+    'Next flip: 50% chance to win 7.92 FUN',
+  );
 
   const before = await balances(page);
   expect(await playRound(page, () => cashOut.click())).toBe('win');
@@ -206,7 +209,7 @@ test.describe('with reduced motion', () => {
       hnf?.server.forceOutcomes('win');
       return hnf?.model?.refresh();
     });
-    const prize = page.locator('.cashout .plaque-value');
+    const prize = page.locator('.cashout-amount');
     await expect(prize).toHaveText(/^1\.98\s*FUN$/);
     await tap(page.locator('.pick.sheriff'));
     // the moment the coin lands the prize is the new one, with no count in between

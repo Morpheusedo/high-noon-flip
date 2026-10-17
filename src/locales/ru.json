@@ -39,6 +39,8 @@
   "cashOut": "Забрать",
   "cashOut.next": "Следующий выигрыш {amount}",
   "cashOut.nextTop": "Следующий выигрыш {amount} выплатится сам",
+  "cashOut.chance": "Следующий бросок: шанс {chance} выиграть {amount}",
+  "cashOut.chanceTop": "Последний бросок: шанс {chance} выиграть {amount}, выплата сразу",
   "cashOut.key": "Забрать: пробел",
 
   "stamp.win": "ВЫИГРЫШ",

@@ -38,6 +38,11 @@ export interface GameConfig {
   ladder: number[];
   /** Return to player, as a fraction: 0.99 is 99%. */
   rtp: number;
+  /**
+   * The chance that one pick wins, as the certified math has it: 0.5 for a fair coin.
+   * The cash out shows it beside the next prize; absent or null, it shows no chance.
+   */
+  winChance?: number | null;
 }
 
 /** The range of typed stakes, in minor units of the session currency. */

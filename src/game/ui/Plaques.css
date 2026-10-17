@@ -189,13 +189,15 @@
   filter: drop-shadow(0 0 0.8cqmin rgba(255, 200, 90, 0.9));
 }
 
-/* cash out: the prize, and under it the next one. It stands still between picks: a
-   correct pick counts the prize up and pops it once (Plaques.tsx). It rises in place
-   of the bet when a run starts, with the space bar keycap beside it. */
+/* cash out: CASH OUT and the amount on the left, the multiplier big on the right, the
+   next flip's chance along the bottom. It stands still between picks: a correct pick
+   counts the prize up and pops it once (Plaques.tsx). It rises in place of the bet when
+   a run starts, with the space bar keycap beside it. */
 .cashout-spot {
   position: absolute;
   left: 50%;
-  bottom: 3%;
+  /* a little lower than the bet: three lines need the room under the ladder */
+  bottom: 2%;
   translate: -50% 0;
   z-index: 4;
   transition:
@@ -211,18 +213,19 @@
 }
 
 .cashout {
-  padding: 1.5cqmin 5cqmin 1.7cqmin;
-  display: flex;
-  flex-direction: column;
+  padding: 0.9cqmin 4.4cqmin 1.1cqmin;
+  display: grid;
+  grid-template-areas:
+    'title multiplier'
+    'amount multiplier'
+    'next next';
   align-items: center;
-  gap: 0.3cqmin;
+  column-gap: 3cqmin;
   border: 0;
   outline: 0;
   white-space: nowrap;
-  color: var(--gold);
+  color: var(--cream);
   background: url(./art/plaque.webp) center / 100% 100% no-repeat;
-  font-weight: 700;
-  font-size: clamp(15px, 4.4cqmin, 34px);
   font-variant-numeric: tabular-nums;
   text-shadow:
     0 0.05em 0.08em #000,
@@ -241,20 +244,47 @@
   scale: 0.97;
 }
 
-.cashout .plaque-label {
-  margin-right: 0.7em;
-}
-
-.cashout .plaque-value {
-  font-size: inherit;
+/* CASH OUT in the title's western letters: the one word the player needs */
+.cashout-title {
+  grid-area: title;
+  font-family: var(--font-title);
+  font-size: clamp(16px, 4.6cqmin, 36px);
+  line-height: 1;
+  text-transform: uppercase;
   color: var(--gold);
 }
 
-/* what the next correct pick would pay: the choice between taking it and risking it */
+/* the rung's multiplier, the biggest thing on the plaque */
+.cashout-multiplier {
+  grid-area: multiplier;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 7.6cqmin, 62px);
+  line-height: 1;
+  color: var(--cream);
+}
+
+.cashout-amount {
+  grid-area: amount;
+  font-weight: 700;
+  font-size: clamp(12px, 3cqmin, 24px);
+  color: var(--cream);
+}
+
+.cashout-amount small {
+  font-size: 0.6em;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 0.3em;
+}
+
+/* the next flip: its chance and what it would pay, the choice between taking and risking */
 .cashout-next {
+  grid-area: next;
+  justify-self: center;
+  margin-top: 0.2cqmin;
   font-size: clamp(9px, 2cqmin, 14px);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--cream);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
@@ -351,33 +381,29 @@
     flex: none;
   }
 
-  /* cash out: in the bet's place, the label over the prize */
+  /* cash out: in the bet's place, a little bigger on the narrow screen */
   .cashout-spot {
     bottom: 2.5%;
   }
 
   .cashout {
-    min-width: 50cqmin;
     padding: 1.8cqmin 5cqmin 2cqmin;
   }
 
-  .cashout-main {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.2cqmin;
+  .cashout-title {
+    font-size: clamp(14px, 5.4cqmin, 36px);
   }
 
-  .cashout .plaque-label {
-    margin-right: 0;
+  .cashout-multiplier {
+    font-size: clamp(22px, 10cqmin, 62px);
+  }
+
+  .cashout-amount {
+    font-size: clamp(11px, 3.6cqmin, 24px);
   }
 
   .cashout-next {
     font-size: clamp(8px, 2.25cqmin, 14px);
-  }
-
-  .cashout .plaque-value {
-    font-size: clamp(13px, 5.4cqmin, 34px);
   }
 }
 

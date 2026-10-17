@@ -138,8 +138,12 @@ export function Ladder({ ladder, step, fmt }: LadderProps) {
 
 interface CashOutProps {
   prize: Minor;
+  /** The multiplier of the rung the run stands on. */
+  multiplier: number;
   /** What the next correct pick would pay; `top` when that rung pays out by itself. */
   next: { amount: Minor; top: boolean } | null;
+  /** The chance that one pick wins, from the server's config; null shows none. */
+  chance: number | null;
   disabled: boolean;
   reducedMotion: boolean;
   fmt: Formats;
@@ -154,13 +158,17 @@ interface CashOutProps {
 const PRIZE_COUNT_MS = 400;
 
 /**
- * The prize on the table and the next one, the player's real choice. A correct
- * pick counts the prize up and pops the plaque once; between picks it stands still.
- * The space bar keycap stands beside it on a desktop.
+ * The prize on the table and the next one, the player's real choice: CASH OUT and
+ * the multiplier big, the amount under them, and the chance of the next flip with
+ * what it would pay along the bottom. A correct pick counts the prize up and pops
+ * the plaque once; between picks it stands still. The space bar keycap stands
+ * beside it on a desktop.
  */
 export function CashOut({
   prize,
+  multiplier,
   next,
+  chance,
   disabled,
   reducedMotion,
   fmt,
@@ -183,21 +191,30 @@ export function CashOut({
   return (
     <div class="cashout-spot">
       <button class="cashout" ref={plaque} disabled={disabled} onClick={onCashOut}>
-        <span class="cashout-main">
-          <span class="plaque-label">{t('cashOut')}</span>
-          <span class="plaque-value">
-            <Amount value={shown} fmt={fmt} />
-          </span>
+        <span class="cashout-title">{t('cashOut')}</span>
+        <span class="cashout-multiplier">{fmt.multiplier(multiplier)}</span>
+        <span class="cashout-amount">
+          <Amount value={shown} fmt={fmt} />
         </span>
-        {next && (
-          <span class="cashout-next">
-            {t(next.top ? 'cashOut.nextTop' : 'cashOut.next', { amount: fmt.full(next.amount) })}
-          </span>
-        )}
+        {next && <span class="cashout-next">{nextLine(t, fmt, next, chance)}</span>}
       </button>
       <SpaceKey disabled={disabled} pressed={keyDown} onCashOut={onCashOut} />
     </div>
   );
+}
+
+function nextLine(
+  t: ReturnType<typeof useText>['t'],
+  fmt: Formats,
+  next: { amount: Minor; top: boolean },
+  chance: number | null,
+): string {
+  const amount = fmt.full(next.amount);
+  if (chance === null) return t(next.top ? 'cashOut.nextTop' : 'cashOut.next', { amount });
+  return t(next.top ? 'cashOut.chanceTop' : 'cashOut.chance', {
+    chance: fmt.percent(chance),
+    amount,
+  });
 }
 
 function SpaceKey({

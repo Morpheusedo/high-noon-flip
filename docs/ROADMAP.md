@@ -86,6 +86,13 @@ by itself), counts the prize up and pops once on each correct pick instead of bo
 forever, gives under a press, rises in place of the bet when a run starts, and sends coins
 to the balance on a cash out. Space cashes out, with a keycap beside the plaque.
 
+### 12. A plainer cash out — done
+
+The plaque reads at a glance: CASH OUT large in the title's western letters, the rung's
+multiplier larger still, the prize under them, and along the bottom the next flip's chance
+and what it pays ("Next flip: 50% chance to win 7.92 FUN"). The chance comes from the
+server's config.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -236,6 +243,15 @@ to the balance on a cash out. Space cashes out, with a keycap beside the plaque.
   plaque's place is measured on each rung and on the press, since the plaque is gone when
   the answer arrives. None with reduced motion. The coins are drawn in CSS: there is no coin
   art small enough for the interface; ask the artist for one.
+- The cash out plaque (step 12) is a grid: CASH OUT (Rye, gold) over the amount on the left,
+  the multiplier (Alfa Slab One, the largest text on the plaque) on the right, and the next
+  flip's line across the bottom. The multiplier is what the player compares with the ladder;
+  the amount is the money they take. Three lines need room under the ladder, so in landscape
+  the plaque sits at 2% from the bottom instead of the bet's 3%.
+- The chance of a pick is `GameConfig.winChance` (0.5 in the demo), sent by the server, not
+  derived from the ladder and the RTP: the client does not hold the math. Without it the
+  plaque says "Next win 7.92 FUN" with no chance. It is the chance of the next flip only,
+  never of reaching a higher rung, which would read as better odds than the player has.
 - Space cashes out (step 11), once per press. Focus a mouse click left on a button does not
   take Space from it, but a button reached with Tab keeps its own Space (keyboard players
   pick with it). The keycap stands beside the plaque, not under it: the ladder leaves no
@@ -261,3 +277,6 @@ to the balance on a cash out. Space cashes out, with a keycap beside the plaque.
 9. Can `OpenRun` carry `nextPrize`, what the next correct pick would pay, rounded as the
    server will pay it? Until then the client computes the next prize it shows during play
    (`rules.ts` `nextPrize`); a certified client should only display server money.
+10. Can `GameConfig` carry `winChance`, the certified chance that one pick wins? The cash out
+    shows it during play, and the rules text still says "half the time" in words; both should
+    follow the math the provider certifies, and some markets may want it hidden.

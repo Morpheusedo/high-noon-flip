@@ -40,6 +40,8 @@ const DEFAULT_CONFIG: GameConfig = {
   customBet: { min: 10, max: 10_000, step: 5 },
   ladder: LADDER_HUNDREDTHS.map((h) => h / 100),
   rtp: 0.99,
+  // a fair coin
+  winChance: 0.5,
 };
 
 const DEFAULT_JURISDICTION: Jurisdiction = {

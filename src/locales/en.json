@@ -39,6 +39,8 @@
   "cashOut": "Cash out",
   "cashOut.next": "Next win {amount}",
   "cashOut.nextTop": "Next win {amount} pays out by itself",
+  "cashOut.chance": "Next flip: {chance} chance to win {amount}",
+  "cashOut.chanceTop": "Last flip: {chance} chance to win {amount}, paid at once",
   "cashOut.key": "Cash out: space bar",
 
   "stamp.win": "WIN",

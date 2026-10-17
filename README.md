@@ -110,7 +110,7 @@ src/
       ├─ App.tsx          lays out the controls, keyboard shortcuts
       ├─ TopBar.tsx       title, last flips, speed
       ├─ Emblems.tsx      Sheriff and Outlaw picks, keycaps, the tap over the coin
-      ├─ Plaques.tsx      balance, the bet (− amount +), ladder, cash out with the next prize
+      ├─ Plaques.tsx      balance, the bet (− amount +), ladder, cash out (multiplier, prize, next flip)
       ├─ Payout.tsx       coins flying from the cash out to the balance
       ├─ BetPicker.tsx    every bet level at once, and a field for an exact amount
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed)

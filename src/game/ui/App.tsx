@@ -250,7 +250,9 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       {openRun ? (
         <CashOut
           prize={openRun.prize}
+          multiplier={config.ladder[openRun.step - 1] ?? 1}
           next={nextPrize(config, openRun)}
+          chance={config.winChance ?? null}
           disabled={!canCashOut(s)}
           reducedMotion={reducedMotion}
           fmt={fmt}

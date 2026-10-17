@@ -30,8 +30,19 @@ export function useTallStage(ref: MutableRef<HTMLElement | null>): boolean {
   return tall;
 }
 
-/** `value`, counted up over 0.8 s when it grows; drops at once. */
-export function useCountUp(value: number, reduced: boolean): number {
+interface CountUp {
+  /** How long the count takes, in milliseconds. */
+  duration?: number;
+  /** How long the old value stays before the count starts, e.g. while coins fly to it. */
+  delay?: number;
+}
+
+/** `value`, counted up (0.8 s by default) when it grows; drops at once. */
+export function useCountUp(
+  value: number,
+  reduced: boolean,
+  { duration = 800, delay = 0 }: CountUp = {},
+): number {
   const [shown, setShown] = useState(value);
   const current = useRef(value);
   useEffect(() => {
@@ -41,17 +52,18 @@ export function useCountUp(value: number, reduced: boolean): number {
       setShown(value);
       return;
     }
-    const start = performance.now();
+    const start = performance.now() + delay;
     let frame = 0;
     const step = (now: number) => {
-      const k = Math.min(1, (now - start) / 800);
+      const k = Math.max(0, Math.min(1, (now - start) / duration));
       current.current = Math.round(from + (value - from) * (1 - Math.pow(1 - k, 3)));
       setShown(current.current);
       if (k < 1) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [value, reduced]);
+    // the delay is read when a new value arrives; changing it alone restarts nothing
+  }, [value, reduced, duration]);
   return shown;
 }
 

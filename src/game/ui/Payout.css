@@ -1,0 +1,55 @@
+.payout {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* a small gold coin, drawn: there is no coin art small enough for the interface yet */
+.payout-coin {
+  --size: clamp(14px, 4.2cqmin, 30px);
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3c4, #f2c14e 38%, #b07a1c 72%, #6b4310);
+  box-shadow:
+    inset 0 0 0 calc(var(--size) * 0.09) rgba(120, 76, 14, 0.7),
+    0 0.3cqmin 0.6cqmin rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  animation:
+    payout-path var(--time) cubic-bezier(0.45, 0, 0.55, 1) var(--delay) both,
+    payout-hop var(--time) var(--delay) both;
+}
+
+/* along the straight line to the balance... */
+@keyframes payout-path {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: var(--dx) var(--dy);
+  }
+}
+
+/* ...while hopping up and down off it, which makes the arc */
+@keyframes payout-hop {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.7);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(calc(-1 * var(--lift))) scale(1);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0) scale(0.55);
+  }
+}

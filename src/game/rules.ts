@@ -4,7 +4,7 @@
  * the rules follow with no client release.
  */
 import { betLimits } from '../server/bets';
-import type { CustomBet, GameConfig, Minor } from '../server/protocol';
+import type { CustomBet, GameConfig, Minor, OpenRun } from '../server/protocol';
 
 export interface RulesFacts {
   /** Multiplier and prize at `bet` per rung; rung i is reached after i + 1 correct picks. */
@@ -34,6 +34,22 @@ export function rulesFacts(config: GameConfig, bet: Minor): RulesFacts {
     rtp: config.rtp,
     maxWin: { multiplier: top, amount: payout(maxBet, top) },
   };
+}
+
+/**
+ * What the next correct pick of an open run would pay, and whether it is the top
+ * rung, which pays out by itself. Null when nothing is left to climb.
+ *
+ * The client computes money here that it shows during play; the provider is asked
+ * to send it in `OpenRun` (open question 9), and then this becomes a read.
+ */
+export function nextPrize(
+  config: GameConfig,
+  run: OpenRun,
+): { amount: Minor; top: boolean } | null {
+  const multiplier = config.ladder[run.step];
+  if (multiplier === undefined) return null;
+  return { amount: payout(run.bet, multiplier), top: run.step === config.ladder.length - 1 };
 }
 
 /**

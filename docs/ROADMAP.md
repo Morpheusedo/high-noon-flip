@@ -79,6 +79,13 @@ checked against the range, the grid and the balance before it becomes the bet. W
 it nothing changes. The rules name the range and the step, and the maximum win follows
 the highest typed stake.
 
+### 11. A livelier cash out — done
+
+The cash out plaque names the next prize ("Next win 7.92 FUN", or that the top rung pays out
+by itself), counts the prize up and pops once on each correct pick instead of bobbing
+forever, gives under a press, rises in place of the bet when a run starts, and sends coins
+to the balance on a cash out. Space cashes out, with a keycap beside the plaque.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -196,8 +203,9 @@ the highest typed stake.
   interface image is a loading error, as missing scene art is.
 - Smoke test: Playwright 1.64.0 (pinned, a week old when taken), on `vite preview` of
   `dist/`, a Moto G4 (360 x 640) in portrait and landscape. Device scale 1: headless WebGL
-  is software, and 3x only slows it, the CSS layout is the same. Taps, not clicks: the
-  picks hop and the cash out tab pulses, so Playwright's "wait until still" never ends.
+  is software, and 3x only slows it, the CSS layout is the same. Taps, not clicks, on the
+  picks: they hop, so Playwright's "wait until still" never ends. The cash out stands still
+  between picks (step 11) and takes a normal click.
   Result stamps are recorded by a MutationObserver: at 4x one is gone before a poll.
   Google Fonts are stubbed: the test must not depend on a third party.
 - Code that runs in Node (configs, scripts, e2e, `tests/node`) is checked with
@@ -211,6 +219,27 @@ the highest typed stake.
   deploy refuses uncommitted changes. Free plan: the link is unlisted and `noindex`, not
   password-protected. `netlify-cli` runs through `npx` at a pinned version instead of
   joining the dependencies.
+- The cash out shows the next prize (step 11): take it or risk it is the player's real
+  decision, and the ladder alone made them work it out. Until the server sends it, the client
+  computes it as `payout(bet, ladder[step])` (`rules.ts` `nextPrize`), the floor the rules
+  screen uses; on the top-but-one rung it says the next win pays out by itself.
+- The cash out stands still between picks (step 11). The endless bob and the gold line traced
+  with an animated `clip-path` are gone: `clip-path` is repainted every frame on low-end
+  Android for as long as a run is open. Instead a correct pick counts the prize up from the
+  old one in 400 ms and pops the plaque once (scale 1.04, 240 ms, through `animate()` so it
+  replays per rung). A press scales it to 0.97. A new run lifts it in with `@starting-style`
+  (opacity, 30% lower, scale 0.96; 220 ms). Reduced motion: no pop, no rise, the number
+  changes at once.
+- A payout (a cash out or the top rung) sends 7 coins on an arc from the plaque to the
+  balance in 550 ms, and the balance count waits for them to land. HTML over the canvas,
+  `translate`, `transform` and `opacity` only, `pointer-events: none`, removed when done; the
+  plaque's place is measured on each rung and on the press, since the plaque is gone when
+  the answer arrives. None with reduced motion. The coins are drawn in CSS: there is no coin
+  art small enough for the interface; ask the artist for one.
+- Space cashes out (step 11), once per press. Focus a mouse click left on a button does not
+  take Space from it, but a button reached with Tab keeps its own Space (keyboard players
+  pick with it). The keycap stands beside the plaque, not under it: the ladder leaves no
+  room under the plaque in landscape. Hidden on touch and in portrait, as the arrow keys are.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 
@@ -229,3 +258,6 @@ the highest typed stake.
    offers the levels alone.
 8. Fonts come from Google Fonts. EU operators may reject requests to Google from inside
    the game (GDPR); self-host them before a real-money launch.
+9. Can `OpenRun` carry `nextPrize`, what the next correct pick would pay, rounded as the
+   server will pay it? Until then the client computes the next prize it shows during play
+   (`rules.ts` `nextPrize`); a certified client should only display server money.

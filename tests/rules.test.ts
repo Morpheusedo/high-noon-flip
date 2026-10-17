@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { payout, rulesFacts } from '../src/game/rules';
+import { nextPrize, payout, rulesFacts } from '../src/game/rules';
 import { MockServer } from '../src/server/mockServer';
 
 describe('rules facts', () => {
@@ -37,5 +37,13 @@ describe('rules facts', () => {
     expect(payout(1, 1.98)).toBe(1);
     expect(payout(3, 1.15)).toBe(3);
     expect(payout(10_000, 253.44)).toBe(2_534_400);
+  });
+
+  it('name the next prize of a run and the top rung that pays by itself', async () => {
+    const { config } = await new MockServer().init();
+    const run = (step: number) => ({ roundId: 'r', bet: 200, step, prize: 0 });
+    expect(nextPrize(config, run(1))).toEqual({ amount: 792, top: false });
+    expect(nextPrize(config, run(7))).toEqual({ amount: 50_688, top: true });
+    expect(nextPrize(config, run(8))).toBeNull();
   });
 });

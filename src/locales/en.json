@@ -37,6 +37,9 @@
   "bet.typed.rounded": "Bets go in steps of {step}, so this one is {amount}. Press OK to bet it.",
   "ladder": "Multiplier ladder",
   "cashOut": "Cash out",
+  "cashOut.next": "Next win {amount}",
+  "cashOut.nextTop": "Next win {amount} pays out by itself",
+  "cashOut.key": "Cash out: space bar",
 
   "stamp.win": "WIN",
   "stamp.lose": "LOSE",
@@ -95,7 +98,7 @@
   "rules.more.title": "Good to know",
   "rules.more.coin": "Tapping the coin turns it over for looks only; it does not change the result.",
   "rules.more.speed": "The speed button changes how fast a round plays (1×, 2×, 4×), not the odds or the payouts.",
-  "rules.more.keys": "Keys: ← Outlaw, → Sheriff, ↑ ↓ change the bet.",
+  "rules.more.keys": "Keys: ← Outlaw, → Sheriff, ↑ ↓ change the bet, Space cash out.",
   "rules.more.connection": "If the connection drops, every flip the server has settled stays settled. An open run is kept and comes back when you return.",
   "rules.malfunction": "Malfunction voids all pays and plays.",
   "rules.demo": "Demo: play money, no real wins or losses.",

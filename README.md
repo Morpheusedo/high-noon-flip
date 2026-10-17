@@ -60,8 +60,9 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
 360 x 640 phone, portrait and landscape: loading, the bet's − and + and its list, a typed bet
-played to the server, a run and its cash out, a lost answer (NETWORK) and its recovery, a run resumed after a reload, the
-controls on screen before and after a rotation. Outcomes are forced through `hnf`, so
+played to the server, a run with its next prize and its cash out (coins to the balance; none
+with reduced motion), a lost answer (NETWORK) and its recovery, a run resumed after a reload
+and cashed out with Space, the controls on screen before and after a rotation. Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
 
 `npm run lowend` measures load time, bytes, frame rate and memory with the CPU and
@@ -109,7 +110,8 @@ src/
       ├─ App.tsx          lays out the controls, keyboard shortcuts
       ├─ TopBar.tsx       title, last flips, speed
       ├─ Emblems.tsx      Sheriff and Outlaw picks, keycaps, the tap over the coin
-      ├─ Plaques.tsx      balance, the bet (− amount +), ladder, cash out
+      ├─ Plaques.tsx      balance, the bet (− amount +), ladder, cash out with the next prize
+      ├─ Payout.tsx       coins flying from the cash out to the balance
       ├─ BetPicker.tsx    every bet level at once, and a field for an exact amount
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed)
       ├─ Rules.tsx        the info button and the rules screen
@@ -156,8 +158,8 @@ Rules the code follows:
   has `customBet` (the server takes any stake in a range, on a grid), the list also has a
   field for an exact amount, read as the player's language writes numbers. `server/bets.ts`
   holds the rule, and the client and the mock server both use it.
-- **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet. A held key does not repeat, so it cannot act as
-  autoplay.
+- **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space cash out. A held key does not repeat, so it
+  cannot act as autoplay. A button reached with Tab keeps its own Space.
 - **No string in code.** Every text the player reads is a key in `src/locales/en.json`.
   English is bundled; any other language is a small chunk loaded only when `lang` asks for
   it. To add a language, add `xx.json` next to `en.json`; a test fails until it has every

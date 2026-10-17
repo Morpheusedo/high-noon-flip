@@ -189,14 +189,33 @@
   filter: drop-shadow(0 0 0.8cqmin rgba(255, 200, 90, 0.9));
 }
 
-/* cash out: a plaque that bobs, with a gold line tracing round it */
-.cashout {
+/* cash out: the prize, and under it the next one. It stands still between picks: a
+   correct pick counts the prize up and pops it once (Plaques.tsx). It rises in place
+   of the bet when a run starts, with the space bar keycap beside it. */
+.cashout-spot {
   position: absolute;
   left: 50%;
   bottom: 3%;
   translate: -50% 0;
   z-index: 4;
-  padding: 1.7cqmin 5cqmin;
+  transition:
+    opacity 0.22s cubic-bezier(0.23, 1, 0.32, 1),
+    transform 0.22s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .cashout-spot {
+    opacity: 0;
+    transform: translateY(30%) scale(0.96);
+  }
+}
+
+.cashout {
+  padding: 1.5cqmin 5cqmin 1.7cqmin;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3cqmin;
   border: 0;
   outline: 0;
   white-space: nowrap;
@@ -209,11 +228,17 @@
     0 0.05em 0.08em #000,
     0 0 0.35em rgba(0, 0, 0, 0.75);
   filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.6));
-  animation: bob 2.8s ease-in-out infinite;
+  transition:
+    opacity 0.2s,
+    scale 0.12s ease-out;
 }
 
 .cashout:focus-visible {
   outline: 2px solid var(--brass-hi);
+}
+
+.cashout:active:not(:disabled) {
+  scale: 0.97;
 }
 
 .cashout .plaque-label {
@@ -225,126 +250,32 @@
   color: var(--gold);
 }
 
-/* the line starts at the top right corner, runs left along the top, down the left side and
-   back along the bottom, then its tail follows the same way: no fade, no flash */
-.cashout::before {
-  content: '';
-  position: absolute;
-  inset: -0.6cqmin 0 -0.6cqmin -0.6cqmin;
-  pointer-events: none;
-  border: 0.55cqmin solid var(--gold);
-  border-right: 0;
-  border-radius: 1cqmin 0 0 1cqmin;
-  box-shadow: inset 0 0 1cqmin rgba(242, 193, 78, 0.4);
-  animation: trace 3.8s linear infinite;
+/* what the next correct pick would pay: the choice between taking it and risking it */
+.cashout-next {
+  font-size: clamp(9px, 2cqmin, 14px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--cream);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .cashout:disabled {
   opacity: 0.55;
-  animation: none;
   cursor: default;
 }
 
-.cashout:disabled::before {
-  animation: none;
-  visibility: hidden;
+/* the space bar, beside the cash out (the ladder leaves no room under it); hidden on
+   touch with the arrow keys */
+.key.space {
+  top: 50%;
+  left: calc(100% + 2cqmin);
+  width: 13cqmin;
+  translate: 0 -50%;
 }
 
-@keyframes bob {
-  0%,
-  100% {
-    transform: none;
-  }
-  50% {
-    transform: translateY(-1.6cqmin);
-  }
-}
-
-@keyframes trace {
-  0% {
-    clip-path: polygon(
-      100% 0,
-      100% 0,
-      100% 1.3cqmin,
-      100% 1.3cqmin,
-      100% 1.3cqmin,
-      100% 1.3cqmin,
-      100% 1.3cqmin,
-      100% 1.3cqmin
-    );
-  }
-  18% {
-    clip-path: polygon(
-      100% 0,
-      0 0,
-      0 1.3cqmin,
-      0 1.3cqmin,
-      0 1.3cqmin,
-      1.3cqmin 1.3cqmin,
-      1.3cqmin 1.3cqmin,
-      100% 1.3cqmin
-    );
-  }
-  31% {
-    clip-path: polygon(
-      100% 0,
-      0 0,
-      0 100%,
-      1.3cqmin 100%,
-      1.3cqmin 100%,
-      1.3cqmin 100%,
-      1.3cqmin 1.3cqmin,
-      100% 1.3cqmin
-    );
-  }
-  50% {
-    clip-path: polygon(
-      100% 0,
-      0 0,
-      0 100%,
-      100% 100%,
-      100% calc(100% - 1.3cqmin),
-      1.3cqmin calc(100% - 1.3cqmin),
-      1.3cqmin 1.3cqmin,
-      100% 1.3cqmin
-    );
-  }
-  68% {
-    clip-path: polygon(
-      0 0,
-      0 0,
-      0 100%,
-      100% 100%,
-      100% calc(100% - 1.3cqmin),
-      1.3cqmin calc(100% - 1.3cqmin),
-      1.3cqmin 1.3cqmin,
-      1.3cqmin 1.3cqmin
-    );
-  }
-  81% {
-    clip-path: polygon(
-      0 calc(100% - 1.3cqmin),
-      0 calc(100% - 1.3cqmin),
-      0 100%,
-      100% 100%,
-      100% calc(100% - 1.3cqmin),
-      1.3cqmin calc(100% - 1.3cqmin),
-      1.3cqmin calc(100% - 1.3cqmin),
-      1.3cqmin calc(100% - 1.3cqmin)
-    );
-  }
-  100% {
-    clip-path: polygon(
-      100% calc(100% - 1.3cqmin),
-      100% calc(100% - 1.3cqmin),
-      100% 100%,
-      100% 100%,
-      100% calc(100% - 1.3cqmin),
-      100% calc(100% - 1.3cqmin),
-      100% calc(100% - 1.3cqmin),
-      100% calc(100% - 1.3cqmin)
-    );
-  }
+.key.space svg {
+  width: 32%;
+  height: 80%;
 }
 
 @container stage (max-aspect-ratio: 1/1) {
@@ -420,11 +351,17 @@
     flex: none;
   }
 
-  /* cash out: in the bet's place */
-  .cashout {
+  /* cash out: in the bet's place, the label over the prize */
+  .cashout-spot {
     bottom: 2.5%;
+  }
+
+  .cashout {
     min-width: 50cqmin;
     padding: 1.8cqmin 5cqmin 2cqmin;
+  }
+
+  .cashout-main {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -435,14 +372,18 @@
     margin-right: 0;
   }
 
+  .cashout-next {
+    font-size: clamp(8px, 2.25cqmin, 14px);
+  }
+
   .cashout .plaque-value {
     font-size: clamp(13px, 5.4cqmin, 34px);
   }
 }
 
+/* no rise: the plaque only fades in */
 @media (prefers-reduced-motion: reduce) {
-  .cashout,
-  .cashout::before {
-    animation: none;
+  .cashout-spot {
+    transition: opacity 0.22s;
   }
 }

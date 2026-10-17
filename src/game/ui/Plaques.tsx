@@ -1,9 +1,9 @@
 /**
  * Wooden plaques along the bottom: the balance, the bet in the middle (− and +
  * step through the levels, the amount opens them all), the ladder above it, and
- * in a run the cash out in the bet's place.
+ * in a run the cash out in the bet's place, with the space bar under it.
  */
-import { useRef } from 'preact/hooks';
+import { useLayoutEffect, useRef, type MutableRef } from 'preact/hooks';
 import { nextLevel } from '../../server/bets';
 import type { Minor } from '../../server/protocol';
 import type { Formats } from './format';
@@ -24,13 +24,15 @@ interface BalanceProps {
   balance: Minor;
   demo: boolean;
   reducedMotion: boolean;
+  /** How long a win waits before it counts up, while its coins fly here. */
+  delay: number;
   fmt: Formats;
 }
 
 /** Counts up when a win lands; long balances get a smaller font so they never run into the bet. */
-export function Balance({ balance, demo, reducedMotion, fmt }: BalanceProps) {
+export function Balance({ balance, demo, reducedMotion, delay, fmt }: BalanceProps) {
   const { t } = useText();
-  const shown = useCountUp(balance, reducedMotion);
+  const shown = useCountUp(balance, reducedMotion, { delay });
   const value = useRef<HTMLSpanElement>(null);
   // fit to the final amount, so the font does not jump while it counts up
   useFitText(value, fmt.amount(balance));
@@ -136,19 +138,98 @@ export function Ladder({ ladder, step, fmt }: LadderProps) {
 
 interface CashOutProps {
   prize: Minor;
+  /** What the next correct pick would pay; `top` when that rung pays out by itself. */
+  next: { amount: Minor; top: boolean } | null;
   disabled: boolean;
+  reducedMotion: boolean;
   fmt: Formats;
+  /** The plaque, so the coins of a cash out know where they leave from. */
+  plaque: MutableRef<HTMLButtonElement | null>;
+  /** Space was just pressed, so its keycap dips. */
+  keyDown: boolean;
   onCashOut(): void;
 }
 
-export function CashOut({ prize, disabled, fmt, onCashOut }: CashOutProps) {
+/** How long the prize counts up to a new rung. */
+const PRIZE_COUNT_MS = 400;
+
+/**
+ * The prize on the table and the next one, the player's real choice. A correct
+ * pick counts the prize up and pops the plaque once; between picks it stands still.
+ * The space bar keycap stands beside it on a desktop.
+ */
+export function CashOut({
+  prize,
+  next,
+  disabled,
+  reducedMotion,
+  fmt,
+  plaque,
+  keyDown,
+  onCashOut,
+}: CashOutProps) {
+  const { t } = useText();
+  const shown = useCountUp(prize, reducedMotion, { duration: PRIZE_COUNT_MS });
+  const last = useRef(prize);
+  useLayoutEffect(() => {
+    const grew = prize > last.current;
+    last.current = prize;
+    if (!grew || reducedMotion) return;
+    plaque.current?.animate([{ scale: 1 }, { scale: 1.04, offset: 0.4 }, { scale: 1 }], {
+      duration: 240,
+      easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+    });
+  }, [prize, reducedMotion, plaque]);
+  return (
+    <div class="cashout-spot">
+      <button class="cashout" ref={plaque} disabled={disabled} onClick={onCashOut}>
+        <span class="cashout-main">
+          <span class="plaque-label">{t('cashOut')}</span>
+          <span class="plaque-value">
+            <Amount value={shown} fmt={fmt} />
+          </span>
+        </span>
+        {next && (
+          <span class="cashout-next">
+            {t(next.top ? 'cashOut.nextTop' : 'cashOut.next', { amount: fmt.full(next.amount) })}
+          </span>
+        )}
+      </button>
+      <SpaceKey disabled={disabled} pressed={keyDown} onCashOut={onCashOut} />
+    </div>
+  );
+}
+
+function SpaceKey({
+  disabled,
+  pressed,
+  onCashOut,
+}: {
+  disabled: boolean;
+  /** Space was just pressed, so the keycap dips. */
+  pressed: boolean;
+  onCashOut(): void;
+}) {
   const { t } = useText();
   return (
-    <button class="cashout" disabled={disabled} onClick={onCashOut}>
-      <span class="plaque-label">{t('cashOut')}</span>
-      <span class="plaque-value">
-        <Amount value={prize} fmt={fmt} />
-      </span>
+    <button
+      class={`key space${pressed ? ' down' : ''}`}
+      tabIndex={-1}
+      aria-label={t('cashOut.key')}
+      disabled={disabled}
+      onClick={onCashOut}
+    >
+      <svg
+        viewBox="0 0 48 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M8 9v6h32V9" />
+      </svg>
     </button>
   );
 }

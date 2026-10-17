@@ -6,10 +6,10 @@
  * from the model's questions (`canChangeSetup`, `canCashOut`...), and the CSS
  * hides or dims the rest from the `data-*` attributes on the root.
  *
- * Keys: ← Outlaw, → Sheriff, ↑ ↓ bet. A held key does not repeat: one press is
- * one bet, so a key held down can never act as autoplay.
+ * Keys: ← Outlaw, → Sheriff, ↑ ↓ bet, Space cash out. A held key does not repeat:
+ * one press is one bet, so a key held down can never act as autoplay.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { nextLevel } from '../../server/bets';
 import type { Minor, Side } from '../../server/protocol';
 import type { Settings } from '../../shell/settings';
@@ -22,12 +22,14 @@ import {
   isIdle,
   type RoundModel,
 } from '../model/RoundModel';
+import { nextPrize } from '../rules';
 import type { UiSounds } from '../sound';
 import { BetPicker } from './BetPicker';
 import { CoinTap, Emblems } from './Emblems';
 import { formats } from './format';
 import { useReducedMotion } from './hooks';
 import { ErrorDialog, FundsNotice, ResultStamp } from './Notices';
+import { PAYOUT_FLIGHT_MS, Payout, type Point } from './Payout';
 import { Balance, CashOut, Ladder, Stake } from './Plaques';
 import { Rules, RulesButton } from './Rules';
 import { SettingsButton, SettingsPanel, SoundButton } from './Settings';
@@ -47,8 +49,28 @@ interface Props {
   onTurnCoin(): void;
 }
 
-/** How long a keycap stays down after its arrow key. */
+/** How long a keycap stays down after its key. */
 const KEY_DIP_MS = 110;
+
+type Box = Point & { width: number; height: number };
+
+interface Flight {
+  id: number;
+  from: Box;
+  to: Point;
+}
+
+/** `el`'s middle and size in the interface's own pixels. */
+function boxIn(hud: HTMLElement, el: Element): Box {
+  const h = hud.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return {
+    x: r.left + r.width / 2 - h.left,
+    y: r.top + r.height / 2 - h.top,
+    width: r.width,
+    height: r.height,
+  };
+}
 
 /** At most one panel is open over the game; each returns the focus to the button that opened it. */
 type Panel = 'bets' | 'settings' | 'rules';
@@ -65,6 +87,8 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
   const [panel, setPanel] = useState<Panel | null>(null);
   const reducedMotion = useReducedMotion();
   const [pressed, setPressed] = useState<Side | null>(null);
+  const [spaceDown, setSpaceDown] = useState(false);
+  const [flights, setFlights] = useState<Flight[]>([]);
   const fmt = useMemo(() => formats(s.config.currency, lang), [s.config.currency, lang]);
 
   const { phase, config, openRun } = s;
@@ -91,12 +115,57 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
 
   const changeBet = (bet: Minor) => model.setBet(bet);
 
+  // where the cash out plaque stood last, for the coins of a payout: it is gone by
+  // the time the answer arrives. Measured on each rung and again on the press.
+  const plaque = useRef<HTMLButtonElement>(null);
+  const lastPlaque = useRef<Box | null>(null);
+  const notePlaque = useCallback(() => {
+    if (hud.current && plaque.current) lastPlaque.current = boxIn(hud.current, plaque.current);
+  }, []);
+  useLayoutEffect(notePlaque, [notePlaque, openRun]);
+  const cashOut = useCallback(() => {
+    notePlaque();
+    void model.cashOut();
+  }, [model, notePlaque]);
+
+  // a payout (a cash out, or the top rung) sends coins from the plaque to the balance
+  const paying =
+    phase.name === 'result' &&
+    phase.outcome.kind === 'win' &&
+    !reducedMotion &&
+    lastPlaque.current !== null;
   useEffect(() => {
+    const from = lastPlaque.current;
+    const balance = hud.current?.querySelector('.plaque.balance');
+    if (!paying || !from || !hud.current || !balance) return;
+    const flight = { id: performance.now(), from, to: boxIn(hud.current, balance) };
+    setFlights((all) => [...all, flight]);
+  }, [paying, phase]);
+  const landed = useCallback(
+    (id: number) => setFlights((all) => all.filter((f) => f.id !== id)),
+    [],
+  );
+
+  useEffect(() => {
+    // the Space that cashed out must not also click the focused button when it comes up
+    let spaceTaken = false;
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       const target = e.target instanceof Element ? e.target : null;
       if (panel || target?.closest('input, textarea, select')) return;
       const state = model.state;
+      if (e.key === ' ') {
+        // a control reached with Tab keeps its own Space; focus a mouse click left behind does not
+        const control = target?.closest('button, a, [tabindex]');
+        if (control && !control.matches('.cashout') && control.matches(':focus-visible')) return;
+        if (!canCashOut(state)) return;
+        e.preventDefault();
+        spaceTaken = true;
+        setSpaceDown(true);
+        setTimeout(() => setSpaceDown(false), KEY_DIP_MS);
+        cashOut();
+        return;
+      }
       const side = e.key === 'ArrowLeft' ? 'outlaw' : e.key === 'ArrowRight' ? 'sheriff' : null;
       if (side) {
         e.preventDefault();
@@ -115,9 +184,18 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
         }
       }
     };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key !== ' ' || !spaceTaken) return;
+      spaceTaken = false;
+      e.preventDefault();
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [model, sounds, panel]);
+    document.addEventListener('keyup', onKeyUp);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKeyUp);
+    };
+  }, [model, sounds, panel, cashOut]);
 
   // the bet list closes by itself if a round starts some other way, e.g. a key
   useEffect(() => {
@@ -160,14 +238,25 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       <CoinTap disabled={!idle} onTap={onTurnCoin} />
       <Emblems disabled={!idle} pressed={pressed} onPick={(side) => void model.pick(side)} />
 
-      <Balance balance={s.balance} demo={demo} reducedMotion={reducedMotion} fmt={fmt} />
+      <Balance
+        balance={s.balance}
+        demo={demo}
+        reducedMotion={reducedMotion}
+        // the count waits for the coins to land
+        delay={paying ? PAYOUT_FLIGHT_MS : 0}
+        fmt={fmt}
+      />
       <Ladder ladder={config.ladder} step={step} fmt={fmt} />
       {openRun ? (
         <CashOut
           prize={openRun.prize}
+          next={nextPrize(config, openRun)}
           disabled={!canCashOut(s)}
+          reducedMotion={reducedMotion}
           fmt={fmt}
-          onCashOut={() => void model.cashOut()}
+          plaque={plaque}
+          keyDown={spaceDown}
+          onCashOut={cashOut}
         />
       ) : (
         <Stake
@@ -182,6 +271,10 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
           onOpen={() => open('bets')}
         />
       )}
+
+      {flights.map((f) => (
+        <Payout key={f.id} from={f.from} to={f.to} onDone={() => landed(f.id)} />
+      ))}
 
       {phase.name === 'result' && <ResultStamp outcome={phase.outcome} fmt={fmt} />}
       {phase.name === 'error' &&

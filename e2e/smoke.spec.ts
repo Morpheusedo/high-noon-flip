@@ -13,6 +13,8 @@ declare global {
   interface Window {
     /** Every result stamp shown so far, as "win" or "lose": at 4x one is gone in a moment. */
     stamps: string[];
+    /** Coins that flew from the cash out to the balance so far. */
+    coins: number;
   }
 }
 
@@ -35,11 +37,15 @@ const test = base.extend<{ problems: string[] }>({
         // fastest speed and no sound; the market in the mock allows turbo
         localStorage.setItem('hnf.settings', JSON.stringify({ speed: 4, muted: true }));
         window.stamps = [];
+        window.coins = 0;
         new MutationObserver((changes) => {
           for (const change of changes)
-            for (const node of change.addedNodes)
-              if (node instanceof HTMLElement && node.classList.contains('stamp'))
+            for (const node of change.addedNodes) {
+              if (!(node instanceof HTMLElement)) continue;
+              if (node.classList.contains('stamp'))
                 window.stamps.push(node.classList.contains('lose') ? 'lose' : 'win');
+              window.coins += node.querySelectorAll('.payout-coin').length;
+            }
         }).observe(document, { childList: true, subtree: true });
       });
       await use(problems);
@@ -61,9 +67,9 @@ function waitIdle(page: Page) {
 }
 
 /**
- * Taps the middle of a control, as a finger would. The picks hop and the cash out
- * tab pulses without end, so Playwright's own click, which waits for the element
- * to stand still, would wait forever.
+ * Taps the middle of a control, as a finger would. The picks hop without end, so
+ * Playwright's own click, which waits for the element to stand still, would wait
+ * forever. The cash out stands still between picks, so it takes a normal click.
  */
 async function tap(control: Locator): Promise<void> {
   await expect(control).toBeEnabled();
@@ -163,6 +169,7 @@ test('plays a run and cashes out', async ({ page }) => {
   const shownBefore = await shownBalance(page);
   await page.evaluate(() => window.hnf?.server.forceOutcomes('win', 'win'));
 
+  const cashOut = page.locator('.cashout');
   for (const step of [1, 2]) {
     await tap(page.locator('.pick.outlaw'));
     await waitIdle(page);
@@ -170,8 +177,12 @@ test('plays a run and cashes out', async ({ page }) => {
     // in a run the cash out takes the bet's place
     await expect(page.locator('.stake')).toHaveCount(0);
   }
+  // the prize on the table and the next one: 1.00 FUN at x3.96, then x7.92
+  await expect(cashOut.locator('.plaque-value')).toHaveText(/^3\.96\s*FUN$/);
+  await expect(cashOut.locator('.cashout-next')).toHaveText('Next win 7.92 FUN');
+
   const before = await balances(page);
-  expect(await playRound(page, () => tap(page.locator('.cashout')))).toBe('win');
+  expect(await playRound(page, () => cashOut.click())).toBe('win');
 
   const after = await balances(page);
   expect(await page.evaluate(() => window.hnf?.model?.state.openRun)).toBeNull();
@@ -179,6 +190,33 @@ test('plays a run and cashes out', async ({ page }) => {
   expect(after.client).toBe(after.server);
   expect(await shownBalance(page)).not.toBe(shownBefore);
   await expect(page.locator('.stake')).toBeVisible();
+  // the money flew to the balance, and the coins are gone
+  expect(await page.evaluate(() => window.coins)).toBeGreaterThanOrEqual(5);
+  await expect(page.locator('.payout-coin')).toHaveCount(0);
+});
+
+test.describe('with reduced motion', () => {
+  test.use({ reducedMotion: 'reduce' });
+
+  test('shows a new prize at once and sends no coins', async ({ page }) => {
+    await openGame(page);
+    await page.evaluate(() => {
+      const hnf = window.hnf;
+      if (hnf?.model) hnf.server.openRunAt(1, hnf.model.state.bet);
+      hnf?.server.forceOutcomes('win');
+      return hnf?.model?.refresh();
+    });
+    const prize = page.locator('.cashout .plaque-value');
+    await expect(prize).toHaveText(/^1\.98\s*FUN$/);
+    await tap(page.locator('.pick.sheriff'));
+    // the moment the coin lands the prize is the new one, with no count in between
+    await page.waitForFunction(() => window.hnf?.model?.state.openRun?.step === 2);
+    await expect(prize).toHaveText(/^3\.96\s*FUN$/, { timeout: 50 });
+    await waitIdle(page);
+
+    expect(await playRound(page, () => page.locator('.cashout').click())).toBe('win');
+    expect(await page.evaluate(() => window.coins)).toBe(0);
+  });
 });
 
 test('recovers a round whose answer was lost (NETWORK)', async ({ page }) => {
@@ -210,6 +248,10 @@ test('resumes an open run after a reload', async ({ page }) => {
 
   await expect(page.locator('.cashout')).toBeEnabled();
   expect(await page.evaluate(() => window.hnf?.model?.state.openRun?.step)).toBe(3);
+
+  // a keyboard player cashes out with Space
+  expect(await playRound(page, () => page.keyboard.press('Space'))).toBe('win');
+  expect(await page.evaluate(() => window.hnf?.model?.state.openRun)).toBeNull();
 });
 
 test('fits the screen and survives a rotation', async ({ page }, info) => {

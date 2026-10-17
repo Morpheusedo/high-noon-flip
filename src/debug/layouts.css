@@ -1,0 +1,74 @@
+/* Desktop layout variants under exploration (layoutPreview.ts): the Outlaw and Sheriff
+   emblems lower, the balance higher. Landscape only; portrait keeps its own layout.
+   Measured on the 16:9 stage, where 1cqmin is 1% of its height and the width is
+   177.8cqmin: the coin spans 13.6% to 53% of the height with its hop, the ladder
+   60 to 118cqmin across from 74% down, the cash out and its Space keycap 61 to
+   132cqmin from 84% down, the tool buttons the top right corner down to 22%. */
+
+@container stage (min-aspect-ratio: 1/1) {
+  /* the balance moves to the top left corner, which the tools leave empty (A, B) */
+  .hud[data-layout='a'] .balance,
+  .hud[data-layout='b'] .balance {
+    top: 4%;
+    bottom: auto;
+  }
+
+  /* A: the emblems lower and closer to the revolver, the keycaps under them */
+  .hud[data-layout='a'] .pick {
+    top: 61%;
+  }
+
+  .hud[data-layout='a'] .pick.outlaw {
+    left: 12cqmin;
+  }
+
+  .hud[data-layout='a'] .pick.sheriff {
+    right: 12cqmin;
+  }
+
+  .hud[data-layout='a'] .key:not(.space) {
+    top: calc(61% + 17.2cqmin);
+  }
+
+  .hud[data-layout='a'] .key.outlaw {
+    left: calc(12cqmin + 15.75cqmin);
+  }
+
+  .hud[data-layout='a'] .key.sheriff {
+    left: calc(100% - 12cqmin - 15.75cqmin);
+  }
+
+  /* B: the emblems in the bottom corners, the keycaps at their inner shoulder, clear
+     above the Space keycap of a run */
+  .hud[data-layout='b'] .pick {
+    top: calc(97% - 15.75cqmin);
+  }
+
+  .hud[data-layout='b'] .key:not(.space) {
+    top: calc(97% - 31.5cqmin + 2cqmin);
+  }
+
+  .hud[data-layout='b'] .key.outlaw {
+    left: calc(2.5% + 31.5cqmin + 7cqmin);
+  }
+
+  .hud[data-layout='b'] .key.sheriff {
+    left: calc(97.5% - 31.5cqmin - 7cqmin);
+  }
+
+  /* C: the balance in the top right corner under the tool buttons, the emblems lower */
+  .hud[data-layout='c'] .balance {
+    top: calc(4% + 2 * clamp(34px, 8.4cqmin, 60px) + 4cqmin);
+    bottom: auto;
+    left: auto;
+    right: 3%;
+  }
+
+  .hud[data-layout='c'] .pick {
+    top: 64%;
+  }
+
+  .hud[data-layout='c'] .key:not(.space) {
+    top: calc(64% + 17.2cqmin);
+  }
+}

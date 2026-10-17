@@ -42,6 +42,8 @@ interface Props {
   lang: string;
   /** Play money: the balance plaque and the rules say so. */
   demo: boolean;
+  /** A layout variant under exploration (`?layout=`, demo only); null is the default. */
+  layout?: string | null;
   /** The operator's lobby, offered when the session cannot go on. */
   lobbyUrl: string | null;
   sounds: UiSounds;
@@ -80,7 +82,7 @@ const OPENER: Record<Panel, string> = {
   rules: '.tool.rules',
 };
 
-export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin }: Props) {
+export function App({ model, settings, lang, demo, layout, lobbyUrl, sounds, onTurnCoin }: Props) {
   const s = useStore(model.store);
   const prefs = useStore(settings);
   const { speed } = prefs;
@@ -215,6 +217,7 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
     <div
       ref={hud}
       class="hud"
+      data-layout={layout ?? undefined}
       data-phase={phase.name}
       data-run={openRun ? 'live' : undefined}
       data-outcome={outcome === 'lose' ? 'lose' : outcome ? 'win' : undefined}

@@ -1,8 +1,9 @@
 /**
  * The sound button (mute), the settings button under it, and the settings it
- * opens: effects and music volumes, and the speed where the market allows turbo.
- * The settings are saved in the browser (`shell/settings.ts`).
+ * opens: effects and music volumes, the speed where the market allows turbo, and
+ * the last flips. The settings are saved in the browser (`shell/settings.ts`).
  */
+import type { Side } from '../../server/protocol';
 import { SPEEDS, type Speed } from '../../shell/settings';
 import { Dialog } from './Dialog';
 import { useText } from './text';
@@ -56,6 +57,8 @@ interface PanelProps {
   music: number;
   /** Null where the market bans turbo: the speed choice is not shown. */
   speed: Speed | null;
+  /** The last flips, newest first. */
+  history: Side[];
   onSfx(volume: number): void;
   /** Called when a drag on the effects slider ends, to let the player hear the level. */
   onSfxSet(): void;
@@ -65,7 +68,7 @@ interface PanelProps {
 }
 
 export function SettingsPanel(props: PanelProps) {
-  const { sfx, music, speed, onSfx, onSfxSet, onMusic, onSpeed, onClose } = props;
+  const { sfx, music, speed, history, onSfx, onSfxSet, onMusic, onSpeed, onClose } = props;
   const { t } = useText();
 
   const slider = (id: string, label: string, value: number, set: (v: number) => void) => (
@@ -88,33 +91,62 @@ export function SettingsPanel(props: PanelProps) {
   return (
     <Dialog label={t('settings.title')} panelClass="settings-panel" onClose={onClose}>
       <h2>{t('settings.title')}</h2>
-      {slider('sfx-volume', t('settings.effects'), sfx, onSfx)}
-      {slider('music-volume', t('settings.music'), music, onMusic)}
-      <p class="dialog-note">{t('settings.musicNote')}</p>
-      {speed !== null && (
-        <fieldset>
-          <legend>{t('settings.speed')}</legend>
-          <div class="speed-choice">
-            {SPEEDS.map((v) => (
-              <label>
-                <input
-                  type="radio"
-                  name="speed"
-                  value={v}
-                  checked={v === speed}
-                  onChange={() => onSpeed(v)}
-                />
-                <b>{v}×</b>
-                <small>{t(`speed.${v}`)}</small>
-              </label>
-            ))}
-          </div>
-          <p class="dialog-note">{t('settings.speedNote')}</p>
-        </fieldset>
-      )}
+      <div class="settings-columns">
+        <div class="settings-column">
+          {slider('sfx-volume', t('settings.effects'), sfx, onSfx)}
+          {slider('music-volume', t('settings.music'), music, onMusic)}
+          <p class="dialog-note">{t('settings.musicNote')}</p>
+        </div>
+        <div class="settings-column">
+          {speed !== null && (
+            <fieldset>
+              <legend>{t('settings.speed')}</legend>
+              <div class="speed-choice">
+                {SPEEDS.map((v) => (
+                  <label>
+                    <input
+                      type="radio"
+                      name="speed"
+                      value={v}
+                      checked={v === speed}
+                      onChange={() => onSpeed(v)}
+                    />
+                    <b>{v}×</b>
+                    <small>{t(`speed.${v}`)}</small>
+                  </label>
+                ))}
+              </div>
+              <p class="dialog-note">{t('settings.speedNote')}</p>
+            </fieldset>
+          )}
+          <LastFlips history={history} />
+        </div>
+      </div>
       <button class="btn" data-autofocus onClick={onClose}>
         {t('common.close')}
       </button>
     </Dialog>
+  );
+}
+
+/** A small Sheriff star or Outlaw revolvers for each flip, newest first; side names for a screen reader. */
+function LastFlips({ history }: { history: Side[] }) {
+  const { t } = useText();
+  return (
+    <section class="flips" aria-labelledby="flips-title">
+      <h3 id="flips-title">
+        {t('flips.last')}
+        {history.length > 0 && <small>{t('flips.newest')}</small>}
+      </h3>
+      {history.length > 0 ? (
+        <ol aria-label={t('flips.listLabel')}>
+          {history.map((side) => (
+            <li class={side} title={t(`side.${side}`)} aria-label={t(`side.${side}`)} />
+          ))}
+        </ol>
+      ) : (
+        <p class="dialog-note">{t('flips.none')}</p>
+      )}
+    </section>
   );
 }

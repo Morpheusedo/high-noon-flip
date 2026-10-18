@@ -106,6 +106,14 @@ In landscape the Outlaw and Sheriff emblems stand lower and closer to the revolv
 the ladder, with their arrow keycaps under them, and the balance plaque moves to the top
 left corner. Portrait is unchanged. Picked from three variants compared side by side.
 
+### 15. The ladder under the title, the last flips in the settings — done
+
+The row of last flips under the title sign is gone; the settings panel lists them instead
+("Last flips", newest first, the same Sheriff and Outlaw icons, a note before the first
+flip). The multiplier ladder takes the row's place under the title in both orientations,
+so it no longer sits over the scene above the bet (landscape) or down the left side
+(portrait).
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -297,6 +305,25 @@ left corner. Portrait is unchanged. Picked from three variants compared side by 
 - With the balance up top, a payout's coins would overshoot it near the end of their arc and
   leave the stage at the top (the stage clips). The arc's lift is capped by the balance's
   height on the stage, so they now come down onto it from within the plaque.
+- The ladder hangs under the title sign (step 15), asked for: the rungs are the game, and
+  the row of last flips there told the player nothing they could act on. It is part of the
+  sign's column (`TitleSign` takes it as a child), so it follows the title's size. In
+  landscape each rung is a bullet beside its multiplier, one line high, and the title moved
+  up from 4.5% to 3.2%, so the ladder ends at 13.3% of the height. In portrait there is too
+  little width between the corner buttons for one line, so each bullet stands over its
+  multiplier (10 px at the least), and it ends at 11.5%. Measured on the scene at 844 x 390
+  and 390 x 780: the coin at rest and in its tease stays clear (by 28 and 39 px); only at
+  the top of a flip, blurred and spinning, does its rim touch the ladder's lower edge
+  (2 px in landscape, up to 9 px in portrait, for a moment). With the balance in the top left corner the ladder clears it by 40 px
+  at 844 x 390; the smoke test checks it never runs into the balance or the corner buttons.
+- With the ladder gone from over the bet, the cash out stands at 3% from the bottom like the
+  bet, not 2%.
+- The last flips (step 15) are in the settings: history a player looks up, not a control.
+  Newest first, each a list item named by its side for a screen reader. They are the
+  client's record of this session, as before: a reload starts them empty. The provider's
+  round history, which the shell does not show yet, is the real record.
+- The settings panel has two columns in landscape (sound | speed and the last flips): one
+  column ran 31 px past a 390 px tall screen.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

@@ -60,9 +60,10 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
 360 x 640 phone, portrait and landscape: loading, the bet's − and + and its list, a typed bet
-played to the server, a run with its next prize and its cash out (coins to the balance; none
-with reduced motion), a lost answer (NETWORK) and its recovery, a run resumed after a reload
-and cashed out with Space, the controls on screen before and after a rotation. Outcomes are forced through `hnf`, so
+played to the server, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
+with reduced motion), the last flips in the settings, a lost answer (NETWORK) and its recovery, a run resumed after a reload
+and cashed out with Space, the controls on screen (the ladder clear of the corners) before
+and after a rotation. Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
 
 `npm run lowend` measures load time, bytes, frame rate and memory with the CPU and
@@ -108,12 +109,12 @@ src/
    │  └─ tween.ts         tweens and waits on the scene clock
    └─ ui/             Preact: the HTML interface over the canvas
       ├─ App.tsx          lays out the controls, keyboard shortcuts
-      ├─ TopBar.tsx       title, last flips, speed
+      ├─ TopBar.tsx       title with the ladder under it, speed
       ├─ Emblems.tsx      Sheriff and Outlaw picks, keycaps, the tap over the coin
       ├─ Plaques.tsx      balance, the bet (− amount +), ladder, cash out (multiplier, prize, next flip)
       ├─ Payout.tsx       coins flying from the cash out to the balance
       ├─ BetPicker.tsx    every bet level at once, and a field for an exact amount
-      ├─ Settings.tsx     mute, the settings button and panel (volumes, speed)
+      ├─ Settings.tsx     mute, the settings button and panel (volumes, speed, last flips)
       ├─ Rules.tsx        the info button and the rules screen
       ├─ Notices.tsx      result stamp, insufficient funds, error dialogs
       ├─ Dialog.tsx       the frame every dialog uses

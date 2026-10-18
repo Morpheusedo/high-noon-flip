@@ -1,12 +1,14 @@
-/* title sign and the last flips under it */
+/* title sign and the ladder under it */
 .sign-wrap {
   position: absolute;
   left: 50%;
-  top: 4.5%;
+  /* a little higher than the corner buttons, so the ladder under it clears the coin's hop */
+  top: 3.2%;
   translate: -50% 0;
+  z-index: 4;
   display: flex;
   flex-direction: column;
-  gap: 1.1cqmin;
+  gap: 0.8cqmin;
   align-items: center;
   pointer-events: none;
 }
@@ -22,44 +24,6 @@
   text-shadow:
     0 0.06em 0 #5a3508,
     0 0.12em 0.2em rgba(0, 0, 0, 0.6);
-}
-
-.dots {
-  display: flex;
-  gap: 0.6cqmin;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* a small Sheriff star or Outlaw revolvers for each result; slots not played yet are faint dots */
-.dots li {
-  position: relative;
-  flex: none;
-  width: clamp(15px, 4.6cqmin, 64px);
-  aspect-ratio: 1;
-  background: center / contain no-repeat;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
-}
-
-.dots li:not(.sheriff):not(.outlaw)::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 26%;
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: rgba(247, 234, 208, 0.28);
-}
-
-.dots li.sheriff {
-  background-image: url(./art/logo-sheriff.webp);
-}
-
-.dots li.outlaw {
-  background-image: url(./art/logo-outlaw.webp);
 }
 
 /* round brass buttons in the corners; speed sits left of the sound button */
@@ -128,19 +92,11 @@
 @container stage (max-aspect-ratio: 1/1) {
   .sign-wrap {
     top: 2.2%;
-    gap: 1.4cqmin;
+    gap: 0.6cqmin;
   }
 
   .sign {
     font-size: clamp(15px, 5.5cqmin, 36px);
-  }
-
-  .dots {
-    gap: 0.7cqmin;
-  }
-
-  .dots li {
-    width: clamp(15px, 5.6cqmin, 64px);
   }
 
   /* speed in the top right corner, sound in the top left */

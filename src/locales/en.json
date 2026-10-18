@@ -11,6 +11,9 @@
   "pick.key.outlaw": "Outlaw: left arrow key",
   "coin.turn": "Turn the coin over",
   "flips.last": "Last flips",
+  "flips.newest": "newest first",
+  "flips.listLabel": "Last flips, newest first",
+  "flips.none": "No flips yet. Your results will show here.",
 
   "speed.1": "Normal",
   "speed.2": "Fast",

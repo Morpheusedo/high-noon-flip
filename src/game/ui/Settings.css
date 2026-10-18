@@ -8,8 +8,23 @@
   top: calc(4% + var(--tool) + 1.8cqmin);
 }
 
+/* in landscape the sound on the left, the speed and the last flips on the right: one
+   column is taller than a phone held sideways */
 .settings-panel {
-  width: min(86%, 92cqmin);
+  width: min(90%, 150cqmin);
+}
+
+.settings-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2cqmin 5cqmin;
+  align-items: start;
+}
+
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2cqmin;
 }
 
 .settings-row {
@@ -36,6 +51,14 @@
 }
 
 @container stage (max-aspect-ratio: 1/1) {
+  .settings-panel {
+    width: min(86%, 92cqmin);
+  }
+
+  .settings-columns {
+    grid-template-columns: 1fr;
+  }
+
   /* sound in the top left corner, the settings under it */
   .tool.sound {
     right: auto;
@@ -111,4 +134,51 @@
 .speed-choice label:has(input:focus-visible) {
   outline: 2px solid var(--brass-hi);
   outline-offset: 2px;
+}
+
+/* the last flips, newest first: a small Sheriff star or Outlaw revolvers for each */
+.flips {
+  display: grid;
+  gap: 1.2cqmin;
+}
+
+.flips h3 {
+  margin: 0;
+  display: flex;
+  gap: 1em;
+  align-items: baseline;
+  color: var(--cream);
+  font-size: clamp(12px, 3.4cqmin, 19px);
+  font-weight: 600;
+}
+
+.flips h3 small {
+  color: var(--muted);
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.flips ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8cqmin;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flips li {
+  flex: none;
+  width: clamp(22px, 6cqmin, 44px);
+  aspect-ratio: 1;
+  background: center / contain no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
+}
+
+.flips li.sheriff {
+  background-image: url(./art/logo-sheriff.webp);
+}
+
+.flips li.outlaw {
+  background-image: url(./art/logo-outlaw.webp);
 }

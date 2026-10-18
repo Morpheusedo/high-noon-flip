@@ -220,7 +220,9 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       data-outcome={outcome === 'lose' ? 'lose' : outcome ? 'win' : undefined}
       data-turbo={turbo ? undefined : 'off'}
     >
-      <TitleSign history={s.history} />
+      <TitleSign>
+        <Ladder ladder={config.ladder} step={step} fmt={fmt} />
+      </TitleSign>
       {turbo && (
         <SpeedButton
           speed={speed}
@@ -251,7 +253,6 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
         delay={paying ? PAYOUT_FLIGHT_MS : 0}
         fmt={fmt}
       />
-      <Ladder ladder={config.ladder} step={step} fmt={fmt} />
       {openRun ? (
         <CashOut
           prize={openRun.prize}
@@ -323,6 +324,7 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
           sfx={prefs.sfxVolume}
           music={prefs.musicVolume}
           speed={turbo ? speed : null}
+          history={s.history}
           onSfx={(v) => set({ sfxVolume: v })}
           onSfxSet={() => sounds.latch()}
           // turning the music up is a clear wish to hear it, so it also unmutes

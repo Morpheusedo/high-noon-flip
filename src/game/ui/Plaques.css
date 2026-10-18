@@ -138,37 +138,35 @@
   cursor: default;
 }
 
-/* a row of rungs to climb, over the bet */
+/* a row of rungs to climb, under the title sign (TopBar.tsx). In landscape each rung is
+   a bullet beside its multiplier, one line high: the top of the coin's flip comes right
+   under it. It must also clear the balance in the top left corner. */
 .ladder {
-  position: absolute;
-  left: 50%;
-  bottom: 17%;
-  translate: -50% 0;
-  z-index: 4;
   display: flex;
-  gap: 0.4cqmin;
+  gap: 0.6cqmin;
   margin: 0;
-  padding: 0.8cqmin 1.6cqmin;
+  padding: 0.4cqmin 1.6cqmin;
   list-style: none;
-  border-radius: 3cqmin;
+  border-radius: 99px;
   background: rgba(12, 6, 9, 0.6);
 }
 
 .rung {
-  min-width: 6.6cqmin;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.2cqmin;
+  gap: 0.5cqmin;
   font-weight: 700;
   font-size: clamp(9px, 2cqmin, 14px);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   color: var(--muted);
+  text-shadow: 0 1px 2px #000;
 }
 
 .rung::before {
   content: '';
-  width: 4.6cqmin;
+  flex: none;
+  width: 3.2cqmin;
   aspect-ratio: 1;
   background: url(./art/bullet-copper.webp) center / 100% 100% no-repeat;
   opacity: 0.5;
@@ -199,8 +197,7 @@
 .cashout-spot {
   position: absolute;
   left: 50%;
-  /* a little lower than the bet: three lines need the room under the ladder */
-  bottom: 2%;
+  bottom: 3%;
   translate: -50% 0;
   z-index: 4;
   transition:
@@ -297,8 +294,8 @@
   cursor: default;
 }
 
-/* the space bar, beside the cash out (the ladder leaves no room under it); hidden on
-   touch with the arrow keys */
+/* the space bar, beside the cash out (the plaque sits too low for it underneath);
+   hidden on touch with the arrow keys */
 .key.space {
   top: 50%;
   left: calc(100% + 2cqmin);
@@ -353,36 +350,22 @@
     --step: clamp(36px, 11cqmin, 80px);
   }
 
-  /* the ladder becomes a column down the left side */
+  /* between the corner buttons the ladder has too little width for one line: each
+     bullet stands over its multiplier */
   .ladder {
-    top: 20.5%;
-    bottom: auto;
-    left: 3%;
-    translate: none;
-    flex-direction: column;
-    gap: 0.7cqmin;
-    padding: 1.4cqmin 1.8cqmin 1.4cqmin 1.2cqmin;
-    background: rgba(10, 5, 8, 0.5);
-    border: 0.35cqmin solid var(--brass);
-    box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.6),
-      inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+    gap: 0.5cqmin;
+    padding: 0.6cqmin 1.8cqmin;
+    border-radius: 2.4cqmin;
   }
 
   .rung {
-    min-width: 0;
-    flex-direction: row;
-    gap: 0.8cqmin;
-    font-size: clamp(9px, 2.8cqmin, 28px);
-    color: var(--cream);
-    text-shadow:
-      0 1px 2px #000,
-      0 0 0.3em rgba(0, 0, 0, 0.8);
+    flex-direction: column;
+    gap: 0.3cqmin;
+    font-size: clamp(10px, 2.7cqmin, 22px);
   }
 
   .rung::before {
-    width: 4.8cqmin;
-    flex: none;
+    width: 4.2cqmin;
   }
 
   /* cash out: in the bet's place, a little bigger on the narrow screen */

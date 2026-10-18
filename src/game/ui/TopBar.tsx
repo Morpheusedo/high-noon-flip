@@ -1,28 +1,19 @@
 /**
- * The top of the screen: the title sign with the last flips under it, and the
- * speed button.
+ * The top of the screen: the title sign with the multiplier ladder under it, and
+ * the speed button. The last flips are in the settings.
  */
-import type { Side } from '../../server/protocol';
+import type { ComponentChildren } from 'preact';
 import { SPEEDS, type Speed } from '../../shell/settings';
-import { HISTORY_SIZE } from '../model/RoundModel';
 import { useText } from './text';
 import './TopBar.css';
 
-export function TitleSign({ history }: { history: Side[] }) {
+/** The title, with whatever hangs under it (the ladder). */
+export function TitleSign({ children }: { children?: ComponentChildren }) {
   const { t } = useText();
   return (
     <div class="sign-wrap">
       <h1 class="sign">{t('game.title')}</h1>
-      <ol class="dots" aria-label={t('flips.last')}>
-        {Array.from({ length: HISTORY_SIZE }, (_, i) => {
-          const side = history[i];
-          return side ? (
-            <li class={side} title={t(`side.${side}`)} aria-label={t(`side.${side}`)} />
-          ) : (
-            <li aria-hidden="true" />
-          );
-        })}
-      </ol>
+      {children}
     </div>
   );
 }

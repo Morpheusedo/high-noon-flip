@@ -1,7 +1,8 @@
 /**
- * Wooden plaques along the bottom: the balance, the bet in the middle (− and +
- * step through the levels, the amount opens them all), the ladder above it, and
- * in a run the cash out in the bet's place, with the space bar under it.
+ * Wooden plaques: the balance, the bet in the middle at the bottom (− and + step
+ * through the levels, the amount opens them all), and in a run the cash out in
+ * the bet's place, with the space bar beside it. The ladder of rungs hangs under
+ * the title sign.
  */
 import { useLayoutEffect, useRef, type MutableRef } from 'preact/hooks';
 import { nextLevel } from '../../server/bets';

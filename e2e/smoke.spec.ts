@@ -180,6 +180,8 @@ test('plays a run and cashes out', async ({ page }) => {
     expect(await page.evaluate(() => window.hnf?.model?.state.openRun?.step)).toBe(step);
     // in a run the cash out takes the bet's place
     await expect(page.locator('.stake')).toHaveCount(0);
+    // the rungs climbed so far light up under the title
+    await expect(page.locator('.ladder .rung.on')).toHaveCount(step);
   }
   // the rung, the prize on the table, and the next flip: 1.00 FUN at x3.96, then x7.92
   await expect(cashOut.locator('.cashout-multiplier')).toHaveText('×3.96');
@@ -200,6 +202,13 @@ test('plays a run and cashes out', async ({ page }) => {
   // the money flew to the balance, and the coins are gone
   expect(await page.evaluate(() => window.coins)).toBeGreaterThanOrEqual(5);
   await expect(page.locator('.payout-coin')).toHaveCount(0);
+
+  // the last flips are in the settings, newest first, by side name
+  await tap(page.locator('.tool.settings'));
+  const flips = page.getByRole('list', { name: 'Last flips, newest first' });
+  await expect(flips.getByRole('listitem')).toHaveCount(2);
+  await expect(flips.getByRole('listitem', { name: 'Outlaw' })).toHaveCount(2);
+  await page.getByRole('button', { name: 'Close' }).click();
 });
 
 test.describe('with reduced motion', () => {
@@ -284,6 +293,16 @@ const CONTROLS = [
   '.stake',
   '.tool.rules',
   '.tool.settings',
+  '.ladder',
+];
+
+/** What the ladder under the title must not run into. */
+const BESIDE_LADDER = [
+  '.plaque.balance',
+  '.tool.speed',
+  '.tool.sound',
+  '.tool.settings',
+  '.tool.rules',
 ];
 
 async function expectControlsOnScreen(page: Page): Promise<void> {
@@ -299,6 +318,17 @@ async function expectControlsOnScreen(page: Page): Promise<void> {
     expect(box.y, `${selector} top`).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width, `${selector} right`).toBeLessThanOrEqual(size.width + 0.5);
     expect(box.y + box.height, `${selector} bottom`).toBeLessThanOrEqual(size.height + 0.5);
+  }
+  const ladder = await page.locator('.ladder').boundingBox();
+  for (const selector of BESIDE_LADDER) {
+    const box = await page.locator(selector).boundingBox();
+    if (!ladder || !box) continue;
+    const apart =
+      box.x >= ladder.x + ladder.width ||
+      box.x + box.width <= ladder.x ||
+      box.y >= ladder.y + ladder.height ||
+      box.y + box.height <= ladder.y;
+    expect(apart, `the ladder runs into ${selector}`).toBe(true);
   }
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,

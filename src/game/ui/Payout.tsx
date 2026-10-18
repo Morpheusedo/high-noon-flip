@@ -44,8 +44,10 @@ export function Payout({ from, to, onDone }: Props) {
     const timer = setTimeout(onDone, PAYOUT_FLIGHT_MS + 50);
     return () => clearTimeout(timer);
   }, [onDone]);
-  // the arc rises above the higher of the two ends
-  const lift = Math.max(40, Math.abs(to.x - from.x) * 0.25);
+  // the arc rises above the higher of the two ends. Near the end it overshoots the
+  // balance by about half its lift, so with the balance in the top corner the lift
+  // (and the spread added below) stays under the balance's height on the stage
+  const lift = Math.min(Math.max(40, Math.abs(to.x - from.x) * 0.25), to.y - 24);
   return (
     <div class="payout" aria-hidden="true">
       {SPREAD.slice(0, COINS).map((p, i) => {

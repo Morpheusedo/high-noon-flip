@@ -1,7 +1,9 @@
-/* the two choices are the emblems themselves, silver-plated, with no plate behind them */
+/* the two choices are the emblems themselves, silver-plated, with no plate behind them.
+   In landscape they stand low, beside the ladder, and close to the revolver: the coin
+   with its hop takes the middle from 13.6% to 53% of the height */
 .pick {
   position: absolute;
-  top: calc(45% + 3px);
+  top: 61%;
   width: 31.5cqmin;
   height: 31.5cqmin;
   padding: 0;
@@ -22,13 +24,13 @@
 
 .pick.outlaw {
   --logo: url(./art/logo-outlaw.webp);
-  left: 2.5%;
+  left: 12cqmin;
   translate: 0 -50%;
 }
 
 .pick.sheriff {
   --logo: url(./art/logo-sheriff.webp);
-  right: 2.5%;
+  right: 12cqmin;
   translate: 0 -50%;
 }
 
@@ -163,7 +165,7 @@
 /* keyboard hints, desktop only: a brass keycap under each emblem */
 .key {
   position: absolute;
-  top: calc(45% + 3px + 17.2cqmin);
+  top: calc(61% + 17.2cqmin);
   width: 7.4cqmin;
   height: 6.8cqmin;
   translate: -50% 0;
@@ -193,12 +195,13 @@
   filter: drop-shadow(0 1px 0 rgba(255, 240, 190, 0.6));
 }
 
+/* centred under the emblems: their side offset plus half their width */
 .key.outlaw {
-  left: calc(2.5% + 15.75cqmin);
+  left: calc(12cqmin + 15.75cqmin);
 }
 
 .key.sheriff {
-  left: calc(97.5% - 15.75cqmin);
+  left: calc(100% - 12cqmin - 15.75cqmin);
 }
 
 .key:hover {

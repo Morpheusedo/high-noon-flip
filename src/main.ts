@@ -20,7 +20,6 @@ import { GameSounds, startMusicDirector } from './game/sound';
 import { App } from './game/ui/App';
 import { UI_ART } from './game/ui/art';
 import { TextContext } from './game/ui/text';
-import { COMPARE_RUN, readLayoutPreview } from './debug/layoutPreview';
 import './styles.css';
 
 /** The faces the interface uses, so it does not first draw in a fallback font. */
@@ -38,13 +37,9 @@ let text: Text = englishText();
 
 async function boot(): Promise<void> {
   const params = readLaunchParams();
-  const preview = readLayoutPreview(location.search, params.mode);
   const progress = new LoadProgress((f) => loader.progress(f));
-  // the provider adapter replaces MockServer here once its SDK is known; a compare
-  // frame keeps its session to itself, so the frames side by side do not share one
-  const mock = new MockServer({ store: preview.compare ? null : browserStorage(), latencyMs: 150 });
-  if (preview.compare === 'run') mock.openRunAt(COMPARE_RUN.step, COMPARE_RUN.bet);
-  const server: GameServer = mock;
+  // the provider adapter replaces MockServer here once its SDK is known
+  const server: GameServer = new MockServer({ store: browserStorage(), latencyMs: 150 });
   const scene = new GameScene();
   const settings = createSettings(browserStorage());
   const audio = new AudioManager();
@@ -73,7 +68,6 @@ async function boot(): Promise<void> {
     scene.mount(byId('scene'), progress.add(8)),
     preloadImages(UI_ART, progress.add(4)),
     progress.track(loadFonts(FONTS), 1),
-    preview.layout ? import('./debug/layouts.css') : null,
   ]);
 
   const model = new RoundModel(server, init);
@@ -88,7 +82,6 @@ async function boot(): Promise<void> {
         settings,
         lang: params.lang,
         demo: params.mode === 'demo',
-        layout: preview.layout,
         lobbyUrl: params.lobbyUrl,
         sounds,
         onTurnCoin: () => {

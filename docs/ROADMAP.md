@@ -100,6 +100,12 @@ the bet selected, so the player types over it, and a phone raises its keyboard f
 same tap. Enter or OK sets the bet as in step 10; with the keyboard up, a tap outside the
 field puts the keyboard away and shows the bullets. Without `customBet` nothing changes.
 
+### 14. Emblems lower, the balance up top — done
+
+In landscape the Outlaw and Sheriff emblems stand lower and closer to the revolver, beside
+the ladder, with their arrow keycaps under them, and the balance plaque moves to the top
+left corner. Portrait is unchanged. Picked from three variants compared side by side.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -281,6 +287,16 @@ field puts the keyboard away and shows the bullets. Without `customBet` nothing 
   take Space from it, but a button reached with Tab keeps its own Space (keyboard players
   pick with it). The keycap stands beside the plaque, not under it: the ladder leaves no
   room under the plaque in landscape. Hidden on touch and in portrait, as the arrow keys are.
+- Emblems lower, the balance in the top left (step 14): asked for, and picked from three
+  layouts compared side by side. The emblems, at 61% of the height and 12cqmin from the
+  edges, sit beside the ladder and nearer the coin they bet on, and with their hop (up 15%,
+  scale 1.16) stay clear of the coin, the ladder and the cash out. The top left corner is
+  empty in landscape (the four tools take the top right); the top centre is out, since the
+  coin with its hop reaches up to 13.6% of the height, right under the title. Checked at
+  844 x 390, 1440 x 810 and 1920 x 1080, idle and with an open run.
+- With the balance up top, a payout's coins would overshoot it near the end of their arc and
+  leave the stage at the top (the stage clips). The arc's lift is capped by the balance's
+  height on the stage, so they now come down onto it from within the plaque.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

@@ -42,7 +42,10 @@
   margin-left: 0.3em;
 }
 
+/* in landscape the balance has the top left corner, which the tool buttons leave empty */
 .balance {
+  top: 4%;
+  bottom: auto;
   left: 3cqmin;
   width: 34cqmin;
   --room: 26cqmin;
@@ -319,6 +322,7 @@
 
   /* the balance: a wooden tab sliding in from the left edge, over the bet */
   .balance {
+    top: auto;
     left: -3cqmin;
     bottom: 13%;
     width: auto;

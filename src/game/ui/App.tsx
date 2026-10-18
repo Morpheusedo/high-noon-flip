@@ -6,8 +6,14 @@
  * from the model's questions (`canChangeSetup`, `canCashOut`...), and the CSS
  * hides or dims the rest from the `data-*` attributes on the root.
  *
- * Keys: ← Outlaw, → Sheriff, ↑ ↓ bet, Space cash out. A held key does not repeat:
- * one press is one bet, so a key held down can never act as autoplay.
+ * A round starts in two steps: a tap on an emblem (or ← →) chooses the side, and
+ * BET places the bet on it. The side stays chosen for the next round. It lives
+ * here, not in the model: the server only hears of it with the bet. In a run a
+ * tap on a side flips at once, as the run is a string of quick decisions.
+ *
+ * Keys: ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A
+ * held key does not repeat: one press is one bet, so a key held down can never
+ * act as autoplay.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { nextLevel } from '../../server/bets';
@@ -25,12 +31,12 @@ import {
 import { nextPrize } from '../rules';
 import type { UiSounds } from '../sound';
 import { BetPicker } from './BetPicker';
-import { CoinTap, Emblems } from './Emblems';
+import { CoinTap, Emblems, SideHint } from './Emblems';
 import { formats } from './format';
 import { useReducedMotion } from './hooks';
 import { ErrorDialog, FundsNotice, ResultStamp } from './Notices';
 import { PAYOUT_FLIGHT_MS, Payout, type Point } from './Payout';
-import { Balance, CashOut, Ladder, Stake } from './Plaques';
+import { Balance, BetButton, CashOut, Ladder, Stake } from './Plaques';
 import { Rules, RulesButton } from './Rules';
 import { SettingsButton, SettingsPanel, SoundButton } from './Settings';
 import { SpeedButton, TitleSign } from './TopBar';
@@ -88,6 +94,10 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
   const reducedMotion = useReducedMotion();
   const [pressed, setPressed] = useState<Side | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
+  // the side BET bets on, kept for the next round; null until the player chooses one
+  const [chosen, setChosen] = useState<Side | null>(null);
+  // BET with no side: the hint shows until one is chosen, and each press pulses the emblems
+  const [nudge, setNudge] = useState(0);
   const [flights, setFlights] = useState<Flight[]>([]);
   const fmt = useMemo(() => formats(s.config.currency, lang), [s.config.currency, lang]);
 
@@ -133,6 +143,32 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
     void model.cashOut();
   }, [model, notePlaque]);
 
+  const chosenNow = useRef(chosen);
+  chosenNow.current = chosen;
+  /** BET: the bet on the chosen side, or a hint and a pulse when there is none. */
+  const placeBet = useCallback(() => {
+    if (!canChangeSetup(model.state)) return;
+    const side = chosenNow.current;
+    if (side) {
+      void model.pick(side);
+      return;
+    }
+    sounds.click();
+    setNudge((n) => n + 1);
+  }, [model, sounds]);
+  /** An emblem or an arrow: between rounds it chooses the side, in a run it flips. */
+  const onSide = useCallback(
+    (side: Side) => {
+      const state = model.state;
+      if (!isIdle(state)) return;
+      setChosen(side);
+      setNudge(0);
+      if (state.openRun) void model.pick(side);
+      else if (chosenNow.current !== side) sounds.click();
+    },
+    [model, sounds],
+  );
+
   // a payout (a cash out, or the top rung) sends coins from the plaque to the balance
   const paying =
     phase.name === 'result' &&
@@ -151,32 +187,56 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
     [],
   );
 
+  // whether the focused control was reached with Tab, so it keeps its own Space and
+  // Enter. Chrome makes even a control focused by a click :focus-visible the moment a
+  // key goes down, so the game tracks it itself: Tab sets it, a pointer press clears it
+  const tabbed = useRef(false);
   useEffect(() => {
-    // the Space that cashed out must not also click the focused button when it comes up
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') tabbed.current = true;
+    };
+    const onPointer = () => {
+      tabbed.current = false;
+    };
+    document.addEventListener('keydown', onTab, true);
+    document.addEventListener('pointerdown', onPointer, true);
+    return () => {
+      document.removeEventListener('keydown', onTab, true);
+      document.removeEventListener('pointerdown', onPointer, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    // the Space that pressed BET or cashed out must not also click the focused button
+    // when it comes up
     let spaceTaken = false;
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       const target = e.target instanceof Element ? e.target : null;
       if (panel || target?.closest('input, textarea, select')) return;
       const state = model.state;
-      if (e.key === ' ') {
-        // a control reached with Tab keeps its own Space; focus a mouse click left behind does not
+      if (e.key === ' ' || e.key === 'Enter') {
+        // a control reached with Tab keeps its own Space and Enter; focus a click or a
+        // tap left behind does not
         const control = target?.closest('button, a, [tabindex]');
-        if (control && !control.matches('.cashout') && control.matches(':focus-visible')) return;
-        if (!canCashOut(state)) return;
+        if (control && !control.matches('.cashout, .bet-button') && tabbed.current) return;
+        // the one button in the middle at the bottom: BET, or the cash out in a run
+        const press = canCashOut(state) ? cashOut : canChangeSetup(state) ? placeBet : null;
+        if (!press) return;
         e.preventDefault();
-        spaceTaken = true;
+        spaceTaken = e.key === ' ';
         setSpaceDown(true);
         setTimeout(() => setSpaceDown(false), KEY_DIP_MS);
-        cashOut();
+        press();
         return;
       }
       const side = e.key === 'ArrowLeft' ? 'outlaw' : e.key === 'ArrowRight' ? 'sheriff' : null;
       if (side) {
         e.preventDefault();
+        if (!isIdle(state)) return;
         setPressed(side);
         setTimeout(() => setPressed(null), KEY_DIP_MS);
-        void model.pick(side);
+        onSide(side);
         return;
       }
       const dir = e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0;
@@ -200,7 +260,7 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('keyup', onKeyUp);
     };
-  }, [model, sounds, panel, cashOut]);
+  }, [model, sounds, panel, cashOut, placeBet, onSide]);
 
   // the bet list closes by itself if a round starts some other way, e.g. a key
   useEffect(() => {
@@ -243,7 +303,15 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       <RulesButton onOpen={() => open('rules')} />
 
       <CoinTap disabled={!idle} onTap={onTurnCoin} />
-      <Emblems disabled={!idle} pressed={pressed} onPick={(side) => void model.pick(side)} />
+      <Emblems
+        disabled={!idle}
+        pressed={pressed}
+        chosen={chosen}
+        choosing={!openRun}
+        nudge={nudge}
+        onPick={onSide}
+      />
+      <SideHint shown={nudge > 0 && chosen === null && setupOpen} />
 
       <Balance
         balance={s.balance}
@@ -267,18 +335,28 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
           onCashOut={cashOut}
         />
       ) : (
-        <Stake
-          bets={config.bets}
-          bet={s.bet}
-          typed={config.customBet != null}
-          disabled={!setupOpen}
-          fmt={fmt}
-          onChange={(bet) => {
-            changeBet(bet);
-            sounds.tick();
-          }}
-          onOpen={() => open('bets')}
-        />
+        <div class="bet-row">
+          <Stake
+            bets={config.bets}
+            bet={s.bet}
+            typed={config.customBet != null}
+            disabled={!setupOpen}
+            fmt={fmt}
+            onChange={(bet) => {
+              changeBet(bet);
+              sounds.tick();
+            }}
+            onOpen={() => open('bets')}
+          />
+          <BetButton
+            bet={s.bet}
+            side={chosen}
+            disabled={!setupOpen || panel !== null}
+            fmt={fmt}
+            keyDown={spaceDown}
+            onBet={placeBet}
+          />
+        </div>
       )}
 
       {config.customBet && (

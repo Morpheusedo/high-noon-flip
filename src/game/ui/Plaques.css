@@ -59,13 +59,20 @@
   line-height: calc(clamp(15px, 4.8cqmin, 36px) * 1.2);
 }
 
-/* the bet, in the middle at the bottom: − plaque + */
-.stake {
+/* the bet and BET, in the middle at the bottom: − plaque + BET. In landscape side by
+   side, between the arrow keycaps; in portrait BET runs wide under the bet. */
+.bet-row {
   position: absolute;
   left: 50%;
   bottom: 3%;
   translate: -50% 0;
   z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 2.4cqmin;
+}
+
+.stake {
   display: flex;
   align-items: center;
   gap: 1.4cqmin;
@@ -135,6 +142,63 @@
 }
 
 .stake button:disabled {
+  cursor: default;
+}
+
+/* BET: the main action, gold and the brightest thing at the bottom */
+.bet-spot {
+  position: relative;
+}
+
+.bet-button {
+  box-sizing: border-box;
+  min-width: 27cqmin;
+  height: 12.4cqmin;
+  padding: 0 4cqmin 0.4cqmin;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 2cqmin;
+  font-family: var(--font-title);
+  font-size: clamp(18px, 6.2cqmin, 46px);
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #3a2606;
+  text-shadow: 0 1px 0 rgba(255, 240, 190, 0.6);
+  background: linear-gradient(#ffe7a6, var(--gold) 45%, var(--brass) 80%, #a87a2c);
+  box-shadow:
+    inset 0 0.3cqmin 0 rgba(255, 255, 255, 0.6),
+    inset 0 0 0 0.25cqmin rgba(90, 53, 8, 0.55),
+    0 0.8cqmin 0 #5f3f0d,
+    0 0.8cqmin 0 0.25cqmin rgba(20, 10, 4, 0.7),
+    0 1.8cqmin 2.4cqmin rgba(0, 0, 0, 0.6),
+    0 0 3cqmin rgba(255, 200, 90, 0.35);
+  transition:
+    opacity 0.2s,
+    filter 0.2s,
+    transform 0.07s,
+    box-shadow 0.07s;
+}
+
+.bet-button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.bet-button:active:not(:disabled) {
+  transform: translateY(0.6cqmin);
+  box-shadow:
+    inset 0 0.3cqmin 0 rgba(255, 255, 255, 0.6),
+    inset 0 0 0 0.25cqmin rgba(90, 53, 8, 0.55),
+    0 0.2cqmin 0 #5f3f0d,
+    0 0.2cqmin 0 0.25cqmin rgba(20, 10, 4, 0.7),
+    0 0.8cqmin 1.2cqmin rgba(0, 0, 0, 0.6);
+}
+
+/* while a round plays, or a dialog is open */
+.bet-button:disabled {
+  opacity: 0.55;
+  filter: saturate(0.5);
   cursor: default;
 }
 
@@ -317,11 +381,11 @@
     font-size: clamp(13px, 5cqmin, 32px);
   }
 
-  /* the balance: a wooden tab sliding in from the left edge, over the bet */
+  /* the balance: a wooden tab sliding in from the left edge, over the bet and BET */
   .balance {
     top: auto;
     left: -3cqmin;
-    bottom: 13%;
+    bottom: calc(2.5% + 30cqmin);
     width: auto;
     min-width: 34cqmin;
     padding: 1.35cqmin 3cqmin 1.5cqmin 5.7cqmin;
@@ -336,9 +400,21 @@
     line-height: normal;
   }
 
-  .stake {
+  .bet-row {
     bottom: 2.5%;
+    flex-direction: column;
     gap: 2cqmin;
+  }
+
+  .stake {
+    gap: 2cqmin;
+  }
+
+  .bet-button {
+    width: 80cqmin;
+    min-width: 0;
+    height: 13cqmin;
+    font-size: clamp(18px, 7cqmin, 46px);
   }
 
   .stake-value {

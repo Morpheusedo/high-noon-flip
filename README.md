@@ -2,7 +2,8 @@
 
 [Русская версия](README.ru.md)
 
-A western coin flip: pick Sheriff or Outlaw, the revolver fires and flips the coin.
+A western coin flip: choose Sheriff or Outlaw and press BET, the revolver fires and flips
+the coin.
 Each correct pick doubles the prize, from 1.98x up to 253.44x; cash out at any time, and
 one wrong pick loses the stake.
 
@@ -60,7 +61,8 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
 360 x 640 phone, portrait and landscape: loading, the bet's − and + and its list, a typed bet
-played to the server, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
+played to the server, BET with no side (a hint and nothing sent; still outlines with reduced
+motion), a side chosen and kept for the next BET with Space and Enter, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
 with reduced motion), the last flips in the settings, a lost answer (NETWORK) and its recovery, a run resumed after a reload
 and cashed out with Space, the controls on screen (the ladder clear of the corners) before
 and after a rotation. Outcomes are forced through `hnf`, so
@@ -110,8 +112,8 @@ src/
    └─ ui/             Preact: the HTML interface over the canvas
       ├─ App.tsx          lays out the controls, keyboard shortcuts
       ├─ TopBar.tsx       title with the ladder under it, speed
-      ├─ Emblems.tsx      Sheriff and Outlaw picks, keycaps, the tap over the coin
-      ├─ Plaques.tsx      balance, the bet (− amount +), ladder, cash out (multiplier, prize, next flip)
+      ├─ Emblems.tsx      Sheriff and Outlaw (choose a side; flip in a run), keycaps, hint, coin tap
+      ├─ Plaques.tsx      balance, the bet (− amount +) and BET, ladder, cash out (multiplier, prize, next flip)
       ├─ Payout.tsx       coins flying from the cash out to the balance
       ├─ BetPicker.tsx    every bet level at once, and a field for an exact amount
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed, last flips)
@@ -161,8 +163,13 @@ Rules the code follows:
   bet opens it focused with the bet selected, so the player types at once and a phone
   raises its keyboard from that tap. `server/bets.ts` holds the rule, and the client and the
   mock server both use it.
-- **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space cash out. A held key does not repeat, so it
-  cannot act as autoplay. A button reached with Tab keeps its own Space.
+- **A round starts in two steps.** A tap on an emblem (or ← →) chooses the side, BET places
+  the bet on it, and the side stays chosen for the next round. The choice lives in the
+  interface, not in the model: the server hears of it only with the bet. In a run a tap on a
+  side flips at once.
+- **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A held key
+  does not repeat, so it cannot act as autoplay. A button reached with Tab keeps its own
+  Space and Enter.
 - **No string in code.** Every text the player reads is a key in `src/locales/en.json`.
   English is bundled; any other language is a small chunk loaded only when `lang` asks for
   it. To add a language, add `xx.json` next to `en.json`; a test fails until it has every

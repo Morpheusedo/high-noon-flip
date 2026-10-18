@@ -114,6 +114,14 @@ flip). The multiplier ladder takes the row's place under the title in both orien
 so it no longer sits over the scene above the bet (landscape) or down the left side
 (portrait).
 
+### 16. Choose a side, then BET — done
+
+A tap on the Sheriff or Outlaw emblem (or ← →) only chooses the side: the chosen one
+stands raised and lit, the other dims. A large gold BET button beside the bet places the
+bet on it, and the side stays chosen for the next round. BET with no side sends nothing,
+says "Choose Sheriff or Outlaw first" and pulses both emblems once. In a run a tap on a
+side still flips at once. Space and Enter press BET, or cash out in a run.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -293,7 +301,10 @@ so it no longer sits over the scene above the bet (landscape) or down the left s
   never of reaching a higher rung, which would read as better odds than the player has.
 - Space cashes out (step 11), once per press. Focus a mouse click left on a button does not
   take Space from it, but a button reached with Tab keeps its own Space (keyboard players
-  pick with it). The keycap stands beside the plaque, not under it: the ladder leaves no
+  pick with it). Whether it was reached with Tab is tracked by the game (Tab sets it, a
+  pointer press clears it), not read from `:focus-visible`: Chrome makes a clicked button
+  `:focus-visible` the moment any key goes down, so Space after a click on an emblem went to
+  the emblem (found in step 16). The keycap stands beside the plaque, not under it: the ladder leaves no
   room under the plaque in landscape. Hidden on touch and in portrait, as the arrow keys are.
 - Emblems lower, the balance in the top left (step 14): asked for, and picked from three
   layouts compared side by side. The emblems, at 61% of the height and 12cqmin from the
@@ -330,6 +341,33 @@ so it no longer sits over the scene above the bet (landscape) or down the left s
   round history, which the shell does not show yet, is the real record.
 - The settings panel has two columns in landscape (sound | speed and the last flips): one
   column ran 31 px past a 390 px tall screen.
+- Choose, then BET (step 16), asked for: a tap on an emblem or ← → only chooses the side,
+  and BET places the bet with it through the same `model.pick(side)` (`play({ bet, pick })`,
+  the protocol is unchanged). A lone tap no longer stakes money, which a stray touch on a
+  phone did before. The chosen side lives in `App` state, not in `RoundModel`: the server
+  only hears of it with the bet. It starts empty in each session and stays chosen after a
+  round, so the same side again is one tap on BET.
+- In a run a tap on a side still flips at once, as in Stake's Hilo and Mines: a run is a
+  string of quick decisions, and BET only starts the round. The emblems show no choice then
+  (no dimming), since both are live, and the side tapped last becomes the chosen one for the
+  next round.
+- The chosen emblem stands raised (8% up, scale 1.1) with its green outline lit, no hop; the
+  other stops hopping and dims to half, still one tap away. With nothing chosen they take
+  turns hopping, as before. `aria-pressed` tells a screen reader which one is chosen.
+- BET with no side sends nothing: the hint "Choose Sheriff or Outlaw first" appears between
+  the emblems (a `role="status"` region, kept mounted so it is announced) until a side is
+  chosen, and both emblems pulse once (scale 1.18, outline flashed, 0.7 s; two keyframe names
+  so a second press restarts it). Reduced motion: no pulse, both outlines fully lit and still
+  until a side is chosen.
+- BET is the brightest control on screen: gold, in the title's letters. In landscape it
+  stands right of the bet (the pair centred between the arrow keycaps), with a space bar
+  keycap beside it; in portrait it runs 80cqmin wide under the bet, and the balance tab moved
+  up over them (from 13% to 2.5% + 30cqmin from the bottom). Disabled while a round plays or a
+  panel is open; with too little money it leads to the insufficient-funds notice, as a pick
+  did. Checked at 360 x 640, 390 x 780 and 844 x 390, idle, with the hint and in a run; the
+  smoke test checks the hint clears the balance, the bet and BET.
+- Space and Enter press the one button in the middle at the bottom: BET between rounds, the
+  cash out in a run. Enter cashing out too keeps one rule for that button.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

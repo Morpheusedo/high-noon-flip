@@ -15,6 +15,8 @@ declare global {
     stamps: string[];
     /** Coins that flew from the cash out to the balance so far. */
     coins: number;
+    /** The side of every bet and pick sent so far. */
+    picks: string[];
   }
 }
 
@@ -76,6 +78,13 @@ async function tap(control: Locator): Promise<void> {
   const box = await control.boundingBox();
   if (!box) throw new Error(`${control.toString()} has no box`);
   await control.page().touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+}
+
+/** A new round: the side is chosen on its emblem, then BET places the bet. */
+async function bet(page: Page, side: 'sheriff' | 'outlaw'): Promise<void> {
+  await tap(page.locator(`.pick.${side}`));
+  await expect(page.locator(`.pick.${side}`)).toHaveAttribute('aria-pressed', 'true');
+  await tap(page.locator('.bet-button'));
 }
 
 /** Runs `action` and returns the result stamp the round ends with. */
@@ -161,11 +170,57 @@ test('takes a typed bet and plays it', async ({ page }) => {
 
   const before = await balances(page);
   await page.evaluate(() => window.hnf?.server.forceOutcomes('win'));
-  await tap(page.locator('.pick.sheriff'));
+  await bet(page, 'sheriff');
   await waitIdle(page);
   const server = await page.evaluate(() => window.hnf?.server.snapshot());
   expect(server?.openRun?.bet).toBe(735);
   expect(server?.balance).toBe(before.server - 735);
+});
+
+test('BET asks for a side first, then keeps it for the next round', async ({ page }) => {
+  await openGame(page);
+  const before = await balances(page);
+  const hint = page.getByRole('status').filter({ hasText: 'Choose Sheriff or Outlaw first' });
+  const sheriff = page.locator('.pick.sheriff');
+  const outlaw = page.locator('.pick.outlaw');
+
+  // no side yet: BET sends nothing, names the choice and pulses both emblems
+  await expect(sheriff).toHaveAttribute('aria-pressed', 'false');
+  await tap(page.getByRole('button', { name: 'Bet 1.00 FUN. Choose Sheriff or Outlaw first.' }));
+  await expect(hint).toBeVisible();
+  await expect(sheriff).toHaveClass(/nudge/);
+  await expect(outlaw).toHaveClass(/nudge/);
+  expect(await page.evaluate(() => window.hnf?.model?.state.phase.name)).toBe('idle');
+  expect(await balances(page)).toEqual(before);
+  expect(await page.evaluate(() => window.hnf?.server.snapshot().openRun)).toBeNull();
+
+  // a tap chooses the side and sends nothing either; the other side dims
+  await tap(outlaw);
+  await expect(hint).toHaveCount(0);
+  await tap(sheriff);
+  await expect(sheriff).toHaveAttribute('aria-pressed', 'true');
+  await expect(sheriff).toHaveClass(/chosen/);
+  await expect(outlaw).toHaveAttribute('aria-pressed', 'false');
+  await expect(outlaw).toHaveClass(/other/);
+  expect(await balances(page)).toEqual(before);
+
+  // Space presses BET on the chosen side
+  await page.evaluate(() => {
+    window.picks = [];
+    window.hnf?.model?.store.subscribe((s) => {
+      if (s.phase.name === 'requesting' && s.phase.pick) window.picks.push(s.phase.pick);
+    });
+    window.hnf?.server.forceOutcomes('lose');
+  });
+  expect(await playRound(page, () => page.keyboard.press('Space'))).toBe('lose');
+  expect(await page.evaluate(() => window.picks)).toEqual(['sheriff']);
+  expect((await balances(page)).server).toBe(before.server - 100);
+
+  // the side stays chosen: the next round is one more BET (Enter this time)
+  await expect(sheriff).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(() => window.hnf?.server.forceOutcomes('lose'));
+  expect(await playRound(page, () => page.keyboard.press('Enter'))).toBe('lose');
+  expect((await balances(page)).server).toBe(before.server - 200);
 });
 
 test('plays a run and cashes out', async ({ page }) => {
@@ -175,7 +230,9 @@ test('plays a run and cashes out', async ({ page }) => {
 
   const cashOut = page.locator('.cashout');
   for (const step of [1, 2]) {
-    await tap(page.locator('.pick.outlaw'));
+    // the first pick is chosen and placed with BET; in a run one tap flips at once
+    if (step === 1) await bet(page, 'outlaw');
+    else await tap(page.locator('.pick.outlaw'));
     await waitIdle(page);
     expect(await page.evaluate(() => window.hnf?.model?.state.openRun?.step)).toBe(step);
     // in a run the cash out takes the bet's place
@@ -214,6 +271,26 @@ test('plays a run and cashes out', async ({ page }) => {
 test.describe('with reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
 
+  test('BET with no side lights the emblems up and holds still', async ({ page }) => {
+    await openGame(page);
+    await tap(page.locator('.bet-button'));
+    await expect(page.getByText('Choose Sheriff or Outlaw first')).toBeVisible();
+    // both outlines fully lit, and nothing pulses or hops
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          [...document.querySelectorAll('.pick')].map((pick) => ({
+            halo: getComputedStyle(pick, '::before').opacity,
+            moving: pick.getAnimations({ subtree: true }).length,
+          })),
+        ),
+      )
+      .toEqual([
+        { halo: '1', moving: 0 },
+        { halo: '1', moving: 0 },
+      ]);
+  });
+
   test('shows a new prize at once and sends no coins', async ({ page }) => {
     await openGame(page);
     await page.evaluate(() => {
@@ -241,7 +318,7 @@ test('recovers a round whose answer was lost (NETWORK)', async ({ page }) => {
   // the server settles the bet, then the answer never arrives
   await page.evaluate(() => window.hnf?.server.failNext('NETWORK', 'after'));
 
-  await tap(page.locator('.pick.sheriff'));
+  await bet(page, 'sheriff');
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toContainText('NETWORK');
   await dialog.getByRole('button', { name: 'Try again' }).click();
@@ -283,7 +360,24 @@ test('fits the screen and survives a rotation', async ({ page }, info) => {
 
   // still plays after the scene was rebuilt
   await page.evaluate(() => window.hnf?.server.forceOutcomes('lose'));
-  expect(await playRound(page, () => tap(page.locator('.pick.sheriff')))).toBe('lose');
+  expect(await playRound(page, () => bet(page, 'sheriff'))).toBe('lose');
+
+  // the hint for BET with no side fits between the emblems and the bet
+  await page.reload();
+  await expect(page.locator('#loader')).toHaveCount(0, { timeout: 30_000 });
+  await tap(page.locator('.bet-button'));
+  const hint = await page.locator('.side-hint span').boundingBox();
+  expect(hint).not.toBeNull();
+  for (const selector of ['.plaque.balance', '.stake', '.bet-button']) {
+    const box = await page.locator(selector).boundingBox();
+    if (!hint || !box) continue;
+    const apart =
+      box.x >= hint.x + hint.width ||
+      box.x + box.width <= hint.x ||
+      box.y >= hint.y + hint.height ||
+      box.y + box.height <= hint.y;
+    expect(apart, `the hint runs into ${selector}`).toBe(true);
+  }
 });
 
 const CONTROLS = [
@@ -291,6 +385,7 @@ const CONTROLS = [
   '.pick.outlaw',
   '.plaque.balance',
   '.stake',
+  '.bet-button',
   '.tool.rules',
   '.tool.settings',
   '.ladder',

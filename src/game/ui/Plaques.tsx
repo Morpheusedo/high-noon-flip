@@ -1,12 +1,12 @@
 /**
  * Wooden plaques: the balance, the bet in the middle at the bottom (− and + step
- * through the levels, the amount opens them all), and in a run the cash out in
- * the bet's place, with the space bar beside it. The ladder of rungs hangs under
- * the title sign.
+ * through the levels, the amount opens them all) with the gold BET button beside
+ * it, and in a run the cash out in their place. BET and the cash out each have
+ * the space bar beside them. The ladder of rungs hangs under the title sign.
  */
 import { useLayoutEffect, useRef, type MutableRef } from 'preact/hooks';
 import { nextLevel } from '../../server/bets';
-import type { Minor } from '../../server/protocol';
+import type { Minor, Side } from '../../server/protocol';
 import type { Formats } from './format';
 import { useCountUp, useFitText } from './hooks';
 import { useText } from './text';
@@ -99,6 +99,36 @@ export function Stake({ bets, bet, typed, disabled, fmt, onChange, onOpen }: Sta
       >
         <StepIcon plus />
       </button>
+    </div>
+  );
+}
+
+interface BetButtonProps {
+  bet: Minor;
+  /** The side chosen on the emblems; without one BET asks for it and sends nothing. */
+  side: Side | null;
+  disabled: boolean;
+  fmt: Formats;
+  /** Space or Enter was just pressed, so its keycap dips. */
+  keyDown: boolean;
+  onBet(): void;
+}
+
+/** The main action between rounds: places the bet on the side chosen on the emblems. */
+export function BetButton({ bet, side, disabled, fmt, keyDown, onBet }: BetButtonProps) {
+  const { t } = useText();
+  const amount = fmt.full(bet);
+  return (
+    <div class="bet-spot">
+      <button
+        class="bet-button"
+        aria-label={t(side ? `bet.place.${side}` : 'bet.place.none', { amount })}
+        disabled={disabled}
+        onClick={onBet}
+      >
+        {t('bet.place')}
+      </button>
+      <SpaceKey label={t('bet.place.key')} disabled={disabled} pressed={keyDown} onPress={onBet} />
     </div>
   );
 }
@@ -206,7 +236,12 @@ export function CashOut({
         </span>
         {next && <span class="cashout-next">{nextLine(t, fmt, next, chance)}</span>}
       </button>
-      <SpaceKey disabled={disabled} pressed={keyDown} onCashOut={onCashOut} />
+      <SpaceKey
+        label={t('cashOut.key')}
+        disabled={disabled}
+        pressed={keyDown}
+        onPress={onCashOut}
+      />
     </div>
   );
 }
@@ -226,23 +261,24 @@ function nextLine(
 }
 
 function SpaceKey({
+  label,
   disabled,
   pressed,
-  onCashOut,
+  onPress,
 }: {
+  label: string;
   disabled: boolean;
   /** Space was just pressed, so the keycap dips. */
   pressed: boolean;
-  onCashOut(): void;
+  onPress(): void;
 }) {
-  const { t } = useText();
   return (
     <button
       class={`key space${pressed ? ' down' : ''}`}
       tabIndex={-1}
-      aria-label={t('cashOut.key')}
+      aria-label={label}
       disabled={disabled}
-      onClick={onCashOut}
+      onClick={onPress}
     >
       <svg
         viewBox="0 0 48 24"

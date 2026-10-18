@@ -62,6 +62,7 @@ export function Rules({ config, jurisdiction, bet, demo, lang, fmt, onClose }: P
           {parts('rules.play.body', {
             sheriff: <b>{t('side.sheriff')}</b>,
             outlaw: <b>{t('side.outlaw')}</b>,
+            bet: <b>{t('bet.place')}</b>,
           })}
         </p>
 

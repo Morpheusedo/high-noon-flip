@@ -143,7 +143,7 @@
    under it. It must also clear the balance in the top left corner. */
 .ladder {
   display: flex;
-  gap: 0.6cqmin;
+  gap: 1.2cqmin;
   margin: 0;
   padding: 0.4cqmin 1.6cqmin;
   list-style: none;
@@ -154,7 +154,6 @@
 .rung {
   display: flex;
   align-items: center;
-  gap: 0.5cqmin;
   font-weight: 700;
   font-size: clamp(9px, 2cqmin, 14px);
   font-variant-numeric: tabular-nums;
@@ -167,6 +166,7 @@
   content: '';
   flex: none;
   width: 3.2cqmin;
+  margin-right: 0.5cqmin;
   aspect-ratio: 1;
   background: url(./art/bullet-copper.webp) center / 100% 100% no-repeat;
   opacity: 0.5;
@@ -353,19 +353,35 @@
   /* between the corner buttons the ladder has too little width for one line: each
      bullet stands over its multiplier */
   .ladder {
-    gap: 0.5cqmin;
-    padding: 0.6cqmin 1.8cqmin;
+    gap: 2.2cqmin;
+    padding: 0.6cqmin 2.4cqmin;
     border-radius: 2.4cqmin;
   }
 
   .rung {
-    flex-direction: column;
-    gap: 0.3cqmin;
-    font-size: clamp(10px, 2.7cqmin, 22px);
+    min-width: 5.4cqmin;
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: center;
+    row-gap: 0.3cqmin;
+    font-size: clamp(10px, 3cqmin, 22px);
   }
 
   .rung::before {
-    width: 4.2cqmin;
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 5.4cqmin;
+    margin-right: 0;
+  }
+
+  /* only the next rung keeps its "×": the others are clear from the row */
+  .rung:not(.next) .rung-x {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   /* cash out: in the bet's place, a little bigger on the narrow screen */

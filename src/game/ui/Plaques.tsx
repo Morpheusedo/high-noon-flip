@@ -134,7 +134,10 @@ export function Ladder({ ladder, step, fmt }: LadderProps) {
           class={`rung${i < step ? ' on' : i === step ? ' next' : ''}`}
           aria-current={i === step - 1 ? 'step' : undefined}
         >
-          {fmt.multiplier(m)}
+          {/* in portrait only the next rung shows its "×", so the numbers have room;
+              the others keep it for a screen reader */}
+          <span class="rung-x">×</span>
+          {fmt.factor(m)}
         </li>
       ))}
     </ol>

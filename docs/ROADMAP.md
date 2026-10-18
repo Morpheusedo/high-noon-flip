@@ -309,13 +309,19 @@ so it no longer sits over the scene above the bet (landscape) or down the left s
   the row of last flips there told the player nothing they could act on. It is part of the
   sign's column (`TitleSign` takes it as a child), so it follows the title's size. In
   landscape each rung is a bullet beside its multiplier, one line high, and the title moved
-  up from 4.5% to 3.2%, so the ladder ends at 13.3% of the height. In portrait there is too
-  little width between the corner buttons for one line, so each bullet stands over its
-  multiplier (10 px at the least), and it ends at 11.5%. Measured on the scene at 844 x 390
-  and 390 x 780: the coin at rest and in its tease stays clear (by 28 and 39 px); only at
-  the top of a flip, blurred and spinning, does its rim touch the ladder's lower edge
-  (2 px in landscape, up to 9 px in portrait, for a moment). With the balance in the top left corner the ladder clears it by 40 px
-  at 844 x 390; the smoke test checks it never runs into the balance or the corner buttons.
+  up from 4.5% to 3.2%, so the ladder ends at 13.3% of the height.
+- In portrait the ladder stays between the corner buttons, under the title, each bullet over
+  its number. At first the eight labels ran into each other there ("×1.98×3.96..."), so only
+  the next rung shows its "×" (the others keep it hidden for a screen reader, `.rung-x`), the
+  bullets are a quarter bigger, and the rungs stand 2.2cqmin apart: at least 7 px between
+  labels at 360 x 640, and 8 to 12 px clear of the corner buttons. A full-width row under the
+  second row of corner buttons was turned down: it would sit on the resting coin (its top is
+  at 18.9% of the height). Measured on the scene at 844 x 390 and 390 x 780: the coin at
+  rest and in its tease stays clear (by 28 and 34 px); only at the top of a flip, blurred
+  and spinning, does its rim reach under the ladder's lower edge (2 px in landscape, up to
+  14 px in portrait, for a moment). With the balance in the top left corner the ladder
+  clears it by 32 px at 844 x 390; the smoke test checks it never runs into the balance or
+  the corner buttons.
 - With the ladder gone from over the bet, the cash out stands at 3% from the bottom like the
   bet, not 2%.
 - The last flips (step 15) are in the settings: history a player looks up, not a control.

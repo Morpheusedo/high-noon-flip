@@ -17,6 +17,8 @@ export interface Formats {
   parse(text: string): Minor | null;
   /** "×1.98", "×15.8", "×253": fewer decimals as the number grows. */
   multiplier(value: number): string;
+  /** The multiplier's number alone, "1.98", for where the "×" is set apart. */
+  factor(value: number): string;
   /** "×15.84", "×253.44": every decimal the payout has, for the rules. */
   exactMultiplier(value: number): string;
   /** A chance as a share: 0.5 is "50%". */
@@ -32,6 +34,7 @@ export function formats(currency: Currency, lang: string): Formats {
   const exact = new Intl.NumberFormat(lang, { maximumFractionDigits: 4 });
   const compact = new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 });
   const share = new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: 2 });
+  const factor = (value: number) => (value < 10 ? two : value < 100 ? one : none).format(value);
   return {
     amount: (value) => formatAmount(value, currency, lang),
     short: (value) => {
@@ -43,7 +46,8 @@ export function formats(currency: Currency, lang: string): Formats {
     code: currency.code,
     input: (value) => formatInput(value, currency, lang),
     parse: (text) => parseAmount(text, currency, lang),
-    multiplier: (value) => `×${(value < 10 ? two : value < 100 ? one : none).format(value)}`,
+    multiplier: (value) => `×${factor(value)}`,
+    factor,
     exactMultiplier: (value) => `×${exact.format(value)}`,
     percent: (value) => share.format(value),
   };

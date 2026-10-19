@@ -60,12 +60,12 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 "unknown" otherwise.
 
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
-360 x 640 phone, portrait and landscape: loading, the bet's − and + and its list, a typed bet
-played to the server, BET with no side (a hint and nothing sent; still outlines with reduced
+360 x 640 phone, portrait and landscape: loading, the bet dial (a drag, the wheel, the arrow
+keys) and the bet list, a typed bet shown on the drum and played to the server, BET with no side (a hint and nothing sent; still outlines with reduced
 motion), a side chosen and kept for the next BET with Space and Enter, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
 with reduced motion), the last flips in the settings, a lost answer (NETWORK) and its recovery, a run resumed after a reload
-and cashed out with Space, the controls on screen (the ladder clear of the corners) before
-and after a rotation. Outcomes are forced through `hnf`, so
+and cashed out with Space, the controls on screen (the ladder clear of the corners, the balance, the dial and BET
+apart) before and after a rotation. Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
 
 `npm run lowend` measures load time, bytes, frame rate and memory with the CPU and
@@ -113,7 +113,9 @@ src/
       ├─ App.tsx          lays out the controls, keyboard shortcuts
       ├─ TopBar.tsx       title with the ladder under it, speed
       ├─ Emblems.tsx      Sheriff and Outlaw (choose a side; flip in a run), keycaps, hint, coin tap
-      ├─ Plaques.tsx      balance, the bet (− amount +) and BET, ladder, cash out (multiplier, prize, next flip)
+      ├─ BetDial.tsx      the bet: the revolver's cylinder in the right edge, its BET tab names the amount
+      ├─ dial.ts          the dial's arithmetic: six chambers over any number of levels and a typed bet
+      ├─ Plaques.tsx      balance, BET, ladder, cash out (multiplier, prize, next flip)
       ├─ Payout.tsx       coins flying from the cash out to the balance
       ├─ BetPicker.tsx    every bet level at once, and a field for an exact amount
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed, last flips)
@@ -156,10 +158,11 @@ Rules the code follows:
   with the tab, and enforces the market's shortest round time on top.
 - **Art comes with its measurements.** Positions measured on an image live in
   `scene-layout.json` next to it, not in code.
-- **Bets come from the operator.** − and + step through whatever levels the config sends,
-  and the list shows them all; the client never assumes a number of them. When the config
+- **Bets come from the operator.** The cylinder dial turns through whatever levels the
+  config sends, and the list (opened from its BET tab) shows them all; the client never assumes a number of them. When the config
   has `customBet` (the server takes any stake in a range, on a grid), the list also has a
-  field for an exact amount, read as the player's language writes numbers. One tap on the
+  field for an exact amount, read as the player's language writes numbers; the drum stops at
+  a typed amount between two levels and turns from it to the next one. One tap on the
   bet opens it focused with the bet selected, so the player types at once and a phone
   raises its keyboard from that tap. `server/bets.ts` holds the rule, and the client and the
   mock server both use it.

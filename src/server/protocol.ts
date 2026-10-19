@@ -24,7 +24,7 @@ export interface Currency {
 /** Game settings the operator and provider choose; the client only displays them. */
 export interface GameConfig {
   currency: Currency;
-  /** Bet levels, ascending: what − and + step through and the bet list shows. */
+  /** Bet levels, ascending: what the bet dial turns through and the bet list shows. */
   bets: Minor[];
   defaultBet: Minor;
   /**

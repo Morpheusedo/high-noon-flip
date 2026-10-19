@@ -122,6 +122,14 @@ bet on it, and the side stays chosen for the next round. BET with no side sends 
 says "Choose Sheriff or Outlaw first" and pulses both emblems once. In a run a tap on a
 side still flips at once. Space and Enter press BET, or cash out in a run.
 
+### 17. The cylinder dial is back — done
+
+The revolver's cylinder is the bet again, in place of − amount +: half sunk into the
+bottom edge right of BET in landscape, into the right edge in portrait. A BET tab over the
+chosen chamber names the amount and opens the bet list with its field (steps 10 and 13).
+BET stands alone in the middle at the bottom, where the cash out stands in a run. The drum
+stops at a typed amount between two levels, and the dial is gone during a run.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -148,7 +156,8 @@ side still flips at once. Space and Enter press BET, or cash out in a run.
 - Multiply only (step 9): one mode is one thing to learn, and the ladder is the game.
   `PlayRequest` has no `mode`; `GameConfig` has no `instantMultiplier`. If a provider's
   RGS keeps modes, the adapter sends `multiply`.
-- The bet is one block in the middle at the bottom (step 9): "− BET 1.00 FUN +". − and +
+- The bet is one block in the middle at the bottom (step 9; replaced by the dial in step 17):
+  "− BET 1.00 FUN +". − and +
   step one level and close at the ends; the amount opens every level as a grid. In a run
   the cash out takes its place, since the bet cannot change then. The cylinder dial in
   the corner did not read as a bet control to players, so it is gone.
@@ -166,7 +175,7 @@ side still flips at once. Space and Enter press BET, or cash out in a run.
   an amount, and the dialog stays. Off the step: rounded down to the grid, shown in the
   field with a note, and OK once more makes it the bet. A stake is never changed silently.
 - − and + (and ↑ ↓) still step through the levels; from a typed amount between two levels
-  they go to the next one up or down. "Lower the bet" after insufficient funds offers the
+  they go to the next one up or down. The dial (step 17) and ↑ ↓ keep this rule. "Lower the bet" after insufficient funds offers the
   highest level the balance covers, and the balance on the grid only below every level:
   never an odd all-in amount while a level fits.
 - With a phone keyboard up the bet list pads itself into the visible part of the stage
@@ -368,6 +377,41 @@ side still flips at once. Space and Enter press BET, or cash out in a run.
   smoke test checks the hint clears the balance, the bet and BET.
 - Space and Enter press the one button in the middle at the bottom: BET between rounds, the
   cash out in a run. Enter cashing out too keeps one rule for that button.
+- The cylinder dial is back (step 17), asked for: the one bet control, in place of
+  − amount +, not a second one beside it (two controls for one value is clutter, and the
+  player would not know which one counts). What step 9 found, that the dial alone did not
+  read as the bet, is answered by a tab over the chosen chamber: "BET" and the amount with
+  its currency, its pointer on the chamber. A tap on the tab opens the bet list and the
+  field, as a tap on the amount did. The drum itself still turns by drag, flick, wheel, a
+  tap on a bullet and, when focused, the arrow keys, Home and End; ↑ ↓ work from anywhere.
+- With − amount + gone BET stands alone in the middle at the bottom, the spot the cash out
+  takes in a run. In landscape the dial is half sunk into the bottom edge between BET and
+  the Sheriff's → keycap (40cqmin, its right edge 33cqmin from the stage's), so BET's space
+  bar keycap moved to BET's left. The tab stands over the drum, clear of the Sheriff star:
+  its box overlaps the emblem's box by up to 3cqmin at the top of the hop, in the emblem's
+  empty corner, never the star. In portrait the drum sits in the right edge at 83.2% of
+  the height (42cqmin, left half showing) with the tab to its left, level with the balance
+  tab on the other side (moved down from 2.5% + 30cqmin to 2.5% + 20cqmin), and BET is
+  60cqmin wide instead of 80 so it clears the drum's lower half. Measured at 360 x 640,
+  390 x 780, 844 x 390 and 1440 x 810, idle, with the "Choose Sheriff or Outlaw first"
+  hint and its pulse: the drum clears BET by 2.5cqmin, the → keycap by 6, the hint by 9.5
+  and more; the smoke test checks the balance, the tab, the chosen bullet and BET apart.
+- In a run the dial is gone, not dimmed: the bet cannot change then, and in landscape the
+  cash out plaque with its keycap takes the space the drum stood in. It rolls back in from
+  the edge when the run ends (opacity and 25% travel, 220 ms; opacity only with reduced
+  motion). While a single flip plays it stays, dimmed and locked.
+- A typed bet between two levels is a stop on the drum, in its place (`dialStops`): the
+  gold bullet under the tab always shows the real stake, never the nearest level, and one
+  turn from it reaches the level above or below, as `nextLevel` does for the keys. When the
+  typed stop leaves the drum (the bet went to a level), every amount keeps the chamber it
+  had and the drum turns one chamber (`followDrum`); only a typed amount set from the list
+  takes its chamber by index, which a jump from the list snaps to anyway. Under a finger the
+  drum keeps the stops it had at the press, so dragging back over the typed amount finds it.
+- The tick per chamber, the latch on rest and the recorded spin for a flick across two or
+  more chambers are back (`UiSounds.spin`).
+- `cylinder.webp` (140 KB) is back in the interface art the loader fetches first; the first
+  load stays far under the 4 MB budget of `docs/LOW_END_CHECK.md`, whose table was not
+  measured again.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

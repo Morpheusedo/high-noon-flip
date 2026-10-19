@@ -59,95 +59,14 @@
   line-height: calc(clamp(15px, 4.8cqmin, 36px) * 1.2);
 }
 
-/* the bet and BET, in the middle at the bottom: − plaque + BET. In landscape side by
-   side, between the arrow keycaps; in portrait BET runs wide under the bet. */
-.bet-row {
+/* BET: the main action, gold and the brightest thing at the bottom, in the middle
+   where the cash out stands in a run. The bet itself is the dial in the right edge. */
+.bet-spot {
   position: absolute;
   left: 50%;
   bottom: 3%;
   translate: -50% 0;
   z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 2.4cqmin;
-}
-
-.stake {
-  display: flex;
-  align-items: center;
-  gap: 1.4cqmin;
-  transition: opacity 0.2s;
-}
-
-/* locked while a round plays */
-.stake[data-locked] {
-  opacity: 0.55;
-}
-
-.stake-value {
-  box-sizing: border-box;
-  min-width: 30cqmin;
-  padding: 1.5cqmin 4cqmin 1.7cqmin;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2cqmin;
-  border: 0;
-  color: inherit;
-  background: url(./art/plaque.webp) center / 100% 100% no-repeat;
-  filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
-}
-
-.stake-value .plaque-label {
-  color: var(--gold);
-}
-
-.stake-value:hover:not(:disabled) {
-  filter: brightness(1.15) drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
-}
-
-.stake-step {
-  --step: clamp(34px, 8.4cqmin, 60px);
-  width: var(--step);
-  aspect-ratio: 1;
-  flex: none;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  color: #3a2606;
-  background: url(./art/btn-brass.webp) center / 100% 100% no-repeat;
-  box-shadow:
-    0 0.2em 0.5em rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.stake-step svg {
-  width: 46%;
-  height: 46%;
-}
-
-.stake-step:hover:not(:disabled) {
-  filter: brightness(1.12);
-}
-
-.stake-step:active:not(:disabled) {
-  translate: 0 1px;
-}
-
-/* the lowest or the highest bet: that way is closed */
-.stake:not([data-locked]) .stake-step:disabled {
-  opacity: 0.4;
-}
-
-.stake button:disabled {
-  cursor: default;
-}
-
-/* BET: the main action, gold and the brightest thing at the bottom */
-.bet-spot {
-  position: relative;
 }
 
 .bet-button {
@@ -367,6 +286,12 @@
   translate: 0 -50%;
 }
 
+/* BET's is on its left: the dial takes the right */
+.bet-spot .key.space {
+  left: auto;
+  right: calc(100% + 2cqmin);
+}
+
 .key.space svg {
   width: 32%;
   height: 80%;
@@ -381,11 +306,12 @@
     font-size: clamp(13px, 5cqmin, 32px);
   }
 
-  /* the balance: a wooden tab sliding in from the left edge, over the bet and BET */
+  /* the balance: a wooden tab sliding in from the left edge over BET, level with the
+     dial in the right edge */
   .balance {
     top: auto;
     left: -3cqmin;
-    bottom: calc(2.5% + 30cqmin);
+    bottom: calc(2.5% + 20cqmin);
     width: auto;
     min-width: 34cqmin;
     padding: 1.35cqmin 3cqmin 1.5cqmin 5.7cqmin;
@@ -400,30 +326,16 @@
     line-height: normal;
   }
 
-  .bet-row {
+  .bet-spot {
     bottom: 2.5%;
-    flex-direction: column;
-    gap: 2cqmin;
   }
 
-  .stake {
-    gap: 2cqmin;
-  }
-
+  /* wide, but clear of the dial's lower half in the right edge */
   .bet-button {
-    width: 80cqmin;
+    width: 60cqmin;
     min-width: 0;
     height: 13cqmin;
     font-size: clamp(18px, 7cqmin, 46px);
-  }
-
-  .stake-value {
-    min-width: 36cqmin;
-    padding: 1.4cqmin 4cqmin 1.6cqmin;
-  }
-
-  .stake-step {
-    --step: clamp(36px, 11cqmin, 80px);
   }
 
   /* between the corner buttons the ladder has too little width for one line: each

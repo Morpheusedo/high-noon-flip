@@ -130,31 +130,59 @@ test('loads and names its version and build', async ({ page }) => {
   await expect(page.locator('.rules-panel')).toHaveCount(0);
 });
 
-test('changes the bet with − and +, and from the list', async ({ page }) => {
+test('changes the bet on the dial, and from the list', async ({ page }) => {
   await openGame(page);
   const bet = () => page.evaluate(() => window.hnf?.model?.state.bet);
   const bets = await page.evaluate(() => window.hnf?.model?.state.config.bets ?? []);
-  const value = page.locator('.stake-value .plaque-value');
-  await expect(page.getByRole('button', { name: 'Lower the bet' })).toBeDisabled();
+  const dial = page.getByRole('slider', { name: /^Bet\./ });
+  const value = page.locator('.dial-tab .plaque-value');
+  await expect(dial).toHaveAttribute('aria-valuetext', '1.00 FUN');
+  await expect(page.locator('.dchamber.on')).toHaveText('1');
 
-  await tap(page.getByRole('button', { name: 'Raise the bet' }));
+  // a drag turns the drum one chamber: along it in landscape, up or down in portrait
+  const box = await dial.boundingBox();
+  const size = page.viewportSize();
+  if (!box || !size) throw new Error('no dial');
+  const tall = size.height > size.width;
+  // the drum's middle is on the stage's edge: press inside its visible half
+  const at = tall
+    ? { x: box.x + box.width * 0.3, y: box.y + box.height / 2 }
+    : { x: box.x + box.width / 2, y: box.y + box.height * 0.3 };
+  const chamber = 0.55 * (box.width / 2);
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++)
+    await page.mouse.move(
+      at.x - (tall ? 0 : (chamber * 1.2 * i) / 6),
+      at.y + (tall ? (chamber * 1.2 * i) / 6 : 0),
+    );
+  await page.mouse.up();
   expect(await bet()).toBe(bets[1]);
-  await tap(page.getByRole('button', { name: 'Lower the bet' }));
+  await expect(page.locator('.dchamber.on')).toHaveText('5');
+  await expect(value).toHaveText(/^5\.00\s*FUN$/);
+
+  // the wheel and the arrow keys step it too, and it stops at the lowest bet
+  await page.mouse.wheel(0, -60);
+  await expect.poll(bet).toBe(bets[0]);
+  await page.keyboard.press('ArrowUp');
+  expect(await bet()).toBe(bets[1]);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   expect(await bet()).toBe(bets[0]);
 
   const shown = await value.textContent();
-  await tap(page.locator('.stake-value'));
+  await tap(page.locator('.dial-tab'));
   await tap(page.locator('.picker .bullet').last());
   await expect(page.locator('.picker')).toHaveCount(0);
   expect(await bet()).toBe(bets.at(-1));
   await expect(value).not.toHaveText(shown ?? '');
-  await expect(page.getByRole('button', { name: 'Raise the bet' })).toBeDisabled();
+  await expect(dial).toHaveAttribute('aria-valuenow', String(bets.length - 1));
 });
 
 test('takes a typed bet and plays it', async ({ page }) => {
   await openGame(page);
   // one tap on the bet and the player types: the field has the focus, the bet selected
-  await tap(page.locator('.stake-value'));
+  await tap(page.locator('.dial-tab'));
   const field = page.getByRole('textbox', { name: 'Your bet in FUN' });
   await expect(field).toBeFocused();
   await expect(field).toHaveValue('1.00');
@@ -166,7 +194,18 @@ test('takes a typed bet and plays it', async ({ page }) => {
   await expect(page.locator('.picker-note')).toContainText('7.35 FUN');
   await tap(page.locator('.picker-ok'));
   await expect(page.locator('.picker')).toHaveCount(0);
-  await expect(page.locator('.stake-value .plaque-value')).toHaveText(/^7\.35\s*FUN$/);
+  await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^7\.35\s*FUN$/);
+  // the drum stops at the typed amount between two levels, and steps to the next level
+  await expect(page.locator('.dchamber.on')).toHaveText('7.35');
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('.dchamber.on')).toHaveText('10');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.dchamber.on')).toHaveText('5');
+  await tap(page.locator('.dial-tab'));
+  await page.keyboard.type('7.35');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.picker')).toHaveCount(0);
+  await expect(page.locator('.dchamber.on')).toHaveText('7.35');
 
   const before = await balances(page);
   await page.evaluate(() => window.hnf?.server.forceOutcomes('win'));
@@ -235,8 +274,9 @@ test('plays a run and cashes out', async ({ page }) => {
     else await tap(page.locator('.pick.outlaw'));
     await waitIdle(page);
     expect(await page.evaluate(() => window.hnf?.model?.state.openRun?.step)).toBe(step);
-    // in a run the cash out takes the bet's place
-    await expect(page.locator('.stake')).toHaveCount(0);
+    // in a run the bet cannot change: the dial is gone and the cash out takes BET's place
+    await expect(page.locator('.bet-dial')).toHaveCount(0);
+    await expect(page.locator('.bet-button')).toHaveCount(0);
     // the rungs climbed so far light up under the title
     await expect(page.locator('.ladder .rung.on')).toHaveCount(step);
   }
@@ -255,7 +295,7 @@ test('plays a run and cashes out', async ({ page }) => {
   expect(after.server).toBeGreaterThan(before.server);
   expect(after.client).toBe(after.server);
   expect(await shownBalance(page)).not.toBe(shownBefore);
-  await expect(page.locator('.stake')).toBeVisible();
+  await expect(page.locator('.bet-dial')).toBeVisible();
   // the money flew to the balance, and the coins are gone
   expect(await page.evaluate(() => window.coins)).toBeGreaterThanOrEqual(5);
   await expect(page.locator('.payout-coin')).toHaveCount(0);
@@ -368,7 +408,7 @@ test('fits the screen and survives a rotation', async ({ page }, info) => {
   await tap(page.locator('.bet-button'));
   const hint = await page.locator('.side-hint span').boundingBox();
   expect(hint).not.toBeNull();
-  for (const selector of ['.plaque.balance', '.stake', '.bet-button']) {
+  for (const selector of ['.plaque.balance', '.dial-tab', '.dchamber.on', '.bet-button']) {
     const box = await page.locator(selector).boundingBox();
     if (!hint || !box) continue;
     const apart =
@@ -384,7 +424,9 @@ const CONTROLS = [
   '.pick.sheriff',
   '.pick.outlaw',
   '.plaque.balance',
-  '.stake',
+  '.dial-tab',
+  // the drum sinks into the edge by design; its chosen bullet must be in view
+  '.dchamber.on',
   '.bet-button',
   '.tool.rules',
   '.tool.settings',
@@ -392,6 +434,9 @@ const CONTROLS = [
 ];
 
 /** What the ladder under the title must not run into. */
+/** The controls at the bottom, which must stand apart. */
+const BOTTOM = ['.plaque.balance', '.dial-tab', '.dchamber.on', '.bet-button'];
+
 const BESIDE_LADDER = [
   '.plaque.balance',
   '.tool.speed',
@@ -425,6 +470,18 @@ async function expectControlsOnScreen(page: Page): Promise<void> {
       box.y + box.height <= ladder.y;
     expect(apart, `the ladder runs into ${selector}`).toBe(true);
   }
+  for (const [i, a] of BOTTOM.entries())
+    for (const b of BOTTOM.slice(i + 1)) {
+      const one = await page.locator(a).boundingBox();
+      const two = await page.locator(b).boundingBox();
+      if (!one || !two) continue;
+      const apart =
+        one.x >= two.x + two.width ||
+        one.x + one.width <= two.x ||
+        one.y >= two.y + two.height ||
+        one.y + one.height <= two.y;
+      expect(apart, `${a} runs into ${b}`).toBe(true);
+    }
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
   );

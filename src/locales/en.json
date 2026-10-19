@@ -26,8 +26,7 @@
   "balance": "Balance",
   "balance.demo": "Demo balance",
   "bet": "Bet",
-  "bet.lower": "Lower the bet",
-  "bet.raise": "Raise the bet",
+  "bet.dial": "Bet. Swipe or use the arrow keys to change.",
   "bet.changeLabel": "Bet {amount}. Tap to see every bet.",
   "bet.changeLabelTyped": "Bet {amount}. Tap to type a bet or pick one.",
   "bet.choose": "Choose your bet",
@@ -92,7 +91,7 @@
   "rules.open": "Game rules",
   "rules.title": "Game rules",
   "rules.play.title": "How to play",
-  "rules.play.body": "Choose your bet, tap {sheriff} or {outlaw}, then tap {bet}. The revolver fires and flips the coin. If it lands on your side, you win. Your side stays chosen for the next round.",
+  "rules.play.body": "Turn the cylinder to choose your bet, tap {sheriff} or {outlaw}, then tap {bet}. The revolver fires and flips the coin. If it lands on your side, you win. Your side stays chosen for the next round.",
   "rules.multiply.body": "You stake once and keep picking: in a run a tap on a side flips the coin at once. Each correct pick moves you one rung up the ladder. Tap {cashOut} at any time to take the prize shown. One wrong pick ends the run and the stake is lost.",
   "rules.multiply.top": {
     "one": "The top rung comes after {count} correct pick in a row and pays out by itself.",

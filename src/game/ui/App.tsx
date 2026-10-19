@@ -30,13 +30,14 @@ import {
 } from '../model/RoundModel';
 import { nextPrize } from '../rules';
 import type { UiSounds } from '../sound';
+import { BetDial, type DialFeedback } from './BetDial';
 import { BetPicker } from './BetPicker';
 import { CoinTap, Emblems, SideHint } from './Emblems';
 import { formats } from './format';
 import { useReducedMotion } from './hooks';
 import { ErrorDialog, FundsNotice, ResultStamp } from './Notices';
 import { PAYOUT_FLIGHT_MS, Payout, type Point } from './Payout';
-import { Balance, BetButton, CashOut, Ladder, Stake } from './Plaques';
+import { Balance, BetButton, CashOut, Ladder } from './Plaques';
 import { Rules, RulesButton } from './Rules';
 import { SettingsButton, SettingsPanel, SoundButton } from './Settings';
 import { SpeedButton, TitleSign } from './TopBar';
@@ -81,7 +82,7 @@ function boxIn(hud: HTMLElement, el: Element): Box {
 /** At most one panel is open over the game; each returns the focus to the button that opened it. */
 type Panel = 'bets' | 'settings' | 'rules';
 const OPENER: Record<Panel, string> = {
-  bets: '.stake-value',
+  bets: '.dial-tab',
   settings: '.tool.settings',
   rules: '.tool.rules',
 };
@@ -129,6 +130,15 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
   const set = (patch: Partial<typeof prefs>) => settings.set({ ...settings.get(), ...patch });
 
   const changeBet = (bet: Minor) => model.setBet(bet);
+  // the dial ticks per chamber; a flick across two or more ends on the recorded spin
+  const dialFeedback: DialFeedback = {
+    tick: () => sounds.tick(),
+    settle: (coasted) => {
+      if (coasted >= 2) return sounds.spin(coasted);
+      for (let i = 1; i <= coasted; i++) setTimeout(() => sounds.tick(), i * 42);
+      setTimeout(() => sounds.latch(), 60 + coasted * 42);
+    },
+  };
 
   // where the cash out plaque stood last, for the coins of a payout: it is gone by
   // the time the answer arrives. Measured on each rung and again on the press.
@@ -335,18 +345,16 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
           onCashOut={cashOut}
         />
       ) : (
-        <div class="bet-row">
-          <Stake
+        <>
+          <BetDial
             bets={config.bets}
             bet={s.bet}
             typed={config.customBet != null}
             disabled={!setupOpen}
             fmt={fmt}
-            onChange={(bet) => {
-              changeBet(bet);
-              sounds.tick();
-            }}
+            onChange={changeBet}
             onOpen={() => open('bets')}
+            feedback={dialFeedback}
           />
           <BetButton
             bet={s.bet}
@@ -356,7 +364,7 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
             keyDown={spaceDown}
             onBet={placeBet}
           />
-        </div>
+        </>
       )}
 
       {config.customBet && (

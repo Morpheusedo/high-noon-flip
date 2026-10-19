@@ -27,10 +27,12 @@ export interface RoundSounds {
 /** What the interface plays. */
 export interface UiSounds {
   click(): void;
-  /** The bet steps one level. */
+  /** The bet steps one level, or the dial passes one chamber. */
   tick(): void;
-  /** A bet is chosen from the list, or a volume is set. */
+  /** The dial comes to rest, a bet is chosen from the list, or a volume is set. */
   latch(): void;
+  /** The bet dial was flicked across `levels` chambers. */
+  spin(levels: number): void;
   /** The coin is turned over by hand. */
   coinTurn(): void;
 }
@@ -101,6 +103,10 @@ export class GameSounds implements RoundSounds, UiSounds {
     this.tone({ freq: 2100, dur: 0.025, type: 'square', gain: 0.12 });
     this.tone({ freq: 520, dur: 0.06, type: 'square', gain: 0.14, when: 0.045 });
     this.noise({ dur: 0.05, gain: 0.25, when: 0.045, cutoff: 3000 });
+  }
+
+  spin(levels: number): void {
+    this.cylinder(0.3 + 0.12 * levels);
   }
 
   coinTurn(): void {

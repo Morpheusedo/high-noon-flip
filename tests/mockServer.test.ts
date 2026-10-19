@@ -38,8 +38,8 @@ describe('first pick', () => {
 
   it('rejects a bet off the typed-bet grid or outside its range', async () => {
     const server = new MockServer();
-    // 0.10 to 100.00 in steps of 0.05
-    for (const bet of [123, 5, 10_005, 0, -100, 7.5])
+    // 5.00 to 100.00 in steps of 0.05
+    for (const bet of [1234, 100, 495, 10_005, 0, -100, 7.5])
       await rejectsWith(server.play({ bet, pick: 'sheriff' }), 'INVALID_BET');
   });
 
@@ -57,8 +57,8 @@ describe('first pick', () => {
   });
 
   it('rejects a bet above the balance', async () => {
-    const server = new MockServer({ balance: 50 });
-    await rejectsWith(server.play({ bet: 100, pick: 'sheriff' }), 'INSUFFICIENT_FUNDS');
+    const server = new MockServer({ balance: 400 });
+    await rejectsWith(server.play({ bet: 500, pick: 'sheriff' }), 'INSUFFICIENT_FUNDS');
   });
 });
 
@@ -99,20 +99,20 @@ describe('multiply run', () => {
   it('pays the top rung by itself', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes(...Array(8).fill('sheriff'));
-    const first = await server.play({ bet: 100, pick: 'sheriff' });
+    const first = await server.play({ bet: 500, pick: 'sheriff' });
     let res = first;
     for (let i = 0; i < 7; i++)
       res = await server.action({ roundId: first.roundId, type: 'pick', pick: 'sheriff' });
     expect(res.openRun).toBeNull();
-    expect(res.win).toBe(25_344); // 1 FUN x 253.44
-    expect(res.balance).toBe(100_000 - 100 + 25_344);
+    expect(res.win).toBe(126_720); // 5 FUN x 253.44
+    expect(res.balance).toBe(100_000 - 500 + 126_720);
   });
 
   it('refuses a new round while a run is open', async () => {
     const server = new MockServer();
     server.forceOutcomes('sheriff');
-    await server.play({ bet: 100, pick: 'sheriff' });
-    await rejectsWith(server.play({ bet: 100, pick: 'sheriff' }), 'ROUND_IN_PROGRESS');
+    await server.play({ bet: 500, pick: 'sheriff' });
+    await rejectsWith(server.play({ bet: 500, pick: 'sheriff' }), 'ROUND_IN_PROGRESS');
   });
 });
 
@@ -148,7 +148,7 @@ describe('QA controls', () => {
   it('forces a win or a loss against whatever the player picks', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.forceOutcomes('win', 'lose');
-    const won = await server.play({ bet: 100, pick: 'outlaw' });
+    const won = await server.play({ bet: 500, pick: 'outlaw' });
     expect(won.flip).toEqual({ pick: 'outlaw', outcome: 'outlaw', won: true });
     const lost = await server.action({ roundId: won.roundId, type: 'pick', pick: 'outlaw' });
     expect(lost.flip).toEqual({ pick: 'outlaw', outcome: 'sheriff', won: false });
@@ -215,8 +215,8 @@ describe('QA controls', () => {
     const server = new MockServer({ store, balance: 100_000 });
     let changes = 0;
     server.subscribe(() => changes++);
-    server.setBalance(500);
-    server.openRunAt(1, 100);
+    server.setBalance(5000);
+    server.openRunAt(1, 500);
     server.forceOutcomes('win');
     server.failNext('INTERNAL');
     server.setOffline(true);

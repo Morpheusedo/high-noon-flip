@@ -13,7 +13,7 @@ describe('music', () => {
     model.setBet(10_000);
     expect(musicIntensity(model.state)).toBe(1);
 
-    model.setBet(100);
+    model.setBet(500);
     server.forceOutcomes('sheriff', 'sheriff');
     await model.pick('sheriff');
     model.finishReveal();

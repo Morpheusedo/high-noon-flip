@@ -137,11 +137,12 @@ test('changes the bet on the dial', async ({ page }) => {
   const bets = await page.evaluate(() => window.hnf?.model?.state.config.bets ?? []);
   const dial = page.getByRole('slider', { name: /^Bet\./ });
   const value = page.locator('.dial-tab .plaque-value');
-  await expect(dial).toHaveAttribute('aria-valuetext', '1.00 FUN');
-  await expect(page.locator('.dchamber.on')).toHaveText('1');
+  // the demo's lowest bet is 5.00
+  await expect(dial).toHaveAttribute('aria-valuetext', '5.00 FUN');
+  await expect(page.locator('.dchamber.on')).toHaveText('5');
   // the tab names the amount alone: BET is the button beside it
-  await expect(page.locator('.dial-tab')).toHaveText(/^1\.00\s*FUN$/);
-  await expect(page.locator('.dial-tab')).toHaveAccessibleName(/^Bet 1\.00 FUN\./);
+  await expect(page.locator('.dial-tab')).toHaveText(/^5\.00\s*FUN$/);
+  await expect(page.locator('.dial-tab')).toHaveAccessibleName(/^Bet 5\.00 FUN\./);
 
   // a drag turns the drum one chamber: along it in landscape, up or down in portrait
   const box = await dial.boundingBox();
@@ -162,8 +163,8 @@ test('changes the bet on the dial', async ({ page }) => {
     );
   await page.mouse.up();
   expect(await bet()).toBe(bets[1]);
-  await expect(page.locator('.dchamber.on')).toHaveText('5');
-  await expect(value).toHaveText(/^5\.00\s*FUN$/);
+  await expect(page.locator('.dchamber.on')).toHaveText('7.50');
+  await expect(value).toHaveText(/^7\.50\s*FUN$/);
 
   // the wheel and the arrow keys step it too, and it stops at the lowest bet
   await page.mouse.wheel(0, -60);
@@ -205,18 +206,18 @@ test('takes a typed bet and plays it', async ({ page }) => {
   await tap(page.locator('.dial-tab'));
   const field = page.getByRole('textbox', { name: 'Your bet in FUN' });
   await expect(field).toBeFocused();
-  await expect(field).toHaveValue('1.00');
+  await expect(field).toHaveValue('5.00');
   await expect(page.locator('.picker')).toHaveCount(0);
   await expect(page.locator('.bet-button')).toBeDisabled();
   // the keys type: ↑ does not step the bet, Space does not press BET
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Space');
-  expect(await stake()).toBe(100);
+  expect(await stake()).toBe(500);
   expect(await page.evaluate(() => window.hnf?.model?.state.phase.name)).toBe('idle');
   // not an amount: a message beside the field, and it stays open
   await field.fill('abc');
   await field.press('Enter');
-  await expect(note).toHaveText('Type an amount, such as 0.10.');
+  await expect(note).toHaveText('Type an amount, such as 5.00.');
   await expect(field).toHaveAttribute('aria-invalid', 'true');
   await expectApart(page, ['.dial-edit', '.dial-note'], ['.plaque.balance', '.bet-button']);
   // out of range: no message, the nearest stake becomes the bet, the highest or the lowest
@@ -226,21 +227,21 @@ test('takes a typed bet and plays it', async ({ page }) => {
   await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^100\.00\s*FUN$/);
   expect(await stake()).toBe(10_000);
   await tap(page.locator('.dial-tab'));
-  await field.fill('0.01');
+  await field.fill('3');
   await field.press('Enter');
   await expect(edit).toHaveCount(0);
-  await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^0\.10\s*FUN$/);
-  expect(await stake()).toBe(10);
+  await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^5\.00\s*FUN$/);
+  expect(await stake()).toBe(500);
   // off the 0.05 grid: rounded down and shown before it is the bet
   await tap(page.locator('.dial-tab'));
-  await field.fill('7.37');
+  await field.fill('12.37');
   await expect(note).toBeHidden();
   await field.press('Enter');
-  await expect(field).toHaveValue('7.35');
-  await expect(note).toContainText('7.35 FUN');
+  await expect(field).toHaveValue('12.35');
+  await expect(note).toContainText('12.35 FUN');
   await tap(page.locator('.dial-ok'));
   await expect(edit).toHaveCount(0);
-  await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^7\.35\s*FUN$/);
+  await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^12\.35\s*FUN$/);
   // Escape and a tap elsewhere leave the bet as it was
   await tap(page.locator('.dial-tab'));
   await page.keyboard.type('9');
@@ -250,27 +251,27 @@ test('takes a typed bet and plays it', async ({ page }) => {
   await page.keyboard.type('9');
   await tap(page.locator('.ladder'));
   await expect(edit).toHaveCount(0);
-  expect(await stake()).toBe(735);
+  expect(await stake()).toBe(1235);
   await expect(page.locator('.bet-button')).toBeEnabled();
   // the drum stops at the typed amount between two levels, and steps to the next level
-  await expect(page.locator('.dchamber.on')).toHaveText('7.35');
+  await expect(page.locator('.dchamber.on')).toHaveText('12.35');
   await page.keyboard.press('ArrowUp');
-  await expect(page.locator('.dchamber.on')).toHaveText('10');
+  await expect(page.locator('.dchamber.on')).toHaveText('25');
   await page.keyboard.press('ArrowDown');
-  await expect(page.locator('.dchamber.on')).toHaveText('5');
+  await expect(page.locator('.dchamber.on')).toHaveText('10');
   await tap(page.locator('.dial-tab'));
-  await page.keyboard.type('7.35');
+  await page.keyboard.type('12.35');
   await page.keyboard.press('Enter');
   await expect(edit).toHaveCount(0);
-  await expect(page.locator('.dchamber.on')).toHaveText('7.35');
+  await expect(page.locator('.dchamber.on')).toHaveText('12.35');
 
   const before = await balances(page);
   await page.evaluate(() => window.hnf?.server.forceOutcomes('win'));
   await bet(page, 'sheriff');
   await waitIdle(page);
   const server = await page.evaluate(() => window.hnf?.server.snapshot());
-  expect(server?.openRun?.bet).toBe(735);
-  expect(server?.balance).toBe(before.server - 735);
+  expect(server?.openRun?.bet).toBe(1235);
+  expect(server?.balance).toBe(before.server - 1235);
 });
 
 test('BET asks for a side first, then keeps it for the next round', async ({ page }) => {
@@ -282,7 +283,7 @@ test('BET asks for a side first, then keeps it for the next round', async ({ pag
 
   // no side yet: BET sends nothing, names the choice and pulses both emblems
   await expect(sheriff).toHaveAttribute('aria-pressed', 'false');
-  await tap(page.getByRole('button', { name: 'Bet 1.00 FUN. Choose Sheriff or Outlaw first.' }));
+  await tap(page.getByRole('button', { name: 'Bet 5.00 FUN. Choose Sheriff or Outlaw first.' }));
   await expect(hint).toBeVisible();
   await expect(sheriff).toHaveClass(/nudge/);
   await expect(outlaw).toHaveClass(/nudge/);
@@ -310,13 +311,13 @@ test('BET asks for a side first, then keeps it for the next round', async ({ pag
   });
   expect(await playRound(page, () => page.keyboard.press('Space'))).toBe('lose');
   expect(await page.evaluate(() => window.picks)).toEqual(['sheriff']);
-  expect((await balances(page)).server).toBe(before.server - 100);
+  expect((await balances(page)).server).toBe(before.server - 500);
 
   // the side stays chosen: the next round is one more BET (Enter this time)
   await expect(sheriff).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => window.hnf?.server.forceOutcomes('lose'));
   expect(await playRound(page, () => page.keyboard.press('Enter'))).toBe('lose');
-  expect((await balances(page)).server).toBe(before.server - 200);
+  expect((await balances(page)).server).toBe(before.server - 1000);
 });
 
 test('plays a run and cashes out', async ({ page }) => {
@@ -337,11 +338,11 @@ test('plays a run and cashes out', async ({ page }) => {
     // the rungs climbed so far light up under the title
     await expect(page.locator('.ladder .rung.on')).toHaveCount(step);
   }
-  // the rung, the prize on the table, and the next flip: 1.00 FUN at x3.96, then x7.92
+  // the rung, the prize on the table, and the next flip: 5.00 FUN at x3.96, then x7.92
   await expect(cashOut.locator('.cashout-multiplier')).toHaveText('×3.96');
-  await expect(cashOut.locator('.cashout-amount')).toHaveText(/^3\.96\s*FUN$/);
+  await expect(cashOut.locator('.cashout-amount')).toHaveText(/^19\.80\s*FUN$/);
   await expect(cashOut.locator('.cashout-next')).toHaveText(
-    'Next flip: 50% chance to win 7.92 FUN',
+    'Next flip: 50% chance to win 39.60 FUN',
   );
 
   const before = await balances(page);
@@ -397,11 +398,11 @@ test.describe('with reduced motion', () => {
       return hnf?.model?.refresh();
     });
     const prize = page.locator('.cashout-amount');
-    await expect(prize).toHaveText(/^1\.98\s*FUN$/);
+    await expect(prize).toHaveText(/^9\.90\s*FUN$/);
     await tap(page.locator('.pick.sheriff'));
     // the moment the coin lands the prize is the new one, with no count in between
     await page.waitForFunction(() => window.hnf?.model?.state.openRun?.step === 2);
-    await expect(prize).toHaveText(/^3\.96\s*FUN$/, { timeout: 50 });
+    await expect(prize).toHaveText(/^19\.80\s*FUN$/, { timeout: 50 });
     await waitIdle(page);
 
     expect(await playRound(page, () => page.locator('.cashout').click())).toBe('win');

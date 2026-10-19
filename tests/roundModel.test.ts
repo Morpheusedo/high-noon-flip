@@ -29,17 +29,17 @@ describe('first pick', () => {
       flip: { pick: 'sheriff', outcome: 'sheriff', won: true },
     });
     // the run is known but not shown until the coin lands
-    expect(model.state.balance).toBe(99_900);
+    expect(model.state.balance).toBe(99_500);
     expect(model.state.openRun).toBeNull();
 
     const result = present(model);
     expect(result).toMatchObject({
       name: 'result',
-      outcome: { kind: 'step', prize: 198, multiplier: 1.98 },
+      outcome: { kind: 'step', prize: 990, multiplier: 1.98 },
     });
     expect(phases).toEqual(['requesting', 'revealing', 'result', 'idle']);
-    expect(model.state.balance).toBe(99_900);
-    expect(model.state.openRun).toMatchObject({ step: 1, prize: 198 });
+    expect(model.state.balance).toBe(99_500);
+    expect(model.state.openRun).toMatchObject({ step: 1, prize: 990 });
     expect(model.state.history).toEqual(['sheriff']);
   });
 
@@ -47,8 +47,8 @@ describe('first pick', () => {
     const { server, model } = await setup();
     server.forceOutcomes('outlaw');
     await model.pick('sheriff');
-    expect(present(model)).toMatchObject({ outcome: { kind: 'lose', amount: 100 } });
-    expect(model.state.balance).toBe(99_900);
+    expect(present(model)).toMatchObject({ outcome: { kind: 'lose', amount: 500 } });
+    expect(model.state.balance).toBe(99_500);
   });
 
   it('sends one bet for a double tap', async () => {
@@ -103,11 +103,14 @@ describe('first pick', () => {
   it('takes only levels when the server takes no typed bets', async () => {
     const { model } = await setup({ config: { customBet: null } });
     model.setBet(735);
-    expect(model.state.bet).toBe(100);
+    expect(model.state.bet).toBe(500);
   });
 
   it('offers the highest level the balance covers, else the balance on the grid', async () => {
-    const { server, model } = await setup();
+    // typed bets from 0.10, below the lowest level, so a small balance can still bet
+    const { server, model } = await setup({
+      config: { customBet: { min: 10, max: 10_000, step: 5 } },
+    });
     server.setBalance(2_733);
     await model.refresh();
     expect(affordableBet(model.state)).toBe(2_500);
@@ -153,7 +156,7 @@ describe('multiply run', () => {
     await model.pick('sheriff');
     present(model);
     await model.pick('outlaw');
-    expect(present(model)).toMatchObject({ outcome: { kind: 'lose', amount: 100 } });
+    expect(present(model)).toMatchObject({ outcome: { kind: 'lose', amount: 500 } });
     expect(model.state.openRun).toBeNull();
   });
 

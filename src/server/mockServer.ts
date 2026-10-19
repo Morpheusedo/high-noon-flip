@@ -34,10 +34,11 @@ const LADDER_HUNDREDTHS = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => 198 * 2 ** i);
 
 const DEFAULT_CONFIG: GameConfig = {
   currency: { code: 'FUN', decimals: 2 },
-  bets: [100, 500, 1000, 2500, 5000, 10000],
-  defaultBet: 100,
-  // typed stakes for the demo: 0.10 to 100.00 in steps of 0.05
-  customBet: { min: 10, max: 10_000, step: 5 },
+  // six levels, one per chamber of the dial; the lowest bet is 5.00
+  bets: [500, 750, 1000, 2500, 5000, 10000],
+  defaultBet: 500,
+  // typed stakes for the demo: 5.00 to 100.00 in steps of 0.05
+  customBet: { min: 500, max: 10_000, step: 5 },
   ladder: LADDER_HUNDREDTHS.map((h) => h / 100),
   rtp: 0.99,
   // a fair coin

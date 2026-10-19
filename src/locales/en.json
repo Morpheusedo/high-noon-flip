@@ -101,7 +101,7 @@
   "rules.odds.body": "Each side lands half the time, on every flip, whatever came before. The theoretical return to player (RTP) is {rtp}.",
   "rules.limits.title": "Bets and maximum win",
   "rules.limits.bets": "Bets from {min} to {max}.",
-  "rules.limits.typed": "You can type any bet from {min} to {max} in steps of {step}, or pick one from the list.",
+  "rules.limits.typed": "You can type any bet from {min} to {max} in steps of {step}, or turn the cylinder to one of the set bets.",
   "rules.limits.maxWin": "The maximum win is {multiplier} the bet: {amount} at the highest bet.",
   "rules.more.title": "Good to know",
   "rules.more.coin": "Tapping the coin turns it over for looks only; it does not change the result.",

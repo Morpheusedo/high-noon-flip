@@ -175,7 +175,8 @@ refused: it becomes the lowest or the highest stake, with no message.
   `{ min, max, step }` in minor units, absent or null for levels only. `server/bets.ts`
   `isValidBet` is the one rule: a level, or `min..max` with `(bet - min) % step === 0`.
   `RoundModel.setBet` and `MockServer` both use it, so the client never offers a stake the
-  server refuses. The demo takes 0.10 to 100.00 FUN in steps of 0.05.
+  server refuses. The demo takes 0.10 to 100.00 FUN in steps of 0.05 (5.00 to 100.00 since
+  step 18).
 - The field lives in the bet list, above the bullets: one place to change the bet (moved into
   the dial's tab in step 18). It
   reads the number in the player's language (`parseAmount` in `shell/money.ts`): the
@@ -450,8 +451,8 @@ refused: it becomes the lowest or the highest stake, with no message.
   message stands beside the field (left of it in landscape, over the empty top of BET; above
   it in portrait, under the Sheriff), outside its box, so the field does not jump.
 - Out of range, the typed amount is clamped, not refused (step 18, asked for): below the
-  minimum it becomes the lowest stake, above the maximum the highest (0.01 is 0.10 FUN, 5000
-  is 100.00 FUN in the demo), set at once and shown in the tab like any accepted amount, with
+  minimum it becomes the lowest stake, above the maximum the highest (3 is 5.00 FUN, 5000 is
+  100.00 FUN in the demo), set at once and shown in the tab like any accepted amount, with
   no message. The nearest stake the server takes in that direction: the range's end on its
   grid, or a level beyond the range if one is nearer. The client still never sends a stake
   out of range (the server would answer INVALID_BET); the clamp is the check. Not an amount
@@ -459,6 +460,11 @@ refused: it becomes the lowest or the highest stake, with no message.
   balance keeps its message: that is the player's money, not a limit of the game, and a
   quiet cut to the balance would be an all-in they did not ask for. The rules screen still
   names the range.
+- The demo's lowest bet is 5.00 FUN (step 18, asked for), levels and typed stakes alike:
+  levels 5.00, 7.50, 10, 25, 50 and 100 (still six, one per chamber), the default 5.00, typed stakes from 5.00 to 100.00 in steps of 0.05. It
+  is the mock server's config only: in production the operator sends the levels, the default
+  and the range per currency, and the client reads them as before. The rules screen follows
+  ("Bets from 5.00 FUN to 100.00 FUN").
 - Enter, ✓ and Escape close the field and give the focus back to the tab; a tap elsewhere
   cancels on the press and then does what it was for (turns the drum, chooses a side), but
   BET is disabled while the field is open and the game's keys (↑ ↓, Space, Enter, ← →) are

@@ -5,21 +5,21 @@ import { MockServer } from '../src/server/mockServer';
 describe('rules facts', () => {
   it('come from the config the server sends', async () => {
     const { config } = await new MockServer().init();
-    const facts = rulesFacts(config, 100);
+    const facts = rulesFacts(config, 500);
     expect(facts.ladder.map((r) => r.prize)).toEqual([
-      198, 396, 792, 1584, 3168, 6336, 12672, 25344,
+      990, 1980, 3960, 7920, 15840, 31680, 63360, 126720,
     ]);
     expect(facts.ladder.at(-1)?.picks).toBe(8);
-    // the demo also takes typed bets from 0.10
-    expect([facts.minBet, facts.maxBet]).toEqual([10, 10000]);
-    expect(facts.customBet).toEqual({ min: 10, max: 10_000, step: 5 });
+    // the demo takes typed bets from its lowest level, 5.00
+    expect([facts.minBet, facts.maxBet]).toEqual([500, 10000]);
+    expect(facts.customBet).toEqual({ min: 500, max: 10_000, step: 5 });
     expect(facts.maxWin).toEqual({ multiplier: 253.44, amount: 2_534_400 });
   });
 
   it('take the limits from the levels alone without typed bets', async () => {
     const { config } = await new MockServer({ config: { customBet: null } }).init();
-    const facts = rulesFacts(config, 100);
-    expect([facts.minBet, facts.maxBet]).toEqual([100, 10000]);
+    const facts = rulesFacts(config, 500);
+    expect([facts.minBet, facts.maxBet]).toEqual([500, 10000]);
     expect(facts.customBet).toBeNull();
   });
 
@@ -27,7 +27,7 @@ describe('rules facts', () => {
     const { config } = await new MockServer({
       config: { customBet: { min: 10, max: 20_000, step: 1 } },
     }).init();
-    const facts = rulesFacts(config, 100);
+    const facts = rulesFacts(config, 500);
     expect(facts.maxBet).toBe(20_000);
     expect(facts.maxWin.amount).toBe(5_068_800);
   });

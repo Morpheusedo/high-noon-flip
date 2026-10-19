@@ -71,7 +71,8 @@ with reduced motion), the last flips in the settings, a lost answer (NETWORK) an
 and cashed out with Space, the controls on screen (the ladder clear of the corners, the balance, the dial and BET
 apart) before and after a rotation, and in portrait on an iPhone SE (320 x 568) the ladder
 fitted between the corner buttons through a run, then at 280 x 500 a window of rungs with the
-top one after an ellipsis. Outcomes are forced through `hnf`, so
+top one after an ellipsis, and a showdown from the 6th rung at 1x and the 7th at 4x (the
+controls dimmed but for the ladder, then calm again and back to idle). Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
 
 `npm run lowend` measures load time, bytes, frame rate and memory with the CPU and
@@ -105,6 +106,7 @@ src/
    ├─ model/          RoundModel: the round state machine, the source of truth
    ├─ director.ts     turns phase changes into animations, reports back when done
    ├─ timing.ts       every duration of a round, scaled by speed in one place
+   ├─ tension.ts      the showdown on the high rungs: its levels by rung, cues and times
    ├─ sound.ts        this game's sounds and how the music follows the stake
    ├─ rules.ts        the figures the rules screen shows, taken from the server config
    ├─ scene/          PixiJS: everything drawn on the canvas
@@ -113,6 +115,7 @@ src/
    │  ├─ Revolver.ts      hammer, cylinder spin, recoil, smoke
    │  ├─ Coin.ts          flip to an outcome, idle tease, turn by hand, glow, shadow
    │  ├─ Effects.ts       muzzle flash, sparks, win rays and coins, loss dim, shake
+   │  ├─ Showdown.ts      the showdown's spotlight and the camera's push-in on the coin
    │  ├─ layout.ts        reads and checks scene-layout.json
    │  └─ tween.ts         tweens and waits on the scene clock
    └─ ui/             Preact: the HTML interface over the canvas
@@ -182,6 +185,11 @@ Rules the code follows:
   the bet on it, and the side stays chosen for the next round. The choice lives in the
   interface, not in the model: the server hears of it only with the bet. In a run a tap on a
   side flips at once.
+- **The showdown follows the rung, never the outcome.** A flip to the last four rungs of the
+  ladder is a duel, to the last two a showdown (`game/tension.ts`): the light closes in on the
+  coin, the music ducks, a heartbeat, slow motion at the end of the flight, on the last two a
+  push-in and a sting. It runs from the tap to the landing only, and the same whatever the
+  server decided: while the player decides whether to cash out, the screen is calm.
 - **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A held key
   does not repeat, so it cannot act as autoplay. A button reached with Tab keeps its own
   Space and Enter. While the player types a bet, the keys are the field's and BET waits.

@@ -186,6 +186,18 @@
   opacity: 1;
 }
 
+/* in a showdown (data-tension, app.css) the rung the flip would reach glows, still
+   copper: gold would claim it is won */
+.hud[data-tension] .rung.next {
+  text-shadow:
+    0 0 1.2cqmin rgba(255, 196, 90, 0.95),
+    0 1px 2px #000;
+}
+
+.hud[data-tension] .rung.next::before {
+  filter: drop-shadow(0 0 1cqmin rgba(255, 196, 90, 1));
+}
+
 .rung.on {
   color: var(--gold);
 }

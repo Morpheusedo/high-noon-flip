@@ -20,6 +20,22 @@ export const ease = {
   },
 } satisfies Record<string, Ease>;
 
+/**
+ * Time → progress of a movement that took `ms` and now takes `ms + slowMs`, all
+ * the extra time in its last third: the first two thirds run as before, then it
+ * slows from its old speed without a jolt and picks up a little to finish.
+ */
+export function slowLastThird(ms: number, slowMs: number): Ease {
+  if (slowMs <= 0 || ms <= 0) return ease.linear;
+  const cut = (2 / 3) * (ms / (ms + slowMs));
+  // the entry slope that keeps the old speed (in the tail's own units), and the exit
+  // slope; a cubic stays monotonic while both are at most 3
+  const k = Math.min(3, 1 + (3 * slowMs) / ms);
+  const m = 1;
+  const tail = (u: number) => k * u + (3 - 2 * k - m) * u * u + (k + m - 2) * u * u * u;
+  return (t) => (t < cut ? (t / cut) * (2 / 3) : 2 / 3 + tail((t - cut) / (1 - cut)) / 3);
+}
+
 type Numeric<T> = { [K in keyof T as T[K] extends number ? K : never]?: number };
 
 interface Running {

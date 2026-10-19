@@ -11,6 +11,7 @@
 import { Application, Container } from 'pixi.js';
 import type { Side } from '../../server/protocol';
 import type { Presenter } from '../director';
+import type { Tension } from '../tension';
 import { Background } from './Background';
 import { Coin, type CoinPose } from './Coin';
 import { Effects } from './Effects';
@@ -18,8 +19,9 @@ import { loadArt, type ArtTextures, type Motion, type SceneContext } from './con
 import { loadLayout, type Orientation, type SceneLayout } from './layout';
 import { Particles } from './particles';
 import { Revolver } from './Revolver';
+import { Showdown } from './Showdown';
 import type { FxTextures } from './textures';
-import { Tweens } from './tween';
+import { slowLastThird, Tweens } from './tween';
 
 /** Longest frame step the animations take, so a stall does not make things jump. */
 const MAX_STEP_MS = 50;
@@ -31,6 +33,7 @@ interface Parts {
   revolver: Revolver;
   coin: Coin;
   effects: Effects;
+  showdown: Showdown;
   /** Smoke: behind the revolver. */
   smoke: Particles;
 }
@@ -45,6 +48,8 @@ export class GameScene implements Presenter {
   private assets: { art: ArtTextures; fx: FxTextures } | null = null;
   private parts: Parts | null = null;
   private readonly coinPose: CoinPose = { angle: 0 };
+  /** The showdown under way, kept so a rebuild mid-flip can put it back; null when calm. */
+  private tense: Tension | null = null;
   private time = 0;
 
   /** Loads the art and starts drawing into `host`; `onProgress` gets 0..1 while the art loads. */
@@ -96,9 +101,27 @@ export class GameScene implements Presenter {
     this.parts?.effects.muzzle();
   }
 
-  /** Flies the coin to land on `side`; resolves when it lands. */
-  flip(side: Side, ms: number, turns: number): Promise<void> {
-    return this.parts?.coin.flipTo(side, ms, turns) ?? Promise.resolve();
+  /**
+   * Flies the coin to land on `side`; resolves when it lands, after `ms` plus
+   * `slowMs`, the slow motion of a showdown, spent in the flight's last third.
+   */
+  flip(side: Side, ms: number, turns: number, slowMs = 0): Promise<void> {
+    return (
+      this.parts?.coin.flipTo(side, ms + slowMs, turns, slowLastThird(ms, slowMs)) ??
+      Promise.resolve()
+    );
+  }
+
+  /** The light closes in on the coin, and on the last rungs the camera pushes in. */
+  tension(t: Tension): void {
+    this.tense = t;
+    this.parts?.showdown.closeIn(t);
+  }
+
+  /** Back to the plain scene over `ms`. */
+  calm(ms: number): void {
+    this.tense = null;
+    this.parts?.showdown.open(ms);
   }
 
   /** Turns the coin over by hand, for looks; returns the face now up, or null while it is busy. */
@@ -146,20 +169,23 @@ export class GameScene implements Presenter {
     const revolver = new Revolver(ctx, smoke);
     const coin = new Coin(ctx, this.coinPose);
     const effects = new Effects(ctx);
-    this.root.addChild(
+    // the camera holds the scene; the overlays stay outside it, on the whole screen
+    const camera = new Container();
+    const showdown = new Showdown(ctx, camera);
+    if (this.tense) showdown.hold(this.tense);
+    camera.addChild(
       background.view,
       effects.back,
       smokeLayer,
       revolver.view,
+      showdown.shade,
       coin.shadow,
       coin.glow,
       coin.view,
       effects.front,
-      effects.dim,
-      background.vignette,
-      effects.white,
     );
-    this.parts = { orientation, background, revolver, coin, effects, smoke };
+    this.root.addChild(camera, effects.dim, background.vignette, effects.white);
+    this.parts = { orientation, background, revolver, coin, effects, showdown, smoke };
   }
 
   /** Fits the design stage to the canvas; rebuilds when the orientation flips. */

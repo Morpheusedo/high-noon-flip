@@ -155,6 +155,16 @@ reads: the chamber holds a plain pencil mark, no bullet, and the tab over it nam
 (9,999,999.99 FUN). A shorter one (12.35, 123.45) stays on the drum as before. Whether it fits
 is measured on the stage, in any currency.
 
+### 21. A showdown on the high rungs — done
+
+The flip grows tense as the run nears the top, by the rung it would reach, never by its
+outcome. A flip to the 5th or 6th rung of 8 is a duel: the light closes in on the coin (60%
+around it), the music ducks by 8 dB, a slow heartbeat starts on the tap, and the coin slows
+in the last third of its flight (+500 ms at 1x). A flip to the 7th or 8th is a showdown: all
+that, a faster heartbeat, the camera pushes in on the coin (1.2x), a beat of near silence
+before the landing and a sting on it (+900 ms at 1x). The controls dim, all but the ladder,
+whose next rung glows. Everything lets go the moment the coin lands, or on an error.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -546,6 +556,48 @@ is measured on the stage, in any currency.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 
+- The showdown (step 21) lives in `game/tension.ts`: the thresholds, as rungs from the top
+  of whatever ladder the config sends (a duel on the last four, a showdown on the last two),
+  and every duration, light, zoom and dB of it. The level comes from the rung the flip would
+  reach (`openRun.step + 1`), never from the outcome: the outcome is known while the coin
+  flies, and a winning flip that looked different from a losing one would give it away and
+  read as a fake near-miss. The sting is the same on a win and a loss. The first flip of a
+  round is never tense, even on a short ladder: it is a fresh stake, not a climb.
+- It runs from the tap (BET or a pick) to the landing only. On the result, on an error, when
+  the director stops, and after a reload (the director starts calm; only a pick closes in)
+  everything goes back: scene, music, heartbeat, interface. While the player decides whether
+  to cash out there is no heartbeat and no darkening: that would be pressure to play on,
+  which providers and regulators reject. A cash out is never a showdown.
+- Speeds: 2x keeps everything with the slowdown and the push-in half as long; 4x keeps only
+  the darkening (scene and interface), as its whole flip lasts under half a second. Reduced
+  motion: no push-in and no slow motion; the darkening and the sound stay. The near silence
+  takes at most half the flight (the 500 ms reduced-motion flip). `minRoundMs` still counts
+  from the bet and only ever lengthens the result.
+- The scene is a camera container (everything but the overlays) scaled toward the top of the
+  coin's flight, so the coin never rises closer to the ladder than it did; the rest moves
+  down and out. The darkening is one pre-drawn spotlight sprite (`fx.spotlight`) whose alpha
+  rises to 0.4, clear for 1.25 coin radii around the middle of the flight and full at twice
+  that. Transforms and an alpha only, no live filter (low-end Android). A rotation mid-flip
+  rebuilds the scene straight into the showdown's end state.
+- The flight's slow motion is a time map (`tween.ts` `slowLastThird`): the first two thirds
+  run as before, then a cubic that leaves the cut at the old speed, slows, and picks up a
+  little to land; the coin's height and spin curves are unchanged, only their clock.
+- The interface's controls sit in one layer, `.controls`, the same box as `.hud`, dimmed to
+  the same 60% as one: the emblems, the drum and the cash out keep their own opacity for
+  their own states, so a rule on each would have fought them. While dimmed the layer stacks
+  under the title sign; nothing overlaps the sign then. The next rung glows copper, not gold:
+  gold would claim it is won. Times and light reach the CSS as `--tension-ms` and
+  `--tension-light` from the director's tension store.
+- The music ducks on a gain node of its own between the filter and the music bus
+  (`AudioManager.duckMusic`), apart from the player's volume. The heartbeat is one lub-dub
+  per cue, repeated by the game at its tempo (60 and 100 per minute), and skipped while sound
+  is not running, so beats never pile up in a hidden tab.
+- Coin sharpness at the push-in (checked in Chrome at 390 x 780 and 844 x 390, 3x): on a phone
+  the canvas renders at 2x at most, so the coin is drawn at about 450 px even pushed in, under
+  the art's 640: no softer than the rest of the canvas. On a desktop at 2x (1600 x 900) or a
+  tablet the pushed-in coin needs about 720 px, so it is upscaled by some 12% there; see the
+  open question for the artist.
+
 ## Open questions for the provider
 
 1. Is there a client SDK and a protocol spec?
@@ -567,3 +619,12 @@ is measured on the stage, in any currency.
 10. Can `GameConfig` carry `winChance`, the certified chance that one pick wins? The cash out
     shows it during play, and the rules text still says "half the time" in words; both should
     follow the math the provider certifies, and some markets may want it hidden.
+11. Sound for the showdown (step 21): the provider's sound designer should record
+    `heartbeat-slow` and `heartbeat-fast` (one lub-dub each, under 0.5 s, the game repeats
+    them at 60 and 100 per minute) and `showdown-sting` (about 1 s, the same on a win and a
+    loss), with licenses for distribution in the game. Until then they are synthesized
+    placeholders in `game/sound.ts`; a recording added to `assets-src/audio/sfx` under the
+    same cue and built with `npm run audio` replaces each.
+12. Coin art at 1024 px: the showdown pushes in 1.2x, and on a desktop or a tablet the coin
+    then needs about 720 px, more than the 640 px faces have. The artist should supply the
+    Sheriff and Outlaw faces at 1024 x 1024.

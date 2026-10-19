@@ -31,6 +31,7 @@ import {
 } from '../model/RoundModel';
 import { nextPrize } from '../rules';
 import type { UiSounds } from '../sound';
+import type { Tension } from '../tension';
 import { BetDial, type DialFeedback } from './BetDial';
 import { BetPicker } from './BetPicker';
 import { BetTab } from './BetTab';
@@ -48,6 +49,8 @@ import './app.css';
 interface Props {
   model: RoundModel;
   settings: Store<Settings>;
+  /** A showdown under way: the controls dim, all but the ladder. */
+  tension: Store<Tension>;
   lang: string;
   /** Play money: the balance plaque and the rules say so. */
   demo: boolean;
@@ -89,9 +92,10 @@ const OPENER: Record<Panel, string> = {
   rules: '.tool.rules',
 };
 
-export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin }: Props) {
+export function App({ model, settings, tension, lang, demo, lobbyUrl, sounds, onTurnCoin }: Props) {
   const s = useStore(model.store);
   const prefs = useStore(settings);
+  const showdown = useStore(tension);
   const { speed } = prefs;
   const [panel, setPanel] = useState<Panel | null>(null);
   // the bet's tab is a field the player types in: BET and the game's keys wait
@@ -304,106 +308,115 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       data-run={openRun ? 'live' : undefined}
       data-outcome={outcome === 'lose' ? 'lose' : outcome ? 'win' : undefined}
       data-turbo={turbo ? undefined : 'off'}
+      data-tension={showdown.dimHud ? showdown.level : undefined}
+      style={{
+        '--tension-ms': `${showdown.level ? showdown.inMs : showdown.outMs}ms`,
+        '--tension-light': showdown.light,
+      }}
     >
       <TitleSign>
         <Ladder ladder={config.ladder} step={step} fmt={fmt} />
       </TitleSign>
-      {turbo && (
-        <SpeedButton
-          speed={speed}
-          onChange={(v) => {
-            set({ speed: v });
+      {/* everything the player presses, so a showdown can dim it as one, all but the
+          ladder; each control keeps its own opacity for its own states */}
+      <div class="controls">
+        {turbo && (
+          <SpeedButton
+            speed={speed}
+            onChange={(v) => {
+              set({ speed: v });
+              sounds.click();
+            }}
+          />
+        )}
+        <SoundButton
+          muted={prefs.muted}
+          onToggle={() => {
+            set({ muted: !prefs.muted });
             sounds.click();
           }}
         />
-      )}
-      <SoundButton
-        muted={prefs.muted}
-        onToggle={() => {
-          set({ muted: !prefs.muted });
-          sounds.click();
-        }}
-      />
-      <SettingsButton onOpen={() => open('settings')} />
-      <RulesButton onOpen={() => open('rules')} />
+        <SettingsButton onOpen={() => open('settings')} />
+        <RulesButton onOpen={() => open('rules')} />
 
-      <CoinTap disabled={!idle} onTap={onTurnCoin} />
-      <Emblems
-        disabled={!idle}
-        pressed={pressed}
-        chosen={chosen}
-        choosing={!openRun}
-        nudge={nudge}
-        onPick={onSide}
-      />
-      <SideHint shown={nudge > 0 && chosen === null && setupOpen} />
-
-      <Balance
-        balance={s.balance}
-        demo={demo}
-        reducedMotion={reducedMotion}
-        // the count waits for the coins to land
-        delay={paying ? PAYOUT_FLIGHT_MS : 0}
-        fmt={fmt}
-      />
-      {openRun ? (
-        <CashOut
-          prize={openRun.prize}
-          multiplier={config.ladder[openRun.step - 1] ?? 1}
-          next={nextPrize(config, openRun)}
-          chance={config.winChance ?? null}
-          disabled={!canCashOut(s)}
-          reducedMotion={reducedMotion}
-          fmt={fmt}
-          plaque={plaque}
-          keyDown={spaceDown}
-          onCashOut={cashOut}
+        <CoinTap disabled={!idle} onTap={onTurnCoin} />
+        <Emblems
+          disabled={!idle}
+          pressed={pressed}
+          chosen={chosen}
+          choosing={!openRun}
+          nudge={nudge}
+          onPick={onSide}
         />
-      ) : (
-        <>
-          <BetDial
-            bets={config.bets}
-            bet={s.bet}
-            disabled={!setupOpen}
+        <SideHint shown={nudge > 0 && chosen === null && setupOpen} />
+
+        <Balance
+          balance={s.balance}
+          demo={demo}
+          reducedMotion={reducedMotion}
+          // the count waits for the coins to land
+          delay={paying ? PAYOUT_FLIGHT_MS : 0}
+          fmt={fmt}
+        />
+        {openRun ? (
+          <CashOut
+            prize={openRun.prize}
+            multiplier={config.ladder[openRun.step - 1] ?? 1}
+            next={nextPrize(config, openRun)}
+            chance={config.winChance ?? null}
+            disabled={!canCashOut(s)}
+            reducedMotion={reducedMotion}
             fmt={fmt}
-            onChange={changeBet}
-            feedback={dialFeedback}
-          >
-            <BetTab
-              config={config}
+            plaque={plaque}
+            keyDown={spaceDown}
+            onCashOut={cashOut}
+          />
+        ) : (
+          <>
+            <BetDial
+              bets={config.bets}
               bet={s.bet}
-              balance={s.balance}
               disabled={!setupOpen}
               fmt={fmt}
-              onOpen={() => open('bets')}
-              onTyping={onTyping}
-              onChoose={(bet) => {
-                changeBet(bet);
-                sounds.latch();
-              }}
+              onChange={changeBet}
+              feedback={dialFeedback}
+            >
+              <BetTab
+                config={config}
+                bet={s.bet}
+                balance={s.balance}
+                disabled={!setupOpen}
+                fmt={fmt}
+                onOpen={() => open('bets')}
+                onTyping={onTyping}
+                onChoose={(bet) => {
+                  changeBet(bet);
+                  sounds.latch();
+                }}
+              />
+            </BetDial>
+            <BetButton
+              bet={s.bet}
+              side={chosen}
+              disabled={!setupOpen || panel !== null || typing}
+              fmt={fmt}
+              keyDown={spaceDown}
+              onBet={placeBet}
             />
-          </BetDial>
-          <BetButton
-            bet={s.bet}
-            side={chosen}
-            disabled={!setupOpen || panel !== null || typing}
-            fmt={fmt}
-            keyDown={spaceDown}
-            onBet={placeBet}
-          />
-        </>
-      )}
+          </>
+        )}
 
-      {config.customBet && (
-        <input
-          ref={standIn}
-          class="focus-stand-in"
-          type="text"
-          inputMode="decimal"
-          tabIndex={-1}
-          aria-hidden="true"
-        />
-      )}
+        {config.customBet && (
+          <input
+            ref={standIn}
+            class="focus-stand-in"
+            type="text"
+            inputMode="decimal"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
+        )}
+      </div>
 
       {flights.map((f) => (
         <Payout key={f.id} from={f.from} to={f.to} onDone={() => landed(f.id)} />

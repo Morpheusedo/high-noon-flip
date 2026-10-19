@@ -19,3 +19,17 @@
   font-size: 16px;
   pointer-events: none;
 }
+
+/* The controls in one layer, the same box as the interface, so a showdown on the high
+   rungs (game/tension.ts) can dim them together. `App` sets the light and the time
+   (--tension-light, --tension-ms) on `.hud` from the director's tension. Only while dimmed does the layer stack
+   on its own, under the title sign; nothing overlaps the sign then. */
+.controls {
+  position: absolute;
+  inset: 0;
+  transition: opacity var(--tension-ms, 0ms) ease;
+}
+
+.hud[data-tension] .controls {
+  opacity: var(--tension-light, 0.6);
+}

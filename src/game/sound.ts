@@ -4,13 +4,18 @@
  * Recorded sounds come from the sprite: the cylinder (tick, lock, spin) and
  * seventeen ricochets for a loss. The rest are the prototype's synthesized
  * placeholders until the sound designer delivers recordings; a recording added
- * to the sprite under the same name will replace its placeholder here.
+ * to the sprite under the same name will replace its placeholder here. So do
+ * the showdown's own cues, synthesized here too for now: `heartbeat-slow` and
+ * `heartbeat-fast` (one lub-dub each, which the game repeats at its tempo) and
+ * `showdown-sting`.
  *
- * Music is two loops, calm and intense, blended by how much is at stake.
+ * Music is two loops, calm and intense, blended by how much is at stake, and
+ * ducked during a showdown.
  */
 import type { AudioManager } from '../shell/audio/AudioManager';
 import { noise, tone, type Noise, type Tone } from '../shell/audio/synth';
 import type { RoundModel, RoundState } from './model/RoundModel';
+import type { HeartbeatCue, Tension } from './tension';
 
 /** What the director plays during a round. */
 export interface RoundSounds {
@@ -22,6 +27,14 @@ export interface RoundSounds {
   land(): void;
   win(): void;
   lose(): void;
+  /** A showdown starts on the tap: the music ducks and a heartbeat starts. */
+  tension(t: Tension): void;
+  /** Near silence, just before the landing. */
+  hush(t: Tension): void;
+  /** The showdown's sting as the coin lands, whatever the outcome. */
+  sting(): void;
+  /** Back to normal over `ms`: the heartbeat stops and the music comes back. */
+  calm(ms: number): void;
 }
 
 /** What the interface plays. */
@@ -41,6 +54,7 @@ const RICOCHETS = 17;
 
 export class GameSounds implements RoundSounds, UiSounds {
   private lastRicochet = 0;
+  private heartbeat: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly audio: AudioManager) {}
 
@@ -85,6 +99,35 @@ export class GameSounds implements RoundSounds, UiSounds {
     this.tone({ freq: 220, dur: 0.5, type: 'sawtooth', gain: 0.08, slideTo: 90 });
   }
 
+  tension(t: Tension): void {
+    this.audio.duckMusic(t.duckDb, t.inMs / 1000);
+    this.stopHeartbeat();
+    const beat = t.heartbeat;
+    if (!beat) return;
+    this.beat(beat.cue);
+    this.heartbeat = setInterval(() => this.beat(beat.cue), beat.everyMs);
+  }
+
+  hush(t: Tension): void {
+    this.stopHeartbeat();
+    this.audio.duckMusic(t.hushDb, 0.12);
+  }
+
+  sting(): void {
+    if (this.audio.play('showdown-sting', { gain: 0.7 })) return;
+    // a low boom and a bright, uneasy chord that dies away
+    this.tone({ freq: 70, dur: 0.7, gain: 0.45, slideTo: 48 });
+    this.noise({ dur: 0.35, gain: 0.3, cutoff: 2200 });
+    [233, 330, 466].forEach((freq) =>
+      this.tone({ freq, dur: 0.9, type: 'sawtooth', gain: 0.035, slideTo: freq * 0.97 }),
+    );
+  }
+
+  calm(ms: number): void {
+    this.stopHeartbeat();
+    this.audio.duckMusic(0, ms / 1000);
+  }
+
   /* ---------- interface ---------- */
 
   click(): void {
@@ -115,6 +158,29 @@ export class GameSounds implements RoundSounds, UiSounds {
   }
 
   /* ---------- internals ---------- */
+
+  /** One lub-dub; skipped while sound is not running, so beats do not pile up for later. */
+  private beat(cue: HeartbeatCue): void {
+    if (!this.audio.running) return;
+    if (this.audio.play(cue, { gain: 0.8 })) return;
+    const fast = cue === 'heartbeat-fast';
+    const gap = fast ? 0.16 : 0.22;
+    const gain = fast ? 0.5 : 0.42;
+    for (const [when, k] of [
+      [0, 1],
+      [gap, 0.7],
+    ] as const) {
+      this.tone({ freq: 62, dur: 0.16, gain: gain * k, slideTo: 40, when });
+      // an overtone small speakers can play
+      this.tone({ freq: 124, dur: 0.09, type: 'triangle', gain: 0.12 * k, slideTo: 90, when });
+      this.noise({ dur: 0.07, gain: 0.25 * k, cutoff: 180, when });
+    }
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeat !== null) clearInterval(this.heartbeat);
+    this.heartbeat = null;
+  }
 
   /**
    * The recorded spin is 1.9 s and slows to its last clicks. Only its last

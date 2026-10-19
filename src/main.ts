@@ -12,11 +12,13 @@ import { readLaunchParams, type LaunchParams } from './shell/launchParams';
 import { LoadProgress, loadFonts, loaderScreen, preloadImages } from './shell/loader';
 import { createSettings, type Settings } from './shell/settings';
 import { browserStorage } from './shell/storage';
+import { Store } from './shell/store';
 import { englishText, loadText, type Text } from './locales';
 import { GameScene } from './game/scene/GameScene';
 import { RoundModel } from './game/model/RoundModel';
 import { startDirector } from './game/director';
 import { GameSounds, startMusicDirector } from './game/sound';
+import { CALM, type Tension } from './game/tension';
 import { App } from './game/ui/App';
 import { UI_ART } from './game/ui/art';
 import { TextContext } from './game/ui/text';
@@ -88,7 +90,9 @@ async function boot(): Promise<void> {
   ]);
 
   const model = new RoundModel(server, init);
-  startDirector(model, scene, sounds, settings);
+  // a showdown on the high rungs, which the interface follows by dimming its controls
+  const tension = new Store<Tension>(CALM);
+  startDirector(model, scene, sounds, settings, tension);
   startMusicDirector(model, audio);
   render(
     h(
@@ -97,6 +101,7 @@ async function boot(): Promise<void> {
       h(App, {
         model,
         settings,
+        tension,
         lang: params.lang,
         demo: params.mode === 'demo',
         lobbyUrl: params.lobbyUrl,

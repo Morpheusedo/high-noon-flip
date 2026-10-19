@@ -10,8 +10,8 @@ real phone before a build goes to the provider.
 Builds, then plays the game in installed Google Chrome with the DevTools protocol
 slowing it down: a Moto G4 screen (360 x 640 at 3x), the CPU 4x slower and Lighthouse's
 mobile network (150 ms round trip, 1.6 Mbit/s down). It loads the game, counts frames
-at rest and during a round at normal speed, plays 20 more rounds and compares the
-JavaScript heap. It prints a report and fails past these budgets:
+at rest, during a round and during a showdown on the high rungs at normal speed, plays 20
+more rounds and compares the JavaScript heap. It prints a report and fails past these budgets:
 
 | Measure                                 | Budget |
 | --------------------------------------- | ------ |
@@ -39,6 +39,22 @@ Build 0.1.0 on a MacBook (Intel UHD 630), 2026-10-14:
 | Frames at rest                    | 60 fps              | 59 fps                                   |
 | Frames during a round             | 59 fps, worst 33 ms | 54 fps, 3 frames over 50 ms, worst 67 ms |
 | JS heap, before → after 20 rounds | 6.2 → 7.2 MB        | 6.2 → 7.2 MB                             |
+
+Build 0.1.0 with the showdown (step 21), same MacBook, CPU 4x, 2026-10-20. The report now
+also counts frames during a showdown from the 6th rung at normal speed (push-in, darkening,
+slow motion):
+
+| Measure                           | CPU 4x              |
+| --------------------------------- | ------------------- |
+| Ready to play                     | 9.9 s               |
+| First load                        | 1539 KB, 38 files   |
+| Frames at rest                    | 60 fps              |
+| Frames during a round             | 58 fps, worst 67 ms |
+| Frames during a showdown          | 58 fps, worst 33 ms |
+| JS heap, before → after 20 rounds | 7.0 → 7.4 MB        |
+
+A first run on the same day, with the machine busy (load average 13), gave 38 fps even at
+rest; the showdown then was no slower than a plain round (47 against 37 fps).
 
 At 1.6 Mbit/s the network is most of the wait: 1.5 MB takes about 7.5 s on its own.
 

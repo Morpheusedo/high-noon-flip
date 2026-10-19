@@ -1,6 +1,6 @@
 /**
  * Small textures drawn in code at start-up: soft light, rays, sheen, the muzzle
- * flash and the little coins of a win. They are gradients and shapes, so
+ * flash, the little coins of a win and the showdown's spotlight. They are gradients and shapes, so
  * drawing them is cheaper than shipping them as files.
  */
 import { Texture } from 'pixi.js';
@@ -10,6 +10,8 @@ export interface FxTextures {
   soft: Texture;
   /** Dark corners. */
   vignette: Texture;
+  /** Dark all over but for a clear disc in the middle (`SPOTLIGHT`): the light closing in on the coin. */
+  spotlight: Texture;
   /** Fourteen rays from the centre, for a win. */
   rays: Texture;
   /** A thin horizontal band of light: glints and streaks. */
@@ -19,6 +21,9 @@ export interface FxTextures {
   /** A small gold coin for the win shower. */
   miniCoin: Texture;
 }
+
+/** The spotlight's clear disc fades out between these shares of the texture's half-width. */
+export const SPOTLIGHT = { inner: 0.1, outer: 0.2 };
 
 let cached: FxTextures | null = null;
 
@@ -38,6 +43,15 @@ export function fxTextures(): FxTextures {
       g.addColorStop(1, 'rgba(8,3,8,.78)');
       c.fillStyle = g;
       c.fillRect(0, 0, 256, 256);
+    }),
+    spotlight: draw(512, 512, (c) => {
+      const { inner, outer } = SPOTLIGHT;
+      const g = c.createRadialGradient(256, 256, inner * 256, 256, 256, outer * 256);
+      g.addColorStop(0, 'rgba(8,3,6,0)');
+      g.addColorStop(0.5, 'rgba(8,3,6,.55)');
+      g.addColorStop(1, 'rgba(8,3,6,1)');
+      c.fillStyle = g;
+      c.fillRect(0, 0, 512, 512);
     }),
     rays: draw(512, 512, (c) => {
       c.translate(256, 256);

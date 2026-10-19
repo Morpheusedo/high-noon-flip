@@ -3,7 +3,7 @@
  *
  *   effects ──▶ sfx bus ──┐
  *   synth   ──▶ sfx bus ──┼──▶ master ──▶ speakers
- *   music layers ─▶ filter ─▶ music bus ──┘
+ *   music layers ─▶ filter ─▶ duck ─▶ music bus ──┘
  *
  * - One AudioContext. Browsers keep it silent until the player touches the
  *   page, so it is unlocked on the first tap or key, and music starts then.
@@ -59,6 +59,8 @@ export class AudioManager {
   readonly sfx: GainNode | null;
   private readonly music: GainNode | null;
   private readonly musicFilter: BiquadFilterNode | null;
+  /** Lowers the music for a moment of suspense, apart from the player's volume. */
+  private readonly musicDuck: GainNode | null;
   private sprite: { buffer: AudioBuffer; clips: AudioManifest['sprite']['clips'] } | null = null;
   private loops: Record<string, { buffer: AudioBuffer; loopStart: number; loopEnd: number }> = {};
   private layers: Record<string, Layer> = {};
@@ -72,7 +74,7 @@ export class AudioManager {
     // no Web Audio (an old webview): the game runs silent rather than not at all
     this.ctx = Ctx ? new Ctx() : null;
     if (!this.ctx) {
-      this.sfx = this.music = this.musicFilter = null;
+      this.sfx = this.music = this.musicFilter = this.musicDuck = null;
       return;
     }
     const master = this.ctx.createGain();
@@ -85,7 +87,8 @@ export class AudioManager {
     this.musicFilter = this.ctx.createBiquadFilter();
     this.musicFilter.type = 'lowpass';
     this.musicFilter.frequency.value = 18000;
-    this.musicFilter.connect(this.music);
+    this.musicDuck = this.ctx.createGain();
+    this.musicFilter.connect(this.musicDuck).connect(this.music);
   }
 
   /** Fetches and decodes the sprite and the music. Failures leave the game silent, not broken. */
@@ -183,6 +186,22 @@ export class AudioManager {
     for (const [name, layer] of Object.entries(this.layers))
       layer.gain.gain.setTargetAtTime(gains[name] ?? 0, ctx.currentTime, glide);
     this.musicFilter.frequency.setTargetAtTime(cutoffHz, ctx.currentTime, glide);
+  }
+
+  /**
+   * Lowers the music by `db` (negative), or brings it back with 0, over about
+   * `seconds`. Apart from the player's music volume, which it never changes.
+   */
+  duckMusic(db: number, seconds = 0.3): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicDuck) return;
+    const gain = Math.pow(10, Math.min(0, db) / 20);
+    this.musicDuck.gain.setTargetAtTime(gain, ctx.currentTime, Math.max(0.01, seconds / 3));
+  }
+
+  /** Whether sound is playing at all: unlocked by the player and the tab in view. */
+  get running(): boolean {
+    return this.ctx?.state === 'running';
   }
 
   /** All layers start together once the player has unlocked sound and the music has loaded. */

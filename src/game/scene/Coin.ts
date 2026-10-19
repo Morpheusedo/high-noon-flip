@@ -8,7 +8,7 @@
 import { BlurFilter, Container, Graphics, Sprite } from 'pixi.js';
 import type { Side } from '../../server/protocol';
 import type { SceneContext } from './context';
-import { ease } from './tween';
+import { ease, type Ease } from './tween';
 
 /** Which face is up, kept across rebuilds so turning the device does not flip the coin. */
 export interface CoinPose {
@@ -112,8 +112,11 @@ export class Coin {
     this.draw(pose.angle, false);
   }
 
-  /** Sends the coin up to land on `side`; resolves when it lands. */
-  async flipTo(side: Side, ms: number, turns: number): Promise<void> {
+  /**
+   * Sends the coin up to land on `side`; resolves when it lands. `timing` maps
+   * time to the flight's progress: steady, or slowed at the end for a showdown.
+   */
+  async flipTo(side: Side, ms: number, turns: number, timing: Ease = ease.linear): Promise<void> {
     const { tweens, motion } = this.ctx;
     // a turn by hand still under way is cut short where it is
     const from = this.turning ? turnAngle(this.turning) : this.pose.angle;
@@ -128,7 +131,7 @@ export class Coin {
     this.flight = flight;
     if (!motion.reduced) this.view.filters = [this.blur];
 
-    await tweens.to(flight, { t: 1 }, ms, ease.linear);
+    await tweens.to(flight, { t: 1 }, ms, timing);
     this.pose.angle = to;
     if (this.view.destroyed) return;
     this.flight = null;

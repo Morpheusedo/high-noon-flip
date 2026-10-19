@@ -80,6 +80,26 @@ test('runs on a slow phone', async ({ page }, info) => {
     });
   });
 
+  // a showdown from the 6th rung at normal speed: the push-in, the darkening, the slow
+  // motion; then the run is cashed out, so the rounds below start as before
+  const showdown = await frames(page, async () => {
+    await page.evaluate(async () => {
+      const hnf = window.hnf;
+      if (!hnf?.model) throw new Error('the game is not running');
+      hnf.server.openRunAt(6, hnf.model.state.bet);
+      hnf.server.forceOutcomes('win');
+      await hnf.model.refresh();
+    });
+    await page.locator('.pick.sheriff').dispatchEvent('click');
+    await page.waitForFunction(() => window.hnf?.model?.state.phase.name !== 'idle');
+    await page.waitForFunction(() => window.hnf?.model?.state.phase.name === 'idle', null, {
+      timeout: 30_000,
+    });
+  });
+  await page.evaluate(() => window.hnf?.model?.cashOut());
+  await page.waitForFunction(() => window.hnf?.model?.state.openRun === null);
+  await page.waitForFunction(() => window.hnf?.model?.state.phase.name === 'idle');
+
   // many rounds at 4x, then compare the heap: a leak grows with every round
   const heapBefore = await heap(cdp);
   await page.evaluate(async (rounds) => {
@@ -117,6 +137,7 @@ test('runs on a slow phone', async ({ page }, info) => {
     firstLoadAudio: firstLoad.filter((f) => /\.(m4a|ogg|webm|mp3)$/.test(f.url)).length,
     idle,
     round,
+    showdown,
     heapMB: { before: mb(heapBefore), after: mb(heapAfter), rounds: ROUNDS },
   };
   console.log(JSON.stringify(report, null, 2));

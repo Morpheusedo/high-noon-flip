@@ -17,6 +17,8 @@ declare global {
     coins: number;
     /** The side of every bet and pick sent so far. */
     picks: string[];
+    /** Every showdown level the interface was dimmed at, in the test that records them. */
+    tensions: string[];
   }
 }
 
@@ -399,6 +401,66 @@ test('plays a run and cashes out', async ({ page }) => {
   await expect(flips.getByRole('listitem')).toHaveCount(2);
   await expect(flips.getByRole('listitem', { name: 'Outlaw' })).toHaveCount(2);
   await page.getByRole('button', { name: 'Close' }).click();
+});
+
+test('plays a showdown on the high rungs, then calms down for the decision', async ({ page }) => {
+  await openGame(page);
+  const hud = page.locator('.hud');
+  // every level the interface was dimmed at, as it happens: at 4x it is over in a moment
+  await page.evaluate(() => {
+    const el = document.querySelector('.hud');
+    if (!(el instanceof HTMLElement)) throw new Error('no interface');
+    window.tensions = [];
+    new MutationObserver(() => {
+      const level = el.dataset.tension;
+      if (level) window.tensions.push(level);
+    }).observe(el, { attributes: true, attributeFilter: ['data-tension'] });
+  });
+
+  // from the 6th rung at 1x (the push-in and the slow motion), from the 7th at 4x
+  for (const [runAt, speed, outcome] of [
+    [6, 1, 'win'],
+    [7, 4, 'lose'],
+  ] as const) {
+    await page.evaluate(
+      async ([runAt, speed, outcome]) => {
+        const hnf = window.hnf;
+        if (!hnf?.model) throw new Error('the game is not running');
+        window.tensions = [];
+        hnf.settings.set({ ...hnf.settings.get(), speed });
+        hnf.server.openRunAt(runAt, hnf.model.state.bet);
+        hnf.server.forceOutcomes(outcome);
+        await hnf.model.refresh();
+      },
+      [runAt, speed, outcome] as const,
+    );
+    // deciding whether to cash out: nothing dimmed, nothing tense
+    await expect(page.locator('.cashout')).toBeEnabled();
+    await expect(hud).not.toHaveAttribute('data-tension');
+
+    await tap(page.locator('.pick.sheriff'));
+    if (speed === 1) {
+      // the controls dim, the ladder under the title does not
+      await expect(hud).toHaveAttribute('data-tension', '2');
+      await expect
+        .poll(() => page.locator('.controls').evaluate((el) => getComputedStyle(el).opacity))
+        .toBe('0.6');
+      await expect(page.locator('.sign-wrap')).toHaveCSS('opacity', '1');
+    }
+    await page.waitForFunction(() => window.hnf?.model?.state.phase.name === 'result');
+    await waitIdle(page);
+    expect(await page.evaluate(() => window.tensions)).toContain('2');
+
+    // the round is over and the screen is calm again
+    await expect(hud).not.toHaveAttribute('data-tension');
+    await expect
+      .poll(() => page.locator('.controls').evaluate((el) => getComputedStyle(el).opacity))
+      .toBe('1');
+    const run = await page.evaluate(() => window.hnf?.model?.state.openRun ?? null);
+    if (outcome === 'win') expect(run?.step).toBe(runAt + 1);
+    else expect(run).toBeNull();
+  }
+  await expect(page.locator('.bet-button')).toBeVisible();
 });
 
 test.describe('with reduced motion', () => {

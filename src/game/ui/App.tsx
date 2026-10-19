@@ -13,7 +13,8 @@
  *
  * Keys: ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A
  * held key does not repeat: one press is one bet, so a key held down can never
- * act as autoplay.
+ * act as autoplay. While the player types a bet in the tab, the keys are theirs
+ * and BET waits.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { nextLevel } from '../../server/bets';
@@ -32,6 +33,7 @@ import { nextPrize } from '../rules';
 import type { UiSounds } from '../sound';
 import { BetDial, type DialFeedback } from './BetDial';
 import { BetPicker } from './BetPicker';
+import { BetTab } from './BetTab';
 import { CoinTap, Emblems, SideHint } from './Emblems';
 import { formats } from './format';
 import { useReducedMotion } from './hooks';
@@ -92,6 +94,8 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
   const prefs = useStore(settings);
   const { speed } = prefs;
   const [panel, setPanel] = useState<Panel | null>(null);
+  // the bet's tab is a field the player types in: BET and the game's keys wait
+  const [typing, setTyping] = useState(false);
   const reducedMotion = useReducedMotion();
   const [pressed, setPressed] = useState<Side | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
@@ -110,12 +114,21 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
   const standIn = useRef<HTMLInputElement>(null);
   const open = (p: Panel) => {
     sounds.click();
-    // iOS raises the keyboard only for a focus inside the tap's own handler, and the
-    // bet field mounts after it: a stand-in field takes the focus now, the keyboard
-    // comes up, and the real field takes the focus (and the keyboard) over on mount
-    if (p === 'bets' && config.customBet) standIn.current?.focus({ preventScroll: true });
     setPanel(p);
   };
+  const onTyping = useCallback(
+    (on: boolean) => {
+      if (on) {
+        sounds.click();
+        // iOS raises the keyboard only for a focus inside the tap's own handler, and the
+        // bet field mounts after it: a stand-in field takes the focus now, the keyboard
+        // comes up, and the real field takes the focus (and the keyboard) over on mount
+        standIn.current?.focus({ preventScroll: true });
+      }
+      setTyping(on);
+    },
+    [sounds],
+  );
   // back to the button that opened it, so a keyboard player keeps their place
   const close = useCallback(
     (quiet = false) => {
@@ -223,7 +236,7 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       const target = e.target instanceof Element ? e.target : null;
-      if (panel || target?.closest('input, textarea, select')) return;
+      if (panel || typing || target?.closest('input, textarea, select, form')) return;
       const state = model.state;
       if (e.key === ' ' || e.key === 'Enter') {
         // a control reached with Tab keeps its own Space and Enter; focus a click or a
@@ -270,11 +283,13 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('keyup', onKeyUp);
     };
-  }, [model, sounds, panel, cashOut, placeBet, onSide]);
+  }, [model, sounds, panel, typing, cashOut, placeBet, onSide]);
 
   // the bet list closes by itself if a round starts some other way, e.g. a key
   useEffect(() => {
-    if (!setupOpen) setPanel((p) => (p === 'bets' ? null : p));
+    if (setupOpen) return;
+    setPanel((p) => (p === 'bets' ? null : p));
+    setTyping(false);
   }, [setupOpen]);
 
   const outcome = phase.name === 'result' ? phase.outcome.kind : undefined;
@@ -349,17 +364,29 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
           <BetDial
             bets={config.bets}
             bet={s.bet}
-            typed={config.customBet != null}
             disabled={!setupOpen}
             fmt={fmt}
             onChange={changeBet}
-            onOpen={() => open('bets')}
             feedback={dialFeedback}
-          />
+          >
+            <BetTab
+              config={config}
+              bet={s.bet}
+              balance={s.balance}
+              disabled={!setupOpen}
+              fmt={fmt}
+              onOpen={() => open('bets')}
+              onTyping={onTyping}
+              onChoose={(bet) => {
+                changeBet(bet);
+                sounds.latch();
+              }}
+            />
+          </BetDial>
           <BetButton
             bet={s.bet}
             side={chosen}
-            disabled={!setupOpen || panel !== null}
+            disabled={!setupOpen || panel !== null || typing}
             fmt={fmt}
             keyDown={spaceDown}
             onBet={placeBet}
@@ -435,9 +462,8 @@ export function App({ model, settings, lang, demo, lobbyUrl, sounds, onTurnCoin 
       )}
       {panel === 'bets' && (
         <BetPicker
-          config={config}
+          bets={config.bets}
           bet={s.bet}
-          balance={s.balance}
           fmt={fmt}
           onChoose={(bet) => {
             changeBet(bet);

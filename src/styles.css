@@ -57,6 +57,9 @@ body {
 .stage {
   position: relative;
   overflow: hidden;
+  /* clip, not just hide: focusing the bet's field scrolled a hidden-overflow stage to
+     show the dial's sunk half, and the whole scene moved up */
+  overflow: clip;
   width: min(100cqw, calc(100cqh * 16 / 9));
   aspect-ratio: 16 / 9;
   container: stage / size;

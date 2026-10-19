@@ -130,6 +130,15 @@ chosen chamber names the amount and opens the bet list with its field (steps 10 
 BET stands alone in the middle at the bottom, where the cash out stands in a run. The drum
 stops at a typed amount between two levels, and the dial is gone during a run.
 
+### 18. Type the bet in its tab — done
+
+The tab over the chosen chamber shows the amount alone: the word "BET" there repeated the
+button beside it. With `customBet` one tap turns the tab itself into a field, in place: it
+widens out of the tab with the bet selected, ✓ or Enter sets the bet (the checks of step 10,
+with the message beside the field), Escape or a tap elsewhere leaves it as it was, and the
+field lifts itself over a phone keyboard. Without `customBet` the tap opens the list of
+levels, which no longer has a field.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -166,7 +175,8 @@ stops at a typed amount between two levels, and the dial is gone during a run.
   `isValidBet` is the one rule: a level, or `min..max` with `(bet - min) % step === 0`.
   `RoundModel.setBet` and `MockServer` both use it, so the client never offers a stake the
   server refuses. The demo takes 0.10 to 100.00 FUN in steps of 0.05.
-- The field lives in the bet list, above the bullets: one place to change the bet. It
+- The field lives in the bet list, above the bullets: one place to change the bet (moved into
+  the dial's tab in step 18). It
   reads the number in the player's language (`parseAmount` in `shell/money.ts`): the
   language's decimal mark, its grouping, and a lone other mark as a decimal one when it
   cannot be grouping ("7,35" in English), since a phone keyboard offers the device's mark,
@@ -178,12 +188,14 @@ stops at a typed amount between two levels, and the dial is gone during a run.
   they go to the next one up or down. The dial (step 17) and ↑ ↓ keep this rule. "Lower the bet" after insufficient funds offers the
   highest level the balance covers, and the balance on the grid only below every level:
   never an odd all-in amount while a level fits.
-- With a phone keyboard up the bet list pads itself into the visible part of the stage
+- With a phone keyboard up the bet list pads itself into the visible part of the stage (step
+  18: the field in the tab lifts itself instead, by the same rule)
   (`visualViewport`) and shows only the title and the field. It follows the viewport, not
   the focus: a tap on OK blurs the field, and a layout that moved on blur would move OK from
   under the finger. Checked with a simulated viewport; a real phone keyboard is still on the
   device checklist.
-- One tap on the bet puts the player in the field (step 13): the field opens focused with
+- One tap on the bet puts the player in the field (step 13; the field is the tab itself since
+  step 18): the field opens focused with
   the bet selected, so typing replaces it; the bullets stay below it. Without `customBet`
   the tap focuses the current bullet, as before.
 - iOS Safari raises the keyboard only for a `focus()` run inside the tap's own handler, and
@@ -198,7 +210,8 @@ stops at a typed amount between two levels, and the dial is gone during a run.
 - The selection is made with `setSelectionRange`, not `select()`, which iOS ignores on a
   field focused by script.
 - With a phone keyboard up, a tap outside the field puts the keyboard away instead of closing
-  the list, so the bullets come back one tap after the field; a second tap outside closes it.
+  the list, so the bullets come back one tap after the field; a second tap outside closes it
+  (gone in step 18: the list has no field, and a tap outside the tab's field cancels it).
   Whether the keyboard was up is read on `pointerdown`: Chrome and Android blur the field on
   the press, before the click arrives.
 - Interface images live in `src/game/ui/art/` so Vite hashes them and CSS paths follow
@@ -412,6 +425,48 @@ stops at a typed amount between two levels, and the dial is gone during a run.
 - `cylinder.webp` (140 KB) is back in the interface art the loader fetches first; the first
   load stays far under the 4 MB budget of `docs/LOW_END_CHECK.md`, whose table was not
   measured again.
+- The tab names the amount alone (step 18), asked for: "BET" over the drum repeated the gold
+  BET button beside it, two things with one name. The pointer on the chamber and the bullets
+  around it say this is the bet; a screen reader still hears "Bet 1.00 FUN" (`aria-label`).
+  Dropped in Russian too, though there the button says "Поставить": one layout for every
+  language, and a word in the tab would need room in each of them.
+- Typing goes into the tab itself (step 18), asked for: no dialog. One tap on the amount and
+  the tab widens into "[ 1.00 FUN ] ✓" in place, the amount selected, with the iOS stand-in
+  of step 13 so a phone raises its keyboard from the tap. The field grows out of the tab's
+  box (a `transform` from the tab's size and place to its own, 200 ms; its contents fade in
+  once it is wide enough) and shrinks back into it on the way out (160 ms); opacity only with
+  reduced motion. Web Animations, not CSS: the start depends on the tab's measured box, and
+  the way back must finish before the tab returns.
+- With `customBet` the tab has no way to the list (step 18): the list was the quick way to a
+  far level, and typing the amount is quicker still; the drum turns through the levels as
+  before. A second button beside the field would crowd a tab that must fit between the
+  balance and the drum in portrait. Without `customBet` (the default in a real integration
+  until the provider answers question 7) the tab opens the list, which lost its field.
+- The checks are those of step 10, now `checkTypedBet` (`typedBet.ts`), tested apart from the
+  field: below the minimum, above the maximum or above the balance, a message and the field
+  stays open; off the grid, rounded down and shown with a note, and ✓ once more sets it. The
+  message stands beside the field (left of it in landscape, over the empty top of BET; above
+  it in portrait, under the Sheriff), outside its box, so the field does not jump.
+- Enter, ✓ and Escape close the field and give the focus back to the tab; a tap elsewhere
+  cancels on the press and then does what it was for (turns the drum, chooses a side), but
+  BET is disabled while the field is open and the game's keys (↑ ↓, Space, Enter, ← →) are
+  the field's, so nothing is staked with an amount the player was still changing. ✓ keeps
+  the focus in the field on the press, so a phone keyboard stays up and nothing moves from
+  under the finger before the click.
+- In landscape the field keeps the tab's right edge and grows to the left: centred, its ✓
+  came within 10 px of the Sheriff star, which still hops. To the left it stands over BET's
+  empty top (22 px clear of BET at 844 x 390). In portrait it keeps the tab's right edge as
+  well, with 35 px to the balance at 360 x 640. Checked at 360 x 640, 390 x 780, 844 x 390
+  and 1440 x 810, idle, open with a message, and in a run (the dial is gone then, as before).
+- Over a phone keyboard the field lifts itself (`useKeyboardLift`): it measures its wrapper,
+  which the lift does not move, against the visual viewport, and translates up by the part
+  hidden plus 10 px; lifted, its pointer is hidden. Checked with a simulated
+  `visualViewport` at 360 x 640; a real phone keyboard stays on the device checklist.
+- The stage is `overflow: clip`, not just hidden: focusing the field scrolled the
+  hidden-overflow stage by 73 px to show the drum's sunk half, and the whole scene moved up.
+- QA: `?debug=1&bets=levels` starts the test server without `customBet`, so the smoke test
+  (and QA) can reach the list. A test-server switch, as the QA panel is; never with
+  `mode=real`.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

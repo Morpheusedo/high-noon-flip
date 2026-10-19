@@ -1,11 +1,12 @@
 /**
- * The bet dial: the revolver's cylinder, sunk into the right edge of the screen,
- * with a BET tab over the chosen chamber that names the amount. Drag or flick
- * the drum, scroll over it, tap a bullet, or focus it and use the arrow keys;
- * the tab opens every level (and the field for an exact amount). It is an
- * endless drum over the operator's bet levels; see `dial.ts` for how six
- * chambers show any number of them, and a typed amount between two.
+ * The bet dial: the revolver's cylinder, sunk into the edge of the screen, with
+ * a tab over the chosen chamber that names the amount (`BetTab`, passed in as
+ * the children). Drag or flick the drum, scroll over it, tap a bullet, or focus
+ * it and use the arrow keys. It is an endless drum over the operator's bet
+ * levels; see `dial.ts` for how six chambers show any number of them, and a
+ * typed amount between two.
  */
+import type { ComponentChildren } from 'preact';
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { nextLevel } from '../../server/bets';
 import type { Minor } from '../../server/protocol';
@@ -30,15 +31,13 @@ interface Props {
   /** The operator's levels, ascending. */
   bets: Minor[];
   bet: Minor;
-  /** The server takes typed stakes: the tab opens the field, ready to type in. */
-  typed: boolean;
   disabled: boolean;
   fmt: Formats;
   onChange(bet: Minor): void;
-  /** Opens every level at once. */
-  onOpen(): void;
   /** Sound cues: one chamber passed the marker, and the drum came to rest after `coasted` levels. */
   feedback: DialFeedback;
+  /** The tab over the chosen chamber. */
+  children: ComponentChildren;
 }
 
 export interface DialFeedback {
@@ -71,7 +70,7 @@ interface Gesture {
   pxPerLevel: number;
 }
 
-export function BetDial({ bets, bet, typed, disabled, fmt, onChange, onOpen, feedback }: Props) {
+export function BetDial({ bets, bet, disabled, fmt, onChange, feedback, children }: Props) {
   const { t } = useText();
   const root = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
@@ -262,18 +261,7 @@ export function BetDial({ bets, bet, typed, disabled, fmt, onChange, onOpen, fee
       </div>
       {/* the marker over the chosen chamber is a tab that names the bet: the dial alone
           did not read as the bet to players (step 9) */}
-      <button
-        class="dial-tab"
-        aria-label={t(typed ? 'bet.changeLabelTyped' : 'bet.changeLabel', { amount })}
-        disabled={disabled}
-        onClick={onOpen}
-      >
-        <span class="plaque-label">{t('bet')}</span>
-        <span class="plaque-value">
-          {fmt.amount(bet)}
-          <small>{fmt.code}</small>
-        </span>
-      </button>
+      {children}
     </div>
   );
 }

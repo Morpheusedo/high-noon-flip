@@ -57,8 +57,9 @@ const test = base.extend<{ problems: string[] }>({
   ],
 });
 
-async function openGame(page: Page): Promise<void> {
-  await page.goto('./?debug=1');
+/** A fresh session; `query` adds launch parameters, such as `&bets=levels`. */
+async function openGame(page: Page, query = ''): Promise<void> {
+  await page.goto(`./?debug=1${query}`);
   await expect(page.locator('#loader')).toHaveCount(0, { timeout: 30_000 });
   await page.waitForFunction(() => window.hnf?.model !== undefined);
   await waitIdle(page);
@@ -130,7 +131,7 @@ test('loads and names its version and build', async ({ page }) => {
   await expect(page.locator('.rules-panel')).toHaveCount(0);
 });
 
-test('changes the bet on the dial, and from the list', async ({ page }) => {
+test('changes the bet on the dial', async ({ page }) => {
   await openGame(page);
   const bet = () => page.evaluate(() => window.hnf?.model?.state.bet);
   const bets = await page.evaluate(() => window.hnf?.model?.state.config.bets ?? []);
@@ -138,6 +139,9 @@ test('changes the bet on the dial, and from the list', async ({ page }) => {
   const value = page.locator('.dial-tab .plaque-value');
   await expect(dial).toHaveAttribute('aria-valuetext', '1.00 FUN');
   await expect(page.locator('.dchamber.on')).toHaveText('1');
+  // the tab names the amount alone: BET is the button beside it
+  await expect(page.locator('.dial-tab')).toHaveText(/^1\.00\s*FUN$/);
+  await expect(page.locator('.dial-tab')).toHaveAccessibleName(/^Bet 1\.00 FUN\./);
 
   // a drag turns the drum one chamber: along it in landscape, up or down in portrait
   const box = await dial.boundingBox();
@@ -169,32 +173,72 @@ test('changes the bet on the dial, and from the list', async ({ page }) => {
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   expect(await bet()).toBe(bets[0]);
+});
 
+test('opens every level from the tab when the server takes levels only', async ({ page }) => {
+  await openGame(page, '&bets=levels');
+  const bet = () => page.evaluate(() => window.hnf?.model?.state.bet);
+  const bets = await page.evaluate(() => window.hnf?.model?.state.config.bets ?? []);
+  const value = page.locator('.dial-tab .plaque-value');
   const shown = await value.textContent();
   await tap(page.locator('.dial-tab'));
+  // the list, with no field in it and none in the tab
+  await expect(page.locator('.picker')).toBeVisible();
+  await expect(page.getByRole('textbox')).toHaveCount(0);
   await tap(page.locator('.picker .bullet').last());
   await expect(page.locator('.picker')).toHaveCount(0);
   expect(await bet()).toBe(bets.at(-1));
   await expect(value).not.toHaveText(shown ?? '');
-  await expect(dial).toHaveAttribute('aria-valuenow', String(bets.length - 1));
+  await expect(page.getByRole('slider', { name: /^Bet\./ })).toHaveAttribute(
+    'aria-valuenow',
+    String(bets.length - 1),
+  );
 });
 
 test('takes a typed bet and plays it', async ({ page }) => {
   await openGame(page);
-  // one tap on the bet and the player types: the field has the focus, the bet selected
+  const stake = () => page.evaluate(() => window.hnf?.model?.state.bet);
+  const edit = page.locator('.dial-edit');
+  const note = page.locator('.dial-note');
+  // one tap on the bet and the player types: the tab itself is the field, no dialog,
+  // with the focus and the bet selected
   await tap(page.locator('.dial-tab'));
   const field = page.getByRole('textbox', { name: 'Your bet in FUN' });
   await expect(field).toBeFocused();
   await expect(field).toHaveValue('1.00');
+  await expect(page.locator('.picker')).toHaveCount(0);
+  await expect(page.locator('.bet-button')).toBeDisabled();
+  // the keys type: ↑ does not step the bet, Space does not press BET
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Space');
+  expect(await stake()).toBe(100);
+  expect(await page.evaluate(() => window.hnf?.model?.state.phase.name)).toBe('idle');
+  // over the maximum: a message beside the field, and it stays open
+  await field.fill('500');
+  await field.press('Enter');
+  await expect(note).toHaveText('The highest bet is 100.00 FUN.');
+  await expect(field).toHaveAttribute('aria-invalid', 'true');
+  await expectApart(page, ['.dial-edit', '.dial-note'], ['.plaque.balance', '.bet-button']);
   // off the 0.05 grid: rounded down and shown before it is the bet
-  await page.keyboard.type('7.37');
-  await expect(field).toHaveValue('7.37');
+  await field.fill('7.37');
+  await expect(note).toBeHidden();
   await field.press('Enter');
   await expect(field).toHaveValue('7.35');
-  await expect(page.locator('.picker-note')).toContainText('7.35 FUN');
-  await tap(page.locator('.picker-ok'));
-  await expect(page.locator('.picker')).toHaveCount(0);
+  await expect(note).toContainText('7.35 FUN');
+  await tap(page.locator('.dial-ok'));
+  await expect(edit).toHaveCount(0);
   await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^7\.35\s*FUN$/);
+  // Escape and a tap elsewhere leave the bet as it was
+  await tap(page.locator('.dial-tab'));
+  await page.keyboard.type('9');
+  await page.keyboard.press('Escape');
+  await expect(edit).toHaveCount(0);
+  await tap(page.locator('.dial-tab'));
+  await page.keyboard.type('9');
+  await tap(page.locator('.ladder'));
+  await expect(edit).toHaveCount(0);
+  expect(await stake()).toBe(735);
+  await expect(page.locator('.bet-button')).toBeEnabled();
   // the drum stops at the typed amount between two levels, and steps to the next level
   await expect(page.locator('.dchamber.on')).toHaveText('7.35');
   await page.keyboard.press('ArrowUp');
@@ -204,7 +248,7 @@ test('takes a typed bet and plays it', async ({ page }) => {
   await tap(page.locator('.dial-tab'));
   await page.keyboard.type('7.35');
   await page.keyboard.press('Enter');
-  await expect(page.locator('.picker')).toHaveCount(0);
+  await expect(edit).toHaveCount(0);
   await expect(page.locator('.dchamber.on')).toHaveText('7.35');
 
   const before = await balances(page);
@@ -419,6 +463,22 @@ test('fits the screen and survives a rotation', async ({ page }, info) => {
     expect(apart, `the hint runs into ${selector}`).toBe(true);
   }
 });
+
+/** Each of `these` stands clear of each of `those`. */
+async function expectApart(page: Page, these: string[], those: string[]): Promise<void> {
+  for (const a of these)
+    for (const b of those) {
+      const one = await page.locator(a).boundingBox();
+      const two = await page.locator(b).boundingBox();
+      if (!one || !two) continue;
+      const apart =
+        one.x >= two.x + two.width ||
+        one.x + one.width <= two.x ||
+        one.y >= two.y + two.height ||
+        one.y + one.height <= two.y;
+      expect(apart, `${a} runs into ${b}`).toBe(true);
+    }
+}
 
 const CONTROLS = [
   '.pick.sheriff',

@@ -19,17 +19,21 @@ export interface LaunchParams {
   lobbyUrl: string | null;
   /** Shows the QA panel. Never enabled in a real-money session. */
   debug: boolean;
+  /** QA, with `debug` only: the test server offers its levels alone, no typed stakes (`bets=levels`). */
+  levelsOnly: boolean;
 }
 
 export function readLaunchParams(search: string = location.search): LaunchParams {
   const q = new URLSearchParams(search);
   const mode: PlayMode = q.get('mode') === 'real' ? 'real' : 'demo';
+  const debug = mode === 'demo' && q.get('debug') === '1';
   return {
     token: q.get('token') ?? '',
     lang: safeLang(q.get('lang')),
     mode,
     lobbyUrl: safeHttpUrl(q.get('lobbyUrl')),
-    debug: mode === 'demo' && q.get('debug') === '1',
+    debug,
+    levelsOnly: debug && q.get('bets') === 'levels',
   };
 }
 

@@ -1,5 +1,5 @@
-/* The bet: the revolver's cylinder sunk into the right of the screen, with a BET tab
-   over the chosen chamber that names the amount and opens every bet. In landscape it
+/* The bet: the revolver's cylinder sunk into the right of the screen, with a tab over
+   the chosen chamber that names the amount; a tap turns the tab into a field. In landscape it
    is half sunk into the bottom edge between BET and the Sheriff's keycap, the chosen
    chamber facing up; in a run it is gone, as the bet cannot change then. */
 .bet-dial {
@@ -28,6 +28,12 @@
   opacity: 0.55;
 }
 
+/* while the player types, the field stands over the emblems (lifted over a phone
+   keyboard it may reach them), under the panels */
+.bet-dial:has(.dial-spot[data-typing]) {
+  z-index: 9;
+}
+
 .dial {
   position: absolute;
   inset: 0;
@@ -42,34 +48,51 @@
   outline-offset: 0.6cqmin;
 }
 
-/* the tab over the chosen chamber: BET and the amount, its pointer on the chamber */
-.dial-tab {
+/* the tab over the chosen chamber: the amount, its pointer on the chamber. The spot
+   places it, and the field that takes its place grows out of the same spot */
+.dial-spot {
   position: absolute;
   left: 50%;
   bottom: calc(100% + 1.2cqmin);
   translate: -50% 0;
+  font-size: clamp(13px, 3.8cqmin, 28px);
+}
+
+/* the field keeps the tab's right edge and grows to the left, over BET's empty top:
+   the Sheriff star stands right above the tab's right end */
+.dial-spot[data-typing] {
+  translate: calc(-100% + 10cqmin) 0;
+}
+
+.dial-tab {
+  position: relative;
   box-sizing: border-box;
   min-width: 20cqmin;
-  padding: 0.9cqmin 2.6cqmin 1.1cqmin;
+  min-height: 9cqmin;
+  padding: 1cqmin 2.6cqmin 1.2cqmin;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
   border: 0;
   color: inherit;
   background: url(./art/plaque.webp) center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
 }
 
-.dial-tab .plaque-label {
-  font-size: clamp(8px, 1.8cqmin, 13px);
-  color: var(--gold);
-}
-
 .dial-tab .plaque-value {
-  font-size: clamp(13px, 3.8cqmin, 28px);
+  font-size: 1em;
+  transition: opacity 0.12s;
 }
 
-.dial-tab::after {
+/* back from the field, the amount fades in on the plaque the field shrank into */
+@starting-style {
+  .dial-tab .plaque-value {
+    opacity: 0;
+  }
+}
+
+.dial-tab::after,
+.dial-edit::after {
   content: '';
   position: absolute;
   left: 50%;
@@ -88,6 +111,145 @@
 
 .dial-tab:disabled {
   cursor: default;
+}
+
+/* the field in the tab's place: "[ 7.35 FUN ] ✓" on the same plaque, a little wider */
+.dial-edit {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  margin: 0;
+  padding: 0.8cqmin 0.9cqmin 0.8cqmin 1.4cqmin;
+  background: url(./art/plaque.webp) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
+}
+
+/* still over the chamber, which is 10cqmin from the field's right edge */
+.dial-edit::after {
+  left: calc(100% - 10cqmin);
+}
+
+/* lifted over a phone keyboard, it no longer points at the chamber */
+.dial-edit[data-lifted]::after {
+  display: none;
+}
+
+.dial-edit[data-leaving] {
+  pointer-events: none;
+}
+
+.dial-field {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25em;
+  padding: 0 0.4em;
+  background: rgba(16, 9, 12, 0.9);
+  border: 1px solid var(--brass);
+  border-radius: 4px;
+  cursor: text;
+}
+
+.dial-field:focus-within {
+  border-color: var(--brass-hi);
+  box-shadow: 0 0 0 1px var(--brass-hi);
+}
+
+.dial-field[data-invalid] {
+  border-color: var(--lose);
+  box-shadow: 0 0 0 1px var(--lose);
+}
+
+.dial-field input {
+  box-sizing: content-box;
+  width: calc(var(--chars, 4) * 1ch + 0.1em);
+  min-width: 0;
+  padding: 0.2em 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: #fff6e2;
+  font: inherit;
+  font-weight: 700;
+  /* 16px at least: iOS zooms the page into a smaller field */
+  font-size: max(16px, 1em);
+  font-variant-numeric: tabular-nums;
+}
+
+.dial-code {
+  font-size: 0.5em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dial-ok {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.7em;
+  height: 1.7em;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #ffe08a, #d99b25 70%, #a86d12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+.dial-ok svg {
+  width: 62%;
+  height: 62%;
+  fill: none;
+  stroke: #2a1a02;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dial-ok:hover {
+  filter: brightness(1.1);
+}
+
+.dial-ok:active {
+  scale: 0.94;
+}
+
+.dial-ok:focus-visible {
+  outline: 2px solid var(--brass-hi);
+  outline-offset: 2px;
+}
+
+/* why the amount cannot be the bet, or what it was rounded to: beside the field on the
+   left in landscape, where BET leaves room under the scene */
+.dial-note {
+  position: absolute;
+  right: calc(100% + 1.2cqmin);
+  bottom: 0;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 40cqmin;
+  margin: 0;
+  padding: 0.45em 0.65em;
+  font-size: clamp(11px, 2.4cqmin, 17px);
+  font-weight: 500;
+  line-height: 1.3;
+  text-wrap: pretty;
+  color: var(--brass-hi);
+  background: rgba(16, 9, 12, 0.92);
+  border: 1px solid var(--brass);
+  border-radius: 4px;
+  box-shadow: 0 0.4cqmin 1.2cqmin rgba(0, 0, 0, 0.6);
+}
+
+.dial-note:empty {
+  display: none;
+}
+
+.dial-note[data-error] {
+  color: #ffb4a6;
+  border-color: var(--lose);
 }
 
 .dial-rot {
@@ -217,25 +379,36 @@
     filter: drop-shadow(-0.4cqmin 0 1.6cqmin rgba(0, 0, 0, 0.75));
   }
 
-  .dial-tab {
+  .dial-spot,
+  .dial-spot[data-typing] {
     left: auto;
     right: calc(100% + 2.2cqmin);
     bottom: auto;
     top: 50%;
     translate: 0 -50%;
-    min-width: 0;
-    padding: 1.2cqmin 3cqmin 1.4cqmin;
-  }
-
-  .dial-tab .plaque-label {
-    font-size: clamp(8px, 2.25cqmin, 14px);
-  }
-
-  .dial-tab .plaque-value {
     font-size: clamp(13px, 5cqmin, 32px);
   }
 
-  .dial-tab::after {
+  .dial-tab {
+    min-width: 0;
+    min-height: 11cqmin;
+    padding: 1.2cqmin 3cqmin 1.4cqmin;
+  }
+
+  .dial-edit {
+    padding: 1cqmin 1.1cqmin 1cqmin 1.6cqmin;
+  }
+
+  /* above the field, right-aligned: under the Sheriff, clear of the balance */
+  .dial-note {
+    right: 0;
+    bottom: calc(100% + 2.4cqmin);
+    max-width: 58cqmin;
+    font-size: clamp(11px, 3.2cqmin, 18px);
+  }
+
+  .dial-tab::after,
+  .dial-edit::after {
     left: 100%;
     top: 50%;
     translate: -0.2cqmin -50%;

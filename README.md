@@ -30,7 +30,8 @@ game should look, sound and feel; it is not part of the build.
 The browser tests need Playwright's Chromium once: `npx playwright install chromium`.
 
 Launch parameters go in the URL, as an operator would pass them:
-`?lang=de&mode=demo&debug=1&lobbyUrl=https://casino.example`.
+`?lang=de&mode=demo&debug=1&lobbyUrl=https://casino.example`. For QA, `debug=1&bets=levels`
+starts the test server without typed stakes, so the bet's tab opens the list of levels.
 
 ### QA panel
 
@@ -61,7 +62,8 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
 360 x 640 phone, portrait and landscape: loading, the bet dial (a drag, the wheel, the arrow
-keys) and the bet list, a typed bet shown on the drum and played to the server, BET with no side (a hint and nothing sent; still outlines with reduced
+keys), the bet list where the server takes levels only, a bet typed in the tab (its messages,
+rounding, Escape and a tap outside) shown on the drum and played to the server, BET with no side (a hint and nothing sent; still outlines with reduced
 motion), a side chosen and kept for the next BET with Space and Enter, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
 with reduced motion), the last flips in the settings, a lost answer (NETWORK) and its recovery, a run resumed after a reload
 and cashed out with Space, the controls on screen (the ladder clear of the corners, the balance, the dial and BET
@@ -113,11 +115,13 @@ src/
       ├─ App.tsx          lays out the controls, keyboard shortcuts
       ├─ TopBar.tsx       title with the ladder under it, speed
       ├─ Emblems.tsx      Sheriff and Outlaw (choose a side; flip in a run), keycaps, hint, coin tap
-      ├─ BetDial.tsx      the bet: the revolver's cylinder in the right edge, its BET tab names the amount
+      ├─ BetDial.tsx      the bet: the revolver's cylinder in the right edge
+      ├─ BetTab.tsx       the tab over the chosen chamber: the amount, and the field it turns into
+      ├─ typedBet.ts      what a typed amount means: the stake, a rounding, or why not
       ├─ dial.ts          the dial's arithmetic: six chambers over any number of levels and a typed bet
       ├─ Plaques.tsx      balance, BET, ladder, cash out (multiplier, prize, next flip)
       ├─ Payout.tsx       coins flying from the cash out to the balance
-      ├─ BetPicker.tsx    every bet level at once, and a field for an exact amount
+      ├─ BetPicker.tsx    every bet level at once, when the server takes levels only
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed, last flips)
       ├─ Rules.tsx        the info button and the rules screen
       ├─ Notices.tsx      result stamp, insufficient funds, error dialogs
@@ -159,12 +163,13 @@ Rules the code follows:
 - **Art comes with its measurements.** Positions measured on an image live in
   `scene-layout.json` next to it, not in code.
 - **Bets come from the operator.** The cylinder dial turns through whatever levels the
-  config sends, and the list (opened from its BET tab) shows them all; the client never assumes a number of them. When the config
-  has `customBet` (the server takes any stake in a range, on a grid), the list also has a
-  field for an exact amount, read as the player's language writes numbers; the drum stops at
-  a typed amount between two levels and turns from it to the next one. One tap on the
-  bet opens it focused with the bet selected, so the player types at once and a phone
-  raises its keyboard from that tap. `server/bets.ts` holds the rule, and the client and the
+  config sends; the client never assumes a number of them. The tab over the chosen chamber
+  names the amount and, with levels only, opens the list of them all. When the config has
+  `customBet` (the server takes any stake in a range, on a grid), one tap turns the tab itself
+  into a field, in place, with the bet selected: the player types at once, a phone raises its
+  keyboard from that tap, and the field lifts itself over the keyboard. The amount is read as
+  the player's language writes numbers; the drum stops at a typed amount between two levels
+  and turns from it to the next one. `server/bets.ts` holds the rule, and the client and the
   mock server both use it.
 - **A round starts in two steps.** A tap on an emblem (or ← →) chooses the side, BET places
   the bet on it, and the side stays chosen for the next round. The choice lives in the
@@ -172,7 +177,7 @@ Rules the code follows:
   side flips at once.
 - **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A held key
   does not repeat, so it cannot act as autoplay. A button reached with Tab keeps its own
-  Space and Enter.
+  Space and Enter. While the player types a bet, the keys are the field's and BET waits.
 - **No string in code.** Every text the player reads is a key in `src/locales/en.json`.
   English is bundled; any other language is a small chunk loaded only when `lang` asks for
   it. To add a language, add `xx.json` next to `en.json`; a test fails until it has every

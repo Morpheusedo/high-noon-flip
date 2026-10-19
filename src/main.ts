@@ -39,7 +39,11 @@ async function boot(): Promise<void> {
   const params = readLaunchParams();
   const progress = new LoadProgress((f) => loader.progress(f));
   // the provider adapter replaces MockServer here once its SDK is known
-  const server: GameServer = new MockServer({ store: browserStorage(), latencyMs: 150 });
+  const server: GameServer = new MockServer({
+    store: browserStorage(),
+    latencyMs: 150,
+    ...(params.levelsOnly ? { config: { customBet: null } } : {}),
+  });
   const scene = new GameScene();
   const settings = createSettings(browserStorage());
   const audio = new AudioManager();

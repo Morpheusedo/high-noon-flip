@@ -88,3 +88,38 @@ export function useFitText(ref: MutableRef<HTMLElement | null>, text: string): v
     return () => observer.disconnect();
   }, [ref, text]);
 }
+
+/**
+ * How far to lift `ref` so a phone keyboard does not hide it, in CSS pixels; 0
+ * with no keyboard up. Phones keep the page's size under the keyboard and only
+ * shrink or pan the visual viewport, so the element is measured against what is
+ * still in sight. Measure an element the lift does not move (the lifted one's
+ * wrapper), or the lift would feed back into itself. Driven by the viewport
+ * alone, not by focus: a tap on a button beside the field must not move it.
+ */
+export function useKeyboardLift(ref: MutableRef<HTMLElement | null>, margin: number): number {
+  const [lift, setLift] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = ref.current;
+    const stage = el?.closest('.stage');
+    if (!vv || !el || !stage) return;
+    const update = () => {
+      const box = el.getBoundingClientRect();
+      const frame = stage.getBoundingClientRect();
+      const visible = vv.offsetTop + vv.height;
+      // a pinch zoom shrinks the visual viewport too; only a keyboard does it at scale 1
+      const keyboard =
+        Math.abs(vv.scale - 1) < 0.01 && frame.bottom - visible > frame.height * 0.15;
+      setLift(keyboard ? Math.max(0, Math.round(box.bottom + margin - visible)) : 0);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, [ref, margin]);
+  return lift;
+}

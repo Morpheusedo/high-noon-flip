@@ -12,6 +12,7 @@ describe('readLaunchParams', () => {
       mode: 'real',
       lobbyUrl: 'https://casino.example/lobby',
       debug: false,
+      levelsOnly: false,
     });
   });
 
@@ -22,6 +23,7 @@ describe('readLaunchParams', () => {
       mode: 'demo',
       lobbyUrl: null,
       debug: false,
+      levelsOnly: false,
     });
     expect(readLaunchParams('?lang=%%%').lang).toBe('en');
   });
@@ -33,5 +35,11 @@ describe('readLaunchParams', () => {
   it('never enables the debug panel in a real-money session', () => {
     expect(readLaunchParams('?debug=1').debug).toBe(true);
     expect(readLaunchParams('?debug=1&mode=real').debug).toBe(false);
+  });
+
+  it('offers levels alone only to QA', () => {
+    expect(readLaunchParams('?debug=1&bets=levels').levelsOnly).toBe(true);
+    expect(readLaunchParams('?bets=levels').levelsOnly).toBe(false);
+    expect(readLaunchParams('?debug=1&mode=real&bets=levels').levelsOnly).toBe(false);
   });
 });

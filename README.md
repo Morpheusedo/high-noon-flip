@@ -52,7 +52,8 @@ client, so whatever the screen shows still comes from a server answer:
 
 The panel is a separate chunk that only `debug=1` downloads. The console has the same
 objects: `hnf.server` (`hnf.server.forceOutcomes('win')`, `hnf.server.failNext('NETWORK',
-'after')`), `hnf.model`, `hnf.scene` (`hnf.scene.win(5)`), `hnf.settings` and `hnf.audio`.
+'after')`), `hnf.model`, `hnf.scene` (`hnf.scene.win(5)`), `hnf.settings`, `hnf.audio`
+and `hnf.collection` (the coin collection).
 `hnf` exists before the game loads, so a failure can be armed for `init` from the console.
 
 ### Builds and the preview
@@ -72,7 +73,9 @@ and cashed out with Space, the controls on screen (the ladder clear of the corne
 apart) before and after a rotation, and in portrait on an iPhone SE (320 x 568) the ladder
 fitted between the corner buttons through a run, then at 280 x 500 a window of rungs with the
 top one after an ellipsis, and a showdown from the 6th rung at 1x and the 7th at 4x (the
-controls dimmed but for the ladder, then calm again and back to idle). Outcomes are forced through `hnf`, so
+controls dimmed but for the ladder, then calm again and back to idle), and a coin unlocked
+by play (a run opened at rung 4, one more win: "New coin: Gold" clear of the cash out, its
+note opening the coins, Gold chosen and only then its faces fetched). Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
 
 `npm run lowend` measures load time, bytes, frame rate and memory with the CPU and
@@ -104,6 +107,7 @@ src/
 ├─ debug/             the QA panel, loaded only with debug=1 in demo mode
 └─ game/
    ├─ model/          RoundModel: the round state machine, the source of truth
+   ├─ collection/     the coin collection: skins, unlock rules counted from results, storage
    ├─ director.ts     turns phase changes into animations, reports back when done
    ├─ timing.ts       every duration of a round, scaled by speed in one place
    ├─ tension.ts      the showdown on the high rungs: its levels by rung, cues and times
@@ -114,6 +118,7 @@ src/
    │  ├─ Background.ts    photo, sun shade, dust, parallax, vignette
    │  ├─ Revolver.ts      hammer, cylinder spin, recoil, smoke
    │  ├─ Coin.ts          flip to an outcome, idle tease, turn by hand, glow, shadow
+   │  ├─ coinArt.ts       a skin's faces, loaded when needed; the classic coin if its art is missing
    │  ├─ Effects.ts       muzzle flash, sparks, win rays and coins, loss dim, shake
    │  ├─ Showdown.ts      the showdown's spotlight and the camera's push-in on the coin
    │  ├─ layout.ts        reads and checks scene-layout.json
@@ -130,7 +135,8 @@ src/
       ├─ ladderFit.ts     how the ladder fits its width: gaps, then rungs, then a window of rungs
       ├─ Payout.tsx       coins flying from the cash out to the balance
       ├─ BetPicker.tsx    every bet level at once, when the server takes levels only
-      ├─ Settings.tsx     mute, the settings button and panel (volumes, speed, last flips)
+      ├─ Settings.tsx     mute, the settings button and panel (volumes, speed, last flips, coins)
+      ├─ Coins.tsx        the coins in the settings, and the note that one was unlocked
       ├─ Rules.tsx        the info button and the rules screen
       ├─ Notices.tsx      result stamp, insufficient funds, error dialogs
       ├─ Dialog.tsx       the frame every dialog uses
@@ -146,9 +152,11 @@ docs/
    └─ PREVIEW.md      the preview link for the provider
 public/assets/        scene images and sounds, loaded at run time
    ├─ images/scene-layout.json  positions on the stage and measurements on the art
+   ├─ images/coins/   coin skins: coins.json (faces, icon, rim, unlock rule) and their art
    └─ audio/          built by `npm run audio`: sfx.m4a sprite, music loops, audio.json
 assets-src/audio/     the sound sources the audio build reads; not shipped
-scripts/              the audio sprite, the build hash, the size report, the preview deploy
+scripts/              the audio sprite, the build hash, the size report, the preview deploy,
+                      placeholder coin skins (`coin-placeholders.sh`, ImageMagick)
 index.html            the loading screen, styled inline so it shows before any script
 playwright.config.ts  browser test projects: portrait, landscape, low-end
 netlify.toml          headers of the preview site
@@ -190,6 +198,12 @@ Rules the code follows:
   coin, the music ducks, a heartbeat, slow motion at the end of the flight, on the last two a
   push-in and a sting. It runs from the tap to the landing only, and the same whatever the
   server decided: while the player decides whether to cash out, the screen is calm.
+- **Coins are earned by play, never by money.** A coin skin unlocks from round results (flips,
+  rungs reached, a cash out's rung), never from the stake, and changes only how the coin looks.
+  Skins and their rules live in `images/coins/coins.json`; a new skin is its art and a line
+  there. Progress sits behind `CollectionStore` (localStorage today). Only the chosen skin's
+  faces load with the game; missing art for a skin shows the classic coin and a console
+  warning, not a loading error.
 - **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A held key
   does not repeat, so it cannot act as autoplay. A button reached with Tab keeps its own
   Space and Enter. While the player types a bet, the keys are the field's and BET waits.

@@ -14,6 +14,10 @@ import { createSettings, type Settings } from './shell/settings';
 import { browserStorage } from './shell/storage';
 import { Store } from './shell/store';
 import { englishText, loadText, type Text } from './locales';
+import { Collection, chosenSkin } from './game/collection/Collection';
+import { loadCoinManifest } from './game/collection/skins';
+import { localCollectionStore } from './game/collection/store';
+import { CoinArt } from './game/scene/coinArt';
 import { GameScene } from './game/scene/GameScene';
 import { RoundModel } from './game/model/RoundModel';
 import { startDirector } from './game/director';
@@ -75,6 +79,12 @@ async function boot(): Promise<void> {
   applyVolumes(settings.get());
   settings.subscribe(applyVolumes);
 
+  // the coin collection: only the chosen skin's faces load with the game
+  const collectionStore = localCollectionStore(browserStorage());
+  const coins = Promise.all([loadCoinManifest(), collectionStore.load()]).then(
+    ([manifest, saved]) => [new CoinArt(manifest), manifest, saved] as const,
+  );
+
   // the bar's weights are rough shares of the wait: the art is most of it
   const [loadedText, init] = await Promise.all([
     progress.track(loadText(params.lang), 1).then((t) => {
@@ -84,7 +94,11 @@ async function boot(): Promise<void> {
       return t;
     }),
     progress.track(server.init(), 2),
-    scene.mount(byId('scene'), progress.add(8)),
+    scene.mount(
+      byId('scene'),
+      coins.then(([art, manifest, saved]) => art.faces(chosenSkin(manifest, saved))),
+      progress.add(8),
+    ),
     preloadImages(UI_ART, progress.add(4)),
     progress.track(loadFonts(FONTS), 1),
   ]);
@@ -94,6 +108,19 @@ async function boot(): Promise<void> {
   const tension = new Store<Tension>(CALM);
   startDirector(model, scene, sounds, settings, tension);
   startMusicDirector(model, audio);
+  const [coinArt, manifest, saved] = await coins;
+  const collection = new Collection(manifest, saved, collectionStore, init.config.ladder.length);
+  collection.watch(model.store);
+  // another skin's faces load when it is chosen; the coin keeps its faces until then
+  collection.store.subscribe(({ progress: { chosen } }, previous) => {
+    if (chosen === previous.progress.chosen) return;
+    coinArt
+      .faces(chosen)
+      .then((faces) => {
+        if (collection.state.progress.chosen === chosen) scene.setCoin(faces);
+      })
+      .catch((err: unknown) => console.warn('The coin keeps its faces', err));
+  });
   render(
     h(
       TextContext.Provider,
@@ -102,6 +129,7 @@ async function boot(): Promise<void> {
         model,
         settings,
         tension,
+        collection,
         lang: params.lang,
         demo: params.mode === 'demo',
         lobbyUrl: params.lobbyUrl,
@@ -120,6 +148,7 @@ async function boot(): Promise<void> {
 
   if (hnf && isQaServer(server)) {
     hnf.model = model;
+    hnf.collection = collection;
     // a QA tool that fails to load must not take the game down with it
     import('./debug')
       .then(({ mountQaPanel }) =>

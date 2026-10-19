@@ -23,8 +23,6 @@
   },
   "background": { "overscan": 1.03, "blur": 2.6 },
   "coin": {
-    "sheriff": "coin-sheriff.webp",
-    "outlaw": "coin-outlaw.webp",
     "faceInset": 0.985
   },
   "revolver": {

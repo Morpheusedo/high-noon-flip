@@ -14,6 +14,7 @@ import type { Presenter } from '../director';
 import type { Tension } from '../tension';
 import { Background } from './Background';
 import { Coin, type CoinPose } from './Coin';
+import type { CoinFaces } from './coinArt';
 import { Effects } from './Effects';
 import { loadArt, type ArtTextures, type Motion, type SceneContext } from './context';
 import { loadLayout, type Orientation, type SceneLayout } from './layout';
@@ -52,8 +53,15 @@ export class GameScene implements Presenter {
   private tense: Tension | null = null;
   private time = 0;
 
-  /** Loads the art and starts drawing into `host`; `onProgress` gets 0..1 while the art loads. */
-  async mount(host: HTMLElement, onProgress?: (fraction: number) => void): Promise<void> {
+  /**
+   * Loads the art and starts drawing into `host`, with the coin's faces from `coin`;
+   * `onProgress` gets 0..1 while the art loads.
+   */
+  async mount(
+    host: HTMLElement,
+    coin: Promise<CoinFaces>,
+    onProgress?: (fraction: number) => void,
+  ): Promise<void> {
     const [layout] = await Promise.all([
       loadLayout(),
       this.app.init({
@@ -65,7 +73,7 @@ export class GameScene implements Presenter {
       }),
     ]);
     this.layout = layout;
-    this.assets = await loadArt(layout, onProgress);
+    this.assets = await loadArt(layout, coin, onProgress);
     host.appendChild(this.app.canvas);
     this.app.stage.addChild(this.root);
 
@@ -122,6 +130,11 @@ export class GameScene implements Presenter {
   calm(ms: number): void {
     this.tense = null;
     this.parts?.showdown.open(ms);
+  }
+
+  /** Puts on another skin's faces; the coin shows them from the next frame, even mid-flip. */
+  setCoin(faces: CoinFaces): void {
+    if (this.assets) this.assets.art.coin = faces;
   }
 
   /** Turns the coin over by hand, for looks; returns the face now up, or null while it is busy. */

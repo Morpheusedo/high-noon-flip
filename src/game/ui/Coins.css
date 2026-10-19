@@ -1,0 +1,135 @@
+/* the coin collection in the settings: three to a row, a caption under each */
+.coins {
+  display: grid;
+  gap: 1.2cqmin;
+}
+
+.coins h3 {
+  margin: 0;
+  display: flex;
+  gap: 1em;
+  align-items: baseline;
+  color: var(--cream);
+  font-size: clamp(12px, 3.4cqmin, 19px);
+  font-weight: 600;
+}
+
+.coins h3 small {
+  color: var(--muted);
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.coin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1cqmin;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coin-skin {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6cqmin;
+  padding: 0.8cqmin 0.4cqmin;
+  border: 1px solid transparent;
+  border-radius: 1.6cqmin;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--cream);
+  font: inherit;
+  cursor: pointer;
+}
+
+.coin-skin[aria-pressed='true'] {
+  border-color: var(--gold);
+  background: rgba(201, 151, 63, 0.18);
+}
+
+.coin-skin:focus-visible {
+  outline: 2px solid var(--brass-hi);
+  outline-offset: 2px;
+}
+
+.coin-skin.locked {
+  cursor: default;
+  color: var(--muted);
+}
+
+.coin-icon {
+  width: clamp(30px, 9cqmin, 56px);
+  aspect-ratio: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+}
+
+/* a locked coin is its silhouette */
+.coin-skin.locked .coin-icon {
+  filter: brightness(0) opacity(0.55) drop-shadow(0 0 1px rgba(232, 200, 140, 0.5));
+}
+
+.coin-caption {
+  font-size: clamp(10px, 2.6cqmin, 15px);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.coin-skin.locked .coin-caption {
+  font-weight: 500;
+}
+
+/* "New coin: Silver" under the ladder, clear of the cash out and BET at the bottom */
+.unlock-toast-region {
+  position: absolute;
+  left: 50%;
+  top: 15%;
+  translate: -50% 0;
+  z-index: 6;
+}
+
+.unlock-toast {
+  display: flex;
+  align-items: center;
+  gap: 1.4cqmin;
+  padding: 0.8cqmin 2.4cqmin 0.8cqmin 1cqmin;
+  border: 0.35cqmin solid var(--brass);
+  border-radius: 99px;
+  background: rgba(16, 9, 12, 0.9);
+  box-shadow: 0 1cqmin 3cqmin rgba(0, 0, 0, 0.6);
+  color: var(--cream);
+  font: inherit;
+  font-size: clamp(12px, 3.4cqmin, 20px);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    opacity 220ms ease-out,
+    translate 220ms ease-out;
+  @starting-style {
+    opacity: 0;
+    translate: 0 -60%;
+  }
+}
+
+.unlock-toast .coin-icon {
+  width: clamp(26px, 7cqmin, 44px);
+}
+
+/* reduced motion: it fades in, it does not slide */
+.unlock-toast.still {
+  transition: opacity 220ms ease-out;
+  @starting-style {
+    opacity: 0;
+    translate: none;
+  }
+}
+
+.unlock-toast:focus-visible {
+  outline: 2px solid var(--brass-hi);
+  outline-offset: 2px;
+}

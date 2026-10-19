@@ -1,0 +1,53 @@
+{
+  "classic": "classic",
+  "skins": [
+    {
+      "id": "classic",
+      "sheriff": "classic-sheriff.webp",
+      "outlaw": "classic-outlaw.webp",
+      "icon": "classic-icon.webp",
+      "rim": ["#a46c34", "#c68a46", "#f2bc86"],
+      "unlock": null
+    },
+    {
+      "id": "silver",
+      "sheriff": "silver-sheriff.webp",
+      "outlaw": "silver-outlaw.webp",
+      "icon": "silver-icon.webp",
+      "rim": ["#83878e", "#c3c8cf", "#f4f6fa"],
+      "unlock": { "flips": 50 }
+    },
+    {
+      "id": "rusty",
+      "sheriff": "rusty-sheriff.webp",
+      "outlaw": "rusty-outlaw.webp",
+      "icon": "rusty-icon.webp",
+      "rim": ["#5e2e14", "#8a4a26", "#c98a5c"],
+      "unlock": { "rung": 3, "runs": 3 }
+    },
+    {
+      "id": "holed",
+      "sheriff": "holed-sheriff.webp",
+      "outlaw": "holed-outlaw.webp",
+      "icon": "holed-icon.webp",
+      "rim": ["#a46c34", "#c68a46", "#f2bc86"],
+      "unlock": { "cashout": 4 }
+    },
+    {
+      "id": "gold",
+      "sheriff": "gold-sheriff.webp",
+      "outlaw": "gold-outlaw.webp",
+      "icon": "gold-icon.webp",
+      "rim": ["#a87a1e", "#dcae3e", "#fff0b0"],
+      "unlock": { "rung": 5 }
+    },
+    {
+      "id": "lucky",
+      "sheriff": "lucky-sheriff.webp",
+      "outlaw": "lucky-outlaw.webp",
+      "icon": "lucky-icon.webp",
+      "rim": ["#2c7438", "#4c9e56", "#b8f0b0"],
+      "unlock": { "rung": "top" }
+    }
+  ]
+}

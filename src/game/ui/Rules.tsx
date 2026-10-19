@@ -110,6 +110,7 @@ export function Rules({ config, jurisdiction, bet, demo, lang, fmt, onClose }: P
 
         <h3>{t('rules.more.title')}</h3>
         <p>{t('rules.more.coin')}</p>
+        <p>{t('rules.more.coins')}</p>
         {jurisdiction.turboAllowed && <p>{t('rules.more.speed')}</p>}
         <p>{t('rules.more.keys')}</p>
         <p>{t('rules.more.connection')}</p>

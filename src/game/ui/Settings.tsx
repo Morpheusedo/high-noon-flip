@@ -1,8 +1,9 @@
 /**
  * The sound button (mute), the settings button under it, and the settings it
- * opens: effects and music volumes, the speed where the market allows turbo, and
- * the last flips. The settings are saved in the browser (`shell/settings.ts`).
+ * opens: effects and music volumes, the speed where the market allows turbo, the
+ * last flips and the coin collection. The settings are saved in the browser (`shell/settings.ts`).
  */
+import type { ComponentChildren } from 'preact';
 import type { Side } from '../../server/protocol';
 import { SPEEDS, type Speed } from '../../shell/settings';
 import { Dialog } from './Dialog';
@@ -64,11 +65,16 @@ interface PanelProps {
   onSfxSet(): void;
   onMusic(volume: number): void;
   onSpeed(speed: Speed): void;
+  /** The coin collection's section. */
+  coins: ComponentChildren;
+  /** Opened from a new coin's note: the focus starts in the coins, not on Close. */
+  atCoins: boolean;
   onClose(): void;
 }
 
 export function SettingsPanel(props: PanelProps) {
-  const { sfx, music, speed, history, onSfx, onSfxSet, onMusic, onSpeed, onClose } = props;
+  const { sfx, music, speed, history, onSfx, onSfxSet, onMusic, onSpeed, coins, atCoins, onClose } =
+    props;
   const { t } = useText();
 
   const slider = (id: string, label: string, value: number, set: (v: number) => void) => (
@@ -121,8 +127,9 @@ export function SettingsPanel(props: PanelProps) {
           )}
           <LastFlips history={history} />
         </div>
+        <div class="settings-column">{coins}</div>
       </div>
-      <button class="btn" data-autofocus onClick={onClose}>
+      <button class="btn" data-autofocus={atCoins ? undefined : true} onClick={onClose}>
         {t('common.close')}
       </button>
     </Dialog>

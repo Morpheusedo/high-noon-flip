@@ -8,15 +8,17 @@
   top: calc(4% + var(--tool) + 1.8cqmin);
 }
 
-/* in landscape the sound on the left, the speed and the last flips on the right: one
-   column is taller than a phone held sideways */
+/* in landscape three columns: the sound, the speed and the last flips, the coins; one
+   column is taller than a phone held sideways. A panel taller than the stage scrolls. */
 .settings-panel {
-  width: min(90%, 150cqmin);
+  width: min(94%, 210cqmin);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .settings-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1.15fr;
   gap: 2cqmin 5cqmin;
   align-items: start;
 }

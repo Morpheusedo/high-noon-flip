@@ -31,12 +31,15 @@ import {
 } from '../model/RoundModel';
 import { nextPrize } from '../rules';
 import type { UiSounds } from '../sound';
+import type { Collection } from '../collection/Collection';
+import { skinOf } from '../collection/skins';
 import type { Tension } from '../tension';
 import { BetDial, type DialFeedback } from './BetDial';
 import { BetPicker } from './BetPicker';
 import { BetTab } from './BetTab';
 import { CoinTap, Emblems, SideHint } from './Emblems';
 import { formats } from './format';
+import { CoinsSection, UnlockToast } from './Coins';
 import { useReducedMotion } from './hooks';
 import { ErrorDialog, FundsNotice, ResultStamp } from './Notices';
 import { PAYOUT_FLIGHT_MS, Payout, type Point } from './Payout';
@@ -57,6 +60,8 @@ interface Props {
   /** The operator's lobby, offered when the session cannot go on. */
   lobbyUrl: string | null;
   sounds: UiSounds;
+  /** The coin collection: the skins, the chosen one and the ones just unlocked. */
+  collection: Collection;
   /** Turns the coin over by hand, for looks. */
   onTurnCoin(): void;
 }
@@ -92,12 +97,16 @@ const OPENER: Record<Panel, string> = {
   rules: '.tool.rules',
 };
 
-export function App({ model, settings, tension, lang, demo, lobbyUrl, sounds, onTurnCoin }: Props) {
+export function App(props: Props) {
+  const { model, settings, tension, lang, demo, lobbyUrl, sounds, collection, onTurnCoin } = props;
   const s = useStore(model.store);
+  const coins = useStore(collection.store);
   const prefs = useStore(settings);
   const showdown = useStore(tension);
   const { speed } = prefs;
   const [panel, setPanel] = useState<Panel | null>(null);
+  // the settings opened from a new coin's note start at the coins
+  const [atCoins, setAtCoins] = useState(false);
   // the bet's tab is a field the player types in: BET and the game's keys wait
   const [typing, setTyping] = useState(false);
   const reducedMotion = useReducedMotion();
@@ -116,10 +125,16 @@ export function App({ model, settings, tension, lang, demo, lobbyUrl, sounds, on
   const step = openRun?.step ?? 0;
   const hud = useRef<HTMLDivElement>(null);
   const standIn = useRef<HTMLInputElement>(null);
-  const open = (p: Panel) => {
+  const open = (p: Panel, coinsFirst = false) => {
     sounds.click();
+    setAtCoins(coinsFirst);
     setPanel(p);
   };
+  // a new coin is told of between rounds, never over a flip or a panel
+  const news = coins.news[0];
+  const newCoin =
+    news && idle && panel === null ? (skinOf(collection.manifest, news) ?? null) : null;
+  const told = useCallback((id: string) => collection.told(id), [collection]);
   const onTyping = useCallback(
     (on: boolean) => {
       if (on) {
@@ -445,6 +460,17 @@ export function App({ model, settings, tension, lang, demo, lobbyUrl, sounds, on
           />
         ))}
 
+      <UnlockToast
+        manifest={collection.manifest}
+        skin={newCoin}
+        reducedMotion={reducedMotion}
+        onOpen={() => {
+          if (newCoin) collection.told(newCoin.id);
+          open('settings', true);
+        }}
+        onDone={told}
+      />
+
       {panel === 'settings' && (
         <SettingsPanel
           sfx={prefs.sfxVolume}
@@ -459,6 +485,20 @@ export function App({ model, settings, tension, lang, demo, lobbyUrl, sounds, on
             set({ speed: v });
             sounds.click();
           }}
+          coins={
+            <CoinsSection
+              manifest={collection.manifest}
+              state={coins}
+              ladder={config.ladder}
+              fmt={fmt}
+              autofocus={atCoins}
+              onChoose={(id) => {
+                collection.choose(id);
+                sounds.click();
+              }}
+            />
+          }
+          atCoins={atCoins}
           onClose={closePanel}
         />
       )}

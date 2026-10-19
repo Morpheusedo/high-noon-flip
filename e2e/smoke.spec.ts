@@ -463,6 +463,57 @@ test('plays a showdown on the high rungs, then calms down for the decision', asy
   await expect(page.locator('.bet-button')).toBeVisible();
 });
 
+test('unlocks a coin by play and wears it', async ({ page }) => {
+  // the coins' faces the game asks for: the classic ones only, until another is chosen
+  const faces: string[] = [];
+  page.on('request', (r) => {
+    const face = /coins\/([a-z-]+)-(sheriff|outlaw|icon)\.webp$/.exec(r.url());
+    if (face) faces.push(`${face[1]}-${face[2]}`);
+  });
+  await openGame(page);
+  expect(faces.sort()).toEqual(['classic-outlaw', 'classic-sheriff']);
+
+  // a run opened at rung 4 by the test server; one more win reaches rung 5: Gold
+  await page.evaluate(() => {
+    const hnf = window.hnf;
+    if (hnf?.model) hnf.server.openRunAt(4, hnf.model.state.bet);
+    hnf?.server.forceOutcomes('win');
+    return hnf?.model?.refresh();
+  });
+  await tap(page.locator('.pick.sheriff'));
+  await waitIdle(page);
+  const toast = page.getByRole('button', { name: 'New coin: Gold. Show my coins.' });
+  await expect(toast).toBeVisible();
+  // after the result, clear of the cash out
+  const [note, plaque] = await Promise.all([
+    toast.boundingBox(),
+    page.locator('.cashout').boundingBox(),
+  ]);
+  expect(note && plaque && note.y + note.height < plaque.y).toBe(true);
+
+  // the note opens the settings at the coins, with the chosen one focused
+  await tap(toast);
+  const coins = page.getByRole('dialog', { name: 'Settings' });
+  await expect(coins.getByRole('button', { name: 'Classic' })).toBeFocused();
+  await expect(
+    coins.getByRole('button', { name: /^Silver, locked: Make 50 flips/ }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.locator('.unlock-toast')).toHaveCount(0);
+
+  const gold = coins.getByRole('button', { name: 'Gold' });
+  await gold.click();
+  await expect(gold).toHaveAttribute('aria-pressed', 'true');
+  // its faces load only now, and the choice is kept
+  await expect
+    .poll(() => faces.filter((f) => f.startsWith('gold-') && f !== 'gold-icon').sort())
+    .toEqual(['gold-outlaw', 'gold-sheriff']);
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem('hnf.coins') ?? '{}').chosen),
+  ).toBe('gold');
+  await coins.getByRole('button', { name: 'Close' }).click();
+  await expect(coins).toHaveCount(0);
+});
+
 test.describe('with reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
 

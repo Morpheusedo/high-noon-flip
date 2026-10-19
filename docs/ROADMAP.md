@@ -165,6 +165,16 @@ that, a faster heartbeat, the camera pushes in on the coin (1.2x), a beat of nea
 before the landing and a sting on it (+900 ms at 1x). The controls dim, all but the ladder,
 whose next rung glows. Everything lets go the moment the coin lands, or on an error.
 
+### 22. A coin collection — done
+
+Play unlocks coin skins, and the player wears one in place of the classic coin. Six skins:
+Classic (always), Silver (50 flips), Rusty (rung 3 in three runs), Bullet-holed (a cash out at
+×15.84 or higher), Gold (rung 5) and Lucky (the top rung); the names and the art are
+placeholders until the real art arrives. Settings has a "Coins" section: unlocked coins are
+chosen with a tap and the coin in the scene changes at once; a locked one is a silhouette with
+the play that unlocks it. A new coin is announced after the result ("New coin: Gold"), and a
+tap on the note opens the coins. The math does not change.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -553,6 +563,52 @@ whose next rung glows. Everything lets go the moment the coin lands, or on an er
 - QA: `?debug=1&bets=wide` gives the test server typed stakes up to 10,000,000.00 FUN in steps
   of 0.01 and a balance of 20,000,000.00, under its own storage key so it never mixes with the
   demo's session; the demo's own range ends at 100.00, so a long amount cannot be typed there.
+- The coin collection (step 22): unlocks come from play only, never from the stake or money
+  spent, so a 5.00 run to rung 5 counts as a 100.00 one and nothing pushes a bigger bet;
+  operators and regulators reject rewards for spending. The rules are counted from round
+  results the model shows (`unlock.ts` `eventsOf` on the step into `result`), never from
+  timers. A flip the server settled but the client never showed (a lost answer, NETWORK)
+  does not count; that is rare and cosmetic.
+- Rules live in `public/assets/images/coins/coins.json` with the art: `{ "flips": 50 }`,
+  `{ "rung": 5 }`, `{ "rung": 3, "runs": 3 }`, `{ "rung": "top" }` (the last rung of the
+  ladder the server sends) and `{ "cashout": 4 }` (a cash out at rung 4 or higher; the top
+  rung paying out by itself counts). The manifest is checked on load and by a unit test; a
+  rule naming a stake is refused. A cash out rule names a rung, not a multiplier, so it holds
+  for any ladder; the text shows that rung's multiplier from the config ("×15.8").
+- A run is counted once per rung: the progress keeps the last run's id and its best rung, so a
+  run resumed after a reload is not counted twice, and a run opened high by the test server
+  (`openRunAt`) counts every rung under the one it reaches. Several unlocks at once are told
+  one after another.
+- Progress and the chosen coin sit behind `CollectionStore` (`load`, `save`, both async so a
+  provider's profile API fits), with `localCollectionStore` on localStorage (`hnf.coins`) now.
+  A saved value is checked field by field, as the settings are; a chosen coin that is locked
+  or gone becomes the classic one. Unlocked coins stay unlocked when a rule changes; a rule
+  made easier unlocks quietly at the next start. Progress kept in the browser is lost on
+  another device or after clearing it: see open question 13.
+- Loading: the chosen coin's faces load with the game, in place of the classic ones (still
+  two images); another coin's faces load when it is chosen, and the icons when the settings
+  open. The coin keeps its old faces until the new ones arrive, then changes at once, even
+  mid-flip. Missing art for a chosen coin is not a loading error, unlike the rest of the
+  art: the classic faces stand in and the console warns; a missing icon shows the classic
+  icon. Only a missing classic coin stops the game, as any scene art does.
+- Each skin is two faces (`<skin>-sheriff.webp`, `<skin>-outlaw.webp`, in the classic coin's
+  640 x 640 frame and face inset; 1024 x 1024 once question 12 is answered), a 128 px icon
+  (`<skin>-icon.webp`) and the rim's three colours (shade, light, streak), which the scene
+  draws in code. The classic faces moved into `coins/` as `classic-*.webp`. The placeholders
+  are the classic coin tinted by `scripts/coin-placeholders.sh` (ImageMagick): silver
+  desaturated, gold warmer, rusty brown and grainy, bullet-holed with three holes, lucky
+  green. It only writes missing files, so real art dropped in is never overwritten.
+- The note "New coin: Gold" waits for the round to be idle and no panel to be open: never
+  over a flip, a result stamp or a dialog. It stands under the ladder, far from the cash out
+  and BET; it covers the top edge of the resting coin for its 4.5 s. A round that
+  starts hides it, and it comes back afterwards for the rest of its time. It slides down and
+  fades in (220 ms); with reduced motion it only fades. A `role="status"` region announces it.
+  The settings it opens put the focus on the chosen coin and scroll the coins into view.
+- The settings panel has three columns in landscape (sound | speed and the last flips |
+  coins) and is wider (94%, 210cqmin); a panel taller than the stage scrolls. In portrait the
+  coins come last. Checked at 390 x 780 and 844 x 390.
+- The coin section and the rules say the coins change only how the coin looks, never the
+  odds or the payouts.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 
@@ -628,3 +684,8 @@ whose next rung glows. Everything lets go the moment the coin lands, or on an er
 12. Coin art at 1024 px: the showdown pushes in 1.2x, and on a desktop or a tablet the coin
     then needs about 720 px, more than the 640 px faces have. The artist should supply the
     Sheriff and Outlaw faces at 1024 x 1024.
+13. The coin collection (step 22) keeps its progress in the browser: it is lost on another
+    device or after clearing the browser, a real complaint from players. Can the provider
+    keep it in the player's profile on its side? `CollectionStore` is the one place to
+    change. And do any target markets restrict achievements or collectibles in a gambling
+    game? If so, it becomes a `Jurisdiction` flag that hides the section and the note.

@@ -55,10 +55,9 @@ const SHAPE = {
     overscan: N,
     blur: N,
   },
+  /** The faces of each skin are listed in `coins/coins.json`; they all share this frame. */
   coin: {
-    sheriff: S,
-    outlaw: S,
-    /** Radius of the round face inside the coin image, as a fraction of the half-width. */
+    /** Radius of the round face inside a coin image, as a fraction of the half-width. */
     faceInset: N,
   },
   /** Measured on `revolver.base`; x is from the gun's centre line, y from the muzzle. */

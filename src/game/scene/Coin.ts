@@ -234,15 +234,19 @@ export class Coin {
 
     // the rim: bright where it faces the sky, dark where it faces the ground
     const off = r * 0.085 * s;
-    const mix = (from: number, to: number) => Math.round(from + (to - from) * e);
-    const rim = (mix(0xa4, 0xc6) << 16) | (mix(0x6c, 0x8a) << 8) | mix(0x34, 0x46);
+    const [shade, light, streak] = art.coin.rim;
+    const mix = (shift: number) => {
+      const from = (shade >> shift) & 0xff;
+      return Math.round(from + (((light >> shift) & 0xff) - from) * e) << shift;
+    };
+    const rim = mix(16) | mix(8) | mix(0);
     this.edge
       .clear()
       .ellipse(0, off, r, r * k)
       .rect(-r, Math.min(0, off), r * 2, Math.abs(off))
       .fill(rim)
       .rect(-r * 0.55, Math.min(0, off), r * 0.3, Math.abs(off))
-      .fill({ color: 0xf2bc86, alpha: 0.35 + 0.2 * e });
+      .fill({ color: streak, alpha: 0.35 + 0.2 * e });
   }
 }
 

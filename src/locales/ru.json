@@ -32,8 +32,6 @@
   "bet.chooseHint": "Нажмите на патрон, чтобы выбрать ставку",
   "bet.typed.label": "Ваша ставка в {currency}",
   "bet.typed.notAmount": "Введите сумму, например {example}.",
-  "bet.typed.min": "Минимальная ставка — {min}.",
-  "bet.typed.max": "Максимальная ставка — {max}.",
   "bet.typed.balance": "Это больше вашего баланса: {balance}.",
   "bet.typed.rounded": "Ставки идут с шагом {step}, поэтому ставка будет {amount}. Нажмите ✓, чтобы поставить её.",
   "bet.typed.ok": "Принять ставку",

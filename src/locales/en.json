@@ -32,8 +32,6 @@
   "bet.chooseHint": "Tap a bullet to set your bet",
   "bet.typed.label": "Your bet in {currency}",
   "bet.typed.notAmount": "Type an amount, such as {example}.",
-  "bet.typed.min": "The lowest bet is {min}.",
-  "bet.typed.max": "The highest bet is {max}.",
   "bet.typed.balance": "That is more than your balance of {balance}.",
   "bet.typed.rounded": "Bets go in steps of {step}, so this one is {amount}. Press ✓ to bet it.",
   "bet.typed.ok": "Set the bet",

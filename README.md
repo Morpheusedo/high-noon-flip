@@ -62,7 +62,7 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
 360 x 640 phone, portrait and landscape: loading, the bet dial (a drag, the wheel, the arrow
-keys), the bet list where the server takes levels only, a bet typed in the tab (its messages,
+keys), the bet list where the server takes levels only, a bet typed in the tab (a message, an amount out of range clamped,
 rounding, Escape and a tap outside) shown on the drum and played to the server, BET with no side (a hint and nothing sent; still outlines with reduced
 motion), a side chosen and kept for the next BET with Space and Enter, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
 with reduced motion), the last flips in the settings, a lost answer (NETWORK) and its recovery, a run resumed after a reload
@@ -168,7 +168,8 @@ Rules the code follows:
   `customBet` (the server takes any stake in a range, on a grid), one tap turns the tab itself
   into a field, in place, with the bet selected: the player types at once, a phone raises its
   keyboard from that tap, and the field lifts itself over the keyboard. The amount is read as
-  the player's language writes numbers; the drum stops at a typed amount between two levels
+  the player's language writes numbers, and one out of range becomes the lowest or the
+  highest stake; the drum stops at a typed amount between two levels
   and turns from it to the next one. `server/bets.ts` holds the rule, and the client and the
   mock server both use it.
 - **A round starts in two steps.** A tap on an emblem (or ← →) chooses the side, BET places

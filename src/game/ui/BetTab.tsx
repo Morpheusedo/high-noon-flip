@@ -6,9 +6,10 @@
  * When the server takes typed stakes (`customBet`), one tap turns the tab itself
  * into a field, in place: it widens out of the tab with the bet selected, so the
  * player types over it, and a phone raises its keyboard from that same tap. Enter
- * or ✓ checks the amount (`checkTypedBet`) and sets it; Escape or a tap anywhere
- * else leaves the bet as it was, and the field shrinks back into the tab. Without
- * typed stakes the tap opens every level (`BetPicker`).
+ * or ✓ checks the amount (`checkTypedBet`) and sets it, the lowest or the highest
+ * stake for an amount out of range; Escape or a tap anywhere else leaves the bet
+ * as it was, and the field shrinks back into the tab. Without typed stakes the
+ * tap opens every level (`BetPicker`).
  */
 import type { RefObject } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -183,6 +184,7 @@ function TypedField(p: FieldProps) {
     const check = checkTypedBet(config, balance, fmt.parse(field.current?.value ?? text));
     switch (check.kind) {
       case 'bet':
+        // out of range it is already the lowest or the highest stake, shown in the tab
         onDone(check.stake, true);
         return;
       case 'rounded':
@@ -198,12 +200,6 @@ function TypedField(p: FieldProps) {
         return;
       case 'notAmount':
         refuse(t('bet.typed.notAmount', { example: fmt.input(custom.min) }));
-        return;
-      case 'min':
-        refuse(t('bet.typed.min', { min: fmt.full(custom.min) }));
-        return;
-      case 'max':
-        refuse(t('bet.typed.max', { max: fmt.full(custom.max) }));
         return;
       case 'balance':
         refuse(t('bet.typed.balance', { balance: fmt.full(balance) }));

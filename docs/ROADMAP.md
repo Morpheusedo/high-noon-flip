@@ -137,7 +137,8 @@ button beside it. With `customBet` one tap turns the tab itself into a field, in
 widens out of the tab with the bet selected, ✓ or Enter sets the bet (the checks of step 10,
 with the message beside the field), Escape or a tap elsewhere leaves it as it was, and the
 field lifts itself over a phone keyboard. Without `customBet` the tap opens the list of
-levels, which no longer has a field.
+levels, which no longer has a field. An amount below the minimum or above the maximum is not
+refused: it becomes the lowest or the highest stake, with no message.
 
 ## Decisions
 
@@ -182,7 +183,8 @@ levels, which no longer has a field.
   cannot be grouping ("7,35" in English), since a phone keyboard offers the device's mark,
   not the game's. More decimals than the currency has is not an amount (JPY "1.5").
 - Below the minimum, above the maximum or above the balance: a message with the limit as
-  an amount, and the dialog stays. Off the step: rounded down to the grid, shown in the
+  an amount, and the dialog stays (step 18, asked for: out of range is clamped instead, see
+  below; the balance keeps its message). Off the step: rounded down to the grid, shown in the
   field with a note, and OK once more makes it the bet. A stake is never changed silently.
 - − and + (and ↑ ↓) still step through the levels; from a typed amount between two levels
   they go to the next one up or down. The dial (step 17) and ↑ ↓ keep this rule. "Lower the bet" after insufficient funds offers the
@@ -447,6 +449,16 @@ levels, which no longer has a field.
   stays open; off the grid, rounded down and shown with a note, and ✓ once more sets it. The
   message stands beside the field (left of it in landscape, over the empty top of BET; above
   it in portrait, under the Sheriff), outside its box, so the field does not jump.
+- Out of range, the typed amount is clamped, not refused (step 18, asked for): below the
+  minimum it becomes the lowest stake, above the maximum the highest (0.01 is 0.10 FUN, 5000
+  is 100.00 FUN in the demo), set at once and shown in the tab like any accepted amount, with
+  no message. The nearest stake the server takes in that direction: the range's end on its
+  grid, or a level beyond the range if one is nearer. The client still never sends a stake
+  out of range (the server would answer INVALID_BET); the clamp is the check. Not an amount
+  is still refused, a rounding onto the grid is still shown and confirmed, and above the
+  balance keeps its message: that is the player's money, not a limit of the game, and a
+  quiet cut to the balance would be an all-in they did not ask for. The rules screen still
+  names the range.
 - Enter, ✓ and Escape close the field and give the focus back to the tab; a tap elsewhere
   cancels on the press and then does what it was for (turns the drum, chooses a side), but
   BET is disabled while the field is open and the game's keys (↑ ↓, Space, Enter, ← →) are

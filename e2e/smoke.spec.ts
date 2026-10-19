@@ -213,13 +213,26 @@ test('takes a typed bet and plays it', async ({ page }) => {
   await page.keyboard.press('Space');
   expect(await stake()).toBe(100);
   expect(await page.evaluate(() => window.hnf?.model?.state.phase.name)).toBe('idle');
-  // over the maximum: a message beside the field, and it stays open
-  await field.fill('500');
+  // not an amount: a message beside the field, and it stays open
+  await field.fill('abc');
   await field.press('Enter');
-  await expect(note).toHaveText('The highest bet is 100.00 FUN.');
+  await expect(note).toHaveText('Type an amount, such as 0.10.');
   await expect(field).toHaveAttribute('aria-invalid', 'true');
   await expectApart(page, ['.dial-edit', '.dial-note'], ['.plaque.balance', '.bet-button']);
+  // out of range: no message, the nearest stake becomes the bet, the highest or the lowest
+  await field.fill('500');
+  await field.press('Enter');
+  await expect(edit).toHaveCount(0);
+  await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^100\.00\s*FUN$/);
+  expect(await stake()).toBe(10_000);
+  await tap(page.locator('.dial-tab'));
+  await field.fill('0.01');
+  await field.press('Enter');
+  await expect(edit).toHaveCount(0);
+  await expect(page.locator('.dial-tab .plaque-value')).toHaveText(/^0\.10\s*FUN$/);
+  expect(await stake()).toBe(10);
   // off the 0.05 grid: rounded down and shown before it is the bet
+  await tap(page.locator('.dial-tab'));
   await field.fill('7.37');
   await expect(note).toBeHidden();
   await field.press('Enter');

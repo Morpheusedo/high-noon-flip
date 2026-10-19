@@ -148,6 +148,13 @@ width between the buttons: the gaps give way first, then the rungs, down to 9 px
 a stage narrower still (a small iframe, split screen) it shows a window of rungs that slides
 as the run climbs, with the top rung after an ellipsis. The corner buttons keep their size.
 
+### 20. A long typed bet on the tab alone — done
+
+A typed amount too long for its chamber of the drum is no longer squeezed in at a size no one
+reads: the chamber holds a plain pencil mark, no bullet, and the tab over it names every digit
+(9,999,999.99 FUN). A shorter one (12.35, 123.45) stays on the drum as before. Whether it fits
+is measured on the stage, in any currency.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -510,6 +517,32 @@ as the run climbs, with the top rung after an ellipsis. The corner buttons keep 
 - QA: `?debug=1&bets=levels` starts the test server without `customBet`, so the smoke test
   (and QA) can reach the list. A test-server switch, as the QA panel is; never with
   `mode=real`.
+- A long typed bet (step 20), asked for: an amount with more digits than a chamber holds is
+  not squeezed into it. The rule is measured, not a count of digits (`chamberFit` in
+  `dial.ts`, `useChamberFit` in hooks.ts): a hidden chamber holds the amount at the chamber's
+  font, and it fits if it can shrink into the chamber's width without going under 9 px or 60%
+  of the chamber's font, so it never looks lost beside the levels. At 844 x 390 and 360 x 640
+  "123.45" fits (10 to 11 px digits), "1,234.56" does not; a large desktop stage takes
+  longer ones. Only a typed amount is measured: the levels keep their compact "10K", but a
+  typed stake shows every digit (`fmt.exact`, never "12.3K" for 12,345.67) or none, since the
+  gold bullet always shows the real stake. JPY and BTC go through the same formatter and the
+  same measure.
+- What stands in the chamber was asked: a pencil (✎), over a word ("CUSTOM", which would need
+  room in every language) or a blank chamber (read as the end of the drum). It is an inline
+  SVG, not the ✎ character, which a low-end Android font may lack, so it needs no
+  dictionary entry. No bullet under it: a plain mark on the cylinder's metal, with the chosen
+  chamber's ring and glow so the tab still points at the stake. The chamber is
+  `aria-hidden` as before; a screen reader hears the amount from the slider's value and the
+  tab's name.
+- The tab names every digit: its amount gets a smaller font instead of a wider tab past
+  40cqmin (36cqmin in portrait, which keeps it 3.5cqmin and more off the balance), through
+  `useFitText`, as the balance does. 9,999,999.99 FUN needs no shrinking at 360 x 640 (17 px
+  clear of the balance). In landscape the tab now keeps the right edge a 20cqmin tab has over
+  the chamber and grows to the left, over BET's empty top, as the field does: centred, the
+  long tab ran under the Sheriff star. A tab of the usual width stands where it stood.
+- QA: `?debug=1&bets=wide` gives the test server typed stakes up to 10,000,000.00 FUN in steps
+  of 0.01 and a balance of 20,000,000.00, under its own storage key so it never mixes with the
+  demo's session; the demo's own range ends at 100.00, so a long amount cannot be typed there.
 - Code, comments and README in English (they ship to the provider); chat in Russian.
   `README.ru.md` is the team's copy; keep both READMEs in step.
 

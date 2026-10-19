@@ -1,5 +1,6 @@
 /** Small hooks the interface components share. */
 import { useEffect, useLayoutEffect, useRef, useState, type MutableRef } from 'preact/hooks';
+import { CHAMBER_FACE, chamberFit } from './dial';
 import { fitLadder } from './ladderFit';
 
 const reducedQuery =
@@ -139,6 +140,44 @@ export function useFitLadder(
     };
   }, [ref, labels, step]);
   return size;
+}
+
+/**
+ * How `text` fits a chamber of the bet dial (`chamberFit`): the scale for its
+ * digits, or null when it does not fit. Measured on `probe`, a hidden chamber
+ * holding the text at the chamber's own font, again when the stage resizes or
+ * the fonts arrive. 1 for no text.
+ */
+export function useChamberFit(probe: MutableRef<HTMLElement | null>, text: string): number | null {
+  const [fit, setFit] = useState<number | null>(1);
+  useLayoutEffect(() => {
+    const el = probe.current;
+    const digits = el?.firstElementChild;
+    if (!el || !(digits instanceof HTMLElement) || !text) {
+      setFit(1);
+      return;
+    }
+    const measure = () =>
+      setFit(
+        chamberFit(
+          // layout widths: the drum's turn and the chosen bullet's rise do not count
+          digits.offsetWidth,
+          el.clientWidth * CHAMBER_FACE,
+          parseFloat(getComputedStyle(el).fontSize),
+        ),
+      );
+    measure();
+    let live = true;
+    void document.fonts?.ready.then(() => live && measure());
+    const stage = el.closest('.stage');
+    const observer = stage ? new ResizeObserver(measure) : null;
+    if (stage) observer?.observe(stage);
+    return () => {
+      live = false;
+      observer?.disconnect();
+    };
+  }, [probe, text]);
+  return fit;
 }
 
 /**

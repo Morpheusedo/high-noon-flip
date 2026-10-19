@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   angleAt,
+  chamberFit,
   dialStops,
   followDrum,
   restingLevel,
@@ -89,6 +90,20 @@ describe('bet dial', () => {
     expect(shown[(drum.pos - 1 + SLOTS) % SLOTS]).toBe(500);
   });
 
+  it('fits a typed amount to its chamber, or gives it a mark when it would not read', () => {
+    // fits at the chamber's own size
+    expect(chamberFit(30, 33, 14.6)).toBe(1);
+    // shrinks to fit, down to 60% of the chamber's font
+    expect(chamberFit(44, 33, 14.6)).toBeCloseTo(0.75);
+    expect(chamberFit(56, 33, 14.6)).toBeNull();
+    // and never below 9 px digits, on a small phone
+    expect(chamberFit(40, 30, 12)).toBeCloseTo(0.75);
+    expect(chamberFit(48, 30, 12)).toBeNull();
+    // a big chamber takes a long amount a phone would not
+    expect(chamberFit(115, 73, 30)).toBeCloseTo(0.635, 3);
+    expect(chamberFit(150, 73, 30)).toBeNull();
+  });
+
   it('rests on the nearest level, carried at most two by a flick', () => {
     expect(restingLevel(4.4, 0, 20)).toBe(4);
     expect(restingLevel(4.4, 10, 20)).toBe(6);
@@ -105,6 +120,14 @@ describe('interface formats', () => {
     expect(fun.short(250)).toBe('2.50');
     expect(fun.short(100_000)).toBe('1,000');
     expect(fun.short(5_000_000)).toBe('50K');
+  });
+
+  it('prints a typed amount without rounding it, in every currency', () => {
+    expect(fun.exact(1235)).toBe('12.35');
+    expect(fun.exact(2_500)).toBe('25');
+    expect(fun.exact(999_999_999)).toBe('9,999,999.99');
+    expect(formats({ code: 'JPY', decimals: 0 }, 'en').exact(1_234_567)).toBe('1,234,567');
+    expect(formats({ code: 'BTC', decimals: 8 }, 'en').exact(12_345)).toBe('0.00012345');
   });
 
   it('drops decimals from multipliers as they grow', () => {

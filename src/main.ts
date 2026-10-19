@@ -3,12 +3,12 @@
  * the loading screen, then start the scene and the interface.
  */
 import { render, h } from 'preact';
-import { MockServer } from './server/mockServer';
+import { MockServer, type MockServerOptions } from './server/mockServer';
 import type { GameServer } from './server/protocol';
 import { isQaServer } from './server/qa';
 import { assetUrl } from './shell/assets';
 import { AudioManager } from './shell/audio/AudioManager';
-import { readLaunchParams } from './shell/launchParams';
+import { readLaunchParams, type LaunchParams } from './shell/launchParams';
 import { LoadProgress, loadFonts, loaderScreen, preloadImages } from './shell/loader';
 import { createSettings, type Settings } from './shell/settings';
 import { browserStorage } from './shell/storage';
@@ -35,6 +35,19 @@ const loader = loaderScreen(byId('loader'));
 /** English until the player's language arrives: the loading error needs some text. */
 let text: Text = englishText();
 
+/** The test server's stakes for QA (`bets=levels`, `bets=wide`); the demo's own otherwise. */
+function qaStakes(bets: LaunchParams['qaBets']): MockServerOptions {
+  if (bets === 'levels') return { config: { customBet: null } };
+  // typed amounts too long for a chamber of the dial, in a session of their own
+  if (bets === 'wide')
+    return {
+      config: { customBet: { min: 500, max: 1_000_000_000, step: 1 } },
+      balance: 2_000_000_000,
+      storeKey: 'hnf.mock-server.wide',
+    };
+  return {};
+}
+
 async function boot(): Promise<void> {
   const params = readLaunchParams();
   const progress = new LoadProgress((f) => loader.progress(f));
@@ -42,7 +55,7 @@ async function boot(): Promise<void> {
   const server: GameServer = new MockServer({
     store: browserStorage(),
     latencyMs: 150,
-    ...(params.levelsOnly ? { config: { customBet: null } } : {}),
+    ...qaStakes(params.qaBets),
   });
   const scene = new GameScene();
   const settings = createSettings(browserStorage());

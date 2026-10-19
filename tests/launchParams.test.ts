@@ -12,7 +12,7 @@ describe('readLaunchParams', () => {
       mode: 'real',
       lobbyUrl: 'https://casino.example/lobby',
       debug: false,
-      levelsOnly: false,
+      qaBets: null,
     });
   });
 
@@ -23,7 +23,7 @@ describe('readLaunchParams', () => {
       mode: 'demo',
       lobbyUrl: null,
       debug: false,
-      levelsOnly: false,
+      qaBets: null,
     });
     expect(readLaunchParams('?lang=%%%').lang).toBe('en');
   });
@@ -37,9 +37,11 @@ describe('readLaunchParams', () => {
     expect(readLaunchParams('?debug=1&mode=real').debug).toBe(false);
   });
 
-  it('offers levels alone only to QA', () => {
-    expect(readLaunchParams('?debug=1&bets=levels').levelsOnly).toBe(true);
-    expect(readLaunchParams('?bets=levels').levelsOnly).toBe(false);
-    expect(readLaunchParams('?debug=1&mode=real&bets=levels').levelsOnly).toBe(false);
+  it('changes how the test server takes stakes only for QA', () => {
+    expect(readLaunchParams('?debug=1&bets=levels').qaBets).toBe('levels');
+    expect(readLaunchParams('?debug=1&bets=wide').qaBets).toBe('wide');
+    expect(readLaunchParams('?debug=1&bets=other').qaBets).toBeNull();
+    expect(readLaunchParams('?bets=levels').qaBets).toBeNull();
+    expect(readLaunchParams('?debug=1&mode=real&bets=wide').qaBets).toBeNull();
   });
 });

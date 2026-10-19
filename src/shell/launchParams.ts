@@ -19,8 +19,12 @@ export interface LaunchParams {
   lobbyUrl: string | null;
   /** Shows the QA panel. Never enabled in a real-money session. */
   debug: boolean;
-  /** QA, with `debug` only: the test server offers its levels alone, no typed stakes (`bets=levels`). */
-  levelsOnly: boolean;
+  /**
+   * QA, with `debug` only, how the test server takes stakes: its levels alone, no typed
+   * stakes (`bets=levels`), or typed stakes up to 10,000,000.00 in steps of 0.01 with a
+   * balance to match (`bets=wide`), for amounts too long for a chamber of the dial.
+   */
+  qaBets: 'levels' | 'wide' | null;
 }
 
 export function readLaunchParams(search: string = location.search): LaunchParams {
@@ -33,8 +37,12 @@ export function readLaunchParams(search: string = location.search): LaunchParams
     mode,
     lobbyUrl: safeHttpUrl(q.get('lobbyUrl')),
     debug,
-    levelsOnly: debug && q.get('bets') === 'levels',
+    qaBets: debug ? qaBets(q.get('bets')) : null,
   };
+}
+
+function qaBets(value: string | null): LaunchParams['qaBets'] {
+  return value === 'levels' || value === 'wide' ? value : null;
 }
 
 function safeLang(value: string | null): string {

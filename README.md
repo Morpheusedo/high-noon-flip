@@ -31,7 +31,9 @@ The browser tests need Playwright's Chromium once: `npx playwright install chrom
 
 Launch parameters go in the URL, as an operator would pass them:
 `?lang=de&mode=demo&debug=1&lobbyUrl=https://casino.example`. For QA, `debug=1&bets=levels`
-starts the test server without typed stakes, so the bet's tab opens the list of levels.
+starts the test server without typed stakes, so the bet's tab opens the list of levels, and
+`debug=1&bets=wide` takes typed stakes up to 10,000,000.00 FUN (in steps of 0.01, with a
+balance of 20,000,000.00 in a session of its own), for amounts too long for a chamber.
 
 ### QA panel
 
@@ -63,7 +65,7 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
 360 x 640 phone, portrait and landscape: loading, the bet dial (a drag, the wheel, the arrow
 keys), the bet list where the server takes levels only, a bet typed in the tab (a message, an amount out of range clamped,
-rounding, Escape and a tap outside) shown on the drum and played to the server, BET with no side (a hint and nothing sent; still outlines with reduced
+rounding, Escape and a tap outside) shown on the drum and played to the server, a typed bet too long for its chamber (a mark on the drum, every digit on the tab), BET with no side (a hint and nothing sent; still outlines with reduced
 motion), a side chosen and kept for the next BET with Space and Enter, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
 with reduced motion), the last flips in the settings, a lost answer (NETWORK) and its recovery, a run resumed after a reload
 and cashed out with Space, the controls on screen (the ladder clear of the corners, the balance, the dial and BET
@@ -173,7 +175,8 @@ Rules the code follows:
   keyboard from that tap, and the field lifts itself over the keyboard. The amount is read as
   the player's language writes numbers, and one out of range becomes the lowest or the
   highest stake; the drum stops at a typed amount between two levels
-  and turns from it to the next one. `server/bets.ts` holds the rule, and the client and the
+  and turns from it to the next one. A typed amount too long for its chamber (measured, in
+  any currency) shows a pencil mark there, and the tab names every digit. `server/bets.ts` holds the rule, and the client and the
   mock server both use it.
 - **A round starts in two steps.** A tap on an emblem (or ← →) chooses the side, BET places
   the bet on it, and the side stays chosen for the next round. The choice lives in the

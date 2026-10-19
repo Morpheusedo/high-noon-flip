@@ -274,6 +274,41 @@ test('takes a typed bet and plays it', async ({ page }) => {
   expect(server?.balance).toBe(before.server - 1235);
 });
 
+test('names a typed bet too long for its chamber on the tab alone', async ({ page }) => {
+  // the test server takes typed stakes up to 10,000,000.00 here
+  await openGame(page, '&bets=wide');
+  const chosen = page.locator('.dchamber.on');
+  const value = page.locator('.dial-tab .plaque-value');
+  const type = async (amount: string) => {
+    await tap(page.locator('.dial-tab'));
+    const field = page.getByRole('textbox', { name: 'Your bet in FUN' });
+    await field.fill(amount);
+    await field.press('Enter');
+    await expect(page.locator('.dial-edit')).toHaveCount(0);
+  };
+  // a short amount stays on the drum, every digit of it
+  await type('12.35');
+  await expect(chosen).toHaveText('12.35');
+  await expect(chosen.locator('.dmark')).toHaveCount(0);
+  // a long one is not squeezed in: a plain mark in its chamber, the amount on the tab
+  await type('9999999.99');
+  await expect(chosen).toHaveText('');
+  await expect(chosen.locator('.dmark')).toBeVisible();
+  await expect(value).toHaveText(/^9,999,999\.99\s*FUN$/);
+  expect(await value.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await expectApart(page, ['.dial-tab'], ['.plaque.balance', '.dchamber.on', '.bet-button']);
+  // a screen reader still hears the amount on the dial and on the tab
+  await expect(page.getByRole('slider', { name: /^Bet\./ })).toHaveAttribute(
+    'aria-valuetext',
+    '9,999,999.99 FUN',
+  );
+  await expect(page.locator('.dial-tab')).toHaveAccessibleName(/^Bet 9,999,999\.99 FUN\./);
+  // one turn down is the top level, with its number
+  await page.keyboard.press('ArrowDown');
+  await expect(chosen).toHaveText('100');
+  expect(await page.evaluate(() => window.hnf?.model?.state.bet)).toBe(10_000);
+});
+
 test('BET asks for a side first, then keeps it for the next round', async ({ page }) => {
   await openGame(page);
   const before = await balances(page);

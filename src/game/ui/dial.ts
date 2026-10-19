@@ -93,3 +93,31 @@ export function restingLevel(pos: number, coast: number, count: number): number 
   const carried = pos + Math.max(-MAX_COAST, Math.min(MAX_COAST, coast));
   return Math.max(0, Math.min(count - 1, Math.round(carried)));
 }
+
+/**
+ * The share of a chamber's width its digits may take: all of it. They reach over the
+ * bullet's rim, as a level's "7.50" does at full size, and the chosen bullet rises
+ * a quarter larger still.
+ */
+export const CHAMBER_FACE = 1;
+/** The smallest digits a chamber shows, in CSS pixels: below that they no longer read on a phone. */
+export const MIN_CHAMBER_DIGITS_PX = 9;
+/** Nor smaller than this share of the chamber's own font, or they would look lost beside the levels. */
+export const MIN_CHAMBER_SHARE = 0.6;
+
+/**
+ * How a typed amount fits its chamber: the scale for its digits (1 at the
+ * chamber's own size), or null when it would have to shrink past the smallest
+ * that reads, and the chamber shows a mark instead while the tab names the
+ * amount. Measured, not counted in digits: "1,111" and "8,888" differ in width,
+ * and the font and the chamber change with the stage.
+ *
+ * `width` is the amount's width at the chamber's font, `room` the width the
+ * bullet's face leaves for it, `font` the chamber's font size, all in pixels.
+ */
+export function chamberFit(width: number, room: number, font: number): number | null {
+  if (width <= room) return 1;
+  const scale = room / width;
+  const smallest = Math.max(MIN_CHAMBER_DIGITS_PX, font * MIN_CHAMBER_SHARE);
+  return font * scale >= smallest ? scale : null;
+}

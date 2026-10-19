@@ -5,6 +5,10 @@
  * it and use the arrow keys. It is an endless drum over the operator's bet
  * levels; see `dial.ts` for how six chambers show any number of them, and a
  * typed amount between two.
+ *
+ * A typed amount too long for its chamber at a size that still reads (measured,
+ * `chamberFit`) is not squeezed in: the chamber holds a plain pencil mark and the
+ * tab over it names the amount, as the slider's value does for a screen reader.
  */
 import type { ComponentChildren } from 'preact';
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -23,7 +27,7 @@ import {
   withGive,
 } from './dial';
 import type { Formats } from './format';
-import { useTallStage } from './hooks';
+import { useChamberFit, useTallStage } from './hooks';
 import { useText } from './text';
 import './BetDial.css';
 
@@ -73,6 +77,7 @@ interface Gesture {
 export function BetDial({ bets, bet, disabled, fmt, onChange, feedback, children }: Props) {
   const { t } = useText();
   const root = useRef<HTMLDivElement>(null);
+  const probe = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const wheelAt = useRef(0);
   // the drum's position while a finger turns it, in drum positions
@@ -102,6 +107,10 @@ export function BetDial({ bets, bet, disabled, fmt, onChange, feedback, children
   const angle = angleAt(pos, offset);
   const levels = slotLevels(pos, count, base);
   const chosen = Math.round(Math.max(0, Math.min(count - 1, pos - base)));
+  // a typed amount between the levels shows every digit, or a mark when they would not read
+  const typed = drum.stops.find((s) => !bets.includes(s));
+  const typedText = typed === undefined ? '' : fmt.exact(typed);
+  const typedFit = useChamberFit(probe, typedText);
 
   /** Sets the bet to `amount`; true if that changed it. */
   const choose = (amount: Minor | null | undefined): boolean => {
@@ -237,10 +246,11 @@ export function BetDial({ bets, bet, disabled, fmt, onChange, feedback, children
           {CHAMBERS.map((c, slot) => {
             const level = levels[slot] ?? null;
             const value = level === null ? undefined : drum.stops[level];
-            const label = value === undefined ? '' : fmt.short(value);
+            const mark = value !== undefined && value === typed && typedFit === null;
+            const kind = value === undefined ? ' empty' : mark ? ' mark' : '';
             return (
               <div
-                class={`dchamber${value === undefined ? ' empty' : ''}${level === chosen ? ' on' : ''}`}
+                class={`dchamber${kind}${level === chosen ? ' on' : ''}`}
                 aria-hidden="true"
                 style={{
                   '--x': `${c.x}%`,
@@ -249,19 +259,46 @@ export function BetDial({ bets, bet, disabled, fmt, onChange, feedback, children
                 }}
                 onClick={() => onChamber(level)}
               >
-                {label && (
-                  <span class="dnum" style={{ '--len': label.length }}>
-                    {label}
+                {value === undefined ? null : mark ? (
+                  <PencilMark />
+                ) : value === typed ? (
+                  <span class="dnum" style={{ '--fit': typedFit }}>
+                    {typedText}
                   </span>
+                ) : (
+                  <ChamberNumber text={fmt.short(value)} />
                 )}
               </div>
             );
           })}
+        </div>
+        {/* the typed amount at the chamber's font, measured for `useChamberFit` */}
+        <div ref={probe} class="dchamber dprobe" aria-hidden="true">
+          <span class="dnum">{typedText}</span>
         </div>
       </div>
       {/* the marker over the chosen chamber is a tab that names the bet: the dial alone
           did not read as the bet to players (step 9) */}
       {children}
     </div>
+  );
+}
+
+/** A level's amount, shrunk by its length so it stays inside the bullet. */
+function ChamberNumber({ text }: { text: string }) {
+  return (
+    <span class="dnum" style={{ '--len': text.length }}>
+      {text}
+    </span>
+  );
+}
+
+/** The plain mark in the chamber of a typed amount too long for it: the tab names the amount. */
+function PencilMark() {
+  return (
+    <svg class="dmark" viewBox="0 0 24 24">
+      <path d="M4 20l1.2-4.6L15.8 4.8a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z" />
+      <path d="M13.8 6.8l3.4 3.4" />
+    </svg>
   );
 }

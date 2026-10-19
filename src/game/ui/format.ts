@@ -7,6 +7,8 @@ export interface Formats {
   amount(value: Minor): string;
   /** As short as it can be: "1", "2.50", "10K"; for bullets and buttons. */
   short(value: Minor): string;
+  /** As short as it can be without rounding: "1", "2.50", "12,345.67"; for a typed amount. */
+  exact(value: Minor): string;
   /** The amount with its currency, for screen readers: "€2.50", "1.00 FUN". */
   full(value: Minor): string;
   /** The currency code shown small next to an amount. */
@@ -31,24 +33,28 @@ export function formats(currency: Currency, lang: string): Formats {
   const two = digits(2);
   const one = digits(1);
   const none = digits(0);
-  const exact = new Intl.NumberFormat(lang, { maximumFractionDigits: 4 });
+  const fourDigits = new Intl.NumberFormat(lang, { maximumFractionDigits: 4 });
   const compact = new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 });
   const share = new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: 2 });
   const factor = (value: number) => (value < 10 ? two : value < 100 ? one : none).format(value);
+  const exact = (value: Minor) => {
+    const major = toMajor(value, currency);
+    return Number.isInteger(major) ? none.format(major) : formatAmount(value, currency, lang);
+  };
   return {
     amount: (value) => formatAmount(value, currency, lang),
     short: (value) => {
       const major = toMajor(value, currency);
-      if (major >= 10_000) return compact.format(major);
-      return Number.isInteger(major) ? none.format(major) : formatAmount(value, currency, lang);
+      return major >= 10_000 ? compact.format(major) : exact(value);
     },
+    exact,
     full: (value) => formatMoney(value, currency, lang),
     code: currency.code,
     input: (value) => formatInput(value, currency, lang),
     parse: (text) => parseAmount(text, currency, lang),
     multiplier: (value) => `×${factor(value)}`,
     factor,
-    exactMultiplier: (value) => `×${exact.format(value)}`,
+    exactMultiplier: (value) => `×${fourDigits.format(value)}`,
     percent: (value) => share.format(value),
   };
 }

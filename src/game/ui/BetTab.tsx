@@ -15,7 +15,7 @@ import type { RefObject } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { CustomBet, GameConfig, Minor } from '../../server/protocol';
 import type { Formats } from './format';
-import { useKeyboardLift, useReducedMotion } from './hooks';
+import { useFitText, useKeyboardLift, useReducedMotion } from './hooks';
 import { useText } from './text';
 import { checkTypedBet } from './typedBet';
 
@@ -39,6 +39,7 @@ export function BetTab({ config, bet, balance, disabled, fmt, onOpen, onTyping, 
   const reduced = useReducedMotion();
   const spot = useRef<HTMLDivElement>(null);
   const tab = useRef<HTMLButtonElement>(null);
+  const value = useRef<HTMLSpanElement>(null);
   const [mode, setMode] = useState<Mode>('tab');
   // where the tab stood, so the field grows out of it and shrinks back into it
   const from = useRef<DOMRect | null>(null);
@@ -78,6 +79,8 @@ export function BetTab({ config, bet, balance, disabled, fmt, onOpen, onTyping, 
   }, [mode]);
 
   const amount = fmt.full(bet);
+  // every digit, however long: a long typed amount is named here alone, not on the drum
+  useFitText(value, mode === 'tab' ? fmt.amount(bet) : '');
   return (
     <div ref={spot} class="dial-spot" data-typing={mode !== 'tab' || undefined}>
       {mode === 'tab' || !custom ? (
@@ -88,7 +91,7 @@ export function BetTab({ config, bet, balance, disabled, fmt, onOpen, onTyping, 
           disabled={disabled}
           onClick={open}
         >
-          <span class="plaque-value">
+          <span ref={value} class="plaque-value">
             {fmt.amount(bet)}
             <small>{fmt.code}</small>
           </span>

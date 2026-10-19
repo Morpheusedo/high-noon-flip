@@ -49,19 +49,15 @@
 }
 
 /* the tab over the chosen chamber: the amount, its pointer on the chamber. The spot
-   places it, and the field that takes its place grows out of the same spot */
+   places it, and the field that takes its place grows out of the same spot. Both keep
+   the right edge of a 20cqmin tab centred on the chamber and grow to the left, over
+   BET's empty top: the Sheriff star stands right above the tab's right end */
 .dial-spot {
   position: absolute;
   left: 50%;
   bottom: calc(100% + 1.2cqmin);
-  translate: -50% 0;
-  font-size: clamp(13px, 3.8cqmin, 28px);
-}
-
-/* the field keeps the tab's right edge and grows to the left, over BET's empty top:
-   the Sheriff star stands right above the tab's right end */
-.dial-spot[data-typing] {
   translate: calc(-100% + 10cqmin) 0;
+  font-size: clamp(13px, 3.8cqmin, 28px);
 }
 
 .dial-tab {
@@ -79,8 +75,12 @@
   filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
 }
 
+/* a long amount gets a smaller font instead of a wider tab (`useFitText`): the tab
+   names every digit of a typed amount too long for its chamber */
 .dial-tab .plaque-value {
-  font-size: 1em;
+  display: inline-block;
+  max-width: 40cqmin;
+  font-size: calc(1em * var(--fit, 1));
   transition: opacity 0.12s;
 }
 
@@ -125,7 +125,8 @@
   filter: drop-shadow(0 0.5cqmin 1cqmin rgba(0, 0, 0, 0.55));
 }
 
-/* still over the chamber, which is 10cqmin from the field's right edge */
+/* still over the chamber, which is 10cqmin from the right edge */
+.dial-tab::after,
 .dial-edit::after {
   left: calc(100% - 10cqmin);
 }
@@ -292,9 +293,42 @@
   cursor: default;
 }
 
-/* long amounts get a smaller font so they stay inside the bullet */
+/* long levels get a smaller font so they stay inside the bullet; a typed amount is
+   measured instead (`--fit`, `useChamberFit`) */
 .dnum {
-  font-size: min(1em, calc(5.4em / max(var(--len, 3), 3)));
+  font-size: calc(var(--fit, 1) * min(1em, calc(5.4em / max(var(--len, 3), 3))));
+}
+
+/* a hidden chamber that holds the typed amount at the chamber's font, to measure it */
+.dchamber.dprobe {
+  left: 0;
+  top: 0;
+  margin: 0;
+  visibility: hidden;
+  pointer-events: none;
+  background: none;
+  transition: none;
+}
+
+.dprobe .dnum {
+  display: inline-block;
+}
+
+/* a typed amount too long for its chamber: no bullet, a plain pencil mark, and the tab
+   over it names the amount */
+.dchamber.mark {
+  background: none;
+}
+
+.dmark {
+  width: 44%;
+  height: 44%;
+  fill: none;
+  stroke: var(--brass-hi);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0.05em 0.08em #000) drop-shadow(0 0 0.2em rgba(0, 0, 0, 0.85));
 }
 
 /* the chosen bullet rises out of its chamber, gold, with a bright outline */
@@ -310,6 +344,15 @@
     0 0 0 0.8cqmin #7a5210,
     0 0.8cqmin 1.6cqmin rgba(0, 0, 0, 0.7),
     0 0 3cqmin rgba(255, 200, 90, 0.9);
+}
+
+/* chosen, the mark keeps the ring and the glow of the chosen bullet, without the bullet */
+.dchamber.mark.on {
+  background-image: radial-gradient(circle, rgba(3, 14, 6, 0.92) 0 50%, rgba(3, 14, 6, 0) 68%);
+}
+
+.dchamber.mark.on .dmark {
+  stroke: var(--gold);
 }
 
 /* the chosen amount is green neon: a bright band runs down through the digits */
@@ -379,8 +422,7 @@
     filter: drop-shadow(-0.4cqmin 0 1.6cqmin rgba(0, 0, 0, 0.75));
   }
 
-  .dial-spot,
-  .dial-spot[data-typing] {
+  .dial-spot {
     left: auto;
     right: calc(100% + 2.2cqmin);
     bottom: auto;
@@ -393,6 +435,11 @@
     min-width: 0;
     min-height: 11cqmin;
     padding: 1.2cqmin 3cqmin 1.4cqmin;
+  }
+
+  /* clear of the balance tab on the left by 3.5cqmin and more */
+  .dial-tab .plaque-value {
+    max-width: 36cqmin;
   }
 
   .dial-edit {

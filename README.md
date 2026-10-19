@@ -67,7 +67,9 @@ rounding, Escape and a tap outside) shown on the drum and played to the server, 
 motion), a side chosen and kept for the next BET with Space and Enter, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
 with reduced motion), the last flips in the settings, a lost answer (NETWORK) and its recovery, a run resumed after a reload
 and cashed out with Space, the controls on screen (the ladder clear of the corners, the balance, the dial and BET
-apart) before and after a rotation. Outcomes are forced through `hnf`, so
+apart) before and after a rotation, and in portrait on an iPhone SE (320 x 568) the ladder
+fitted between the corner buttons through a run, then at 280 x 500 a window of rungs with the
+top one after an ellipsis. Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
 
 `npm run lowend` measures load time, bytes, frame rate and memory with the CPU and
@@ -120,6 +122,7 @@ src/
       ├─ typedBet.ts      what a typed amount means: the stake, a rounding, or why not
       ├─ dial.ts          the dial's arithmetic: six chambers over any number of levels and a typed bet
       ├─ Plaques.tsx      balance, BET, ladder, cash out (multiplier, prize, next flip)
+      ├─ ladderFit.ts     how the ladder fits its width: gaps, then rungs, then a window of rungs
       ├─ Payout.tsx       coins flying from the cash out to the balance
       ├─ BetPicker.tsx    every bet level at once, when the server takes levels only
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed, last flips)

@@ -140,6 +140,14 @@ field lifts itself over a phone keyboard. Without `customBet` the tap opens the 
 levels, which no longer has a field. An amount below the minimum or above the maximum is not
 refused: it becomes the lowest or the highest stake, with no message.
 
+### 19. The ladder fits between the corner buttons — done
+
+In portrait on a small stage the ladder ran under the corner buttons (6 px at 320 x 568,
+about 20 px at 280 x 500): its px floors won below a stage of about 330 px. Now it fits the
+width between the buttons: the gaps give way first, then the rungs, down to 9 px digits; on
+a stage narrower still (a small iframe, split screen) it shows a window of rungs that slides
+as the run climbs, with the top rung after an ellipsis. The corner buttons keep their size.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -358,6 +366,23 @@ refused: it becomes the lowest or the highest stake, with no message.
   14 px in portrait, for a moment). With the balance in the top left corner the ladder
   clears it by 32 px at 844 x 390; the smoke test checks it never runs into the balance or
   the corner buttons.
+- The ladder fits itself (step 19), measured, not set by breakpoints: its `max-width` in
+  portrait is the room between the corner buttons (`--tool`, now set on `.hud`, less a
+  clearance of max(6 px, 2.4cqmin) each side), and `useFitLadder` (hooks.ts) measures the
+  rungs and applies `fitLadder` (ladderFit.ts). The gaps and padding give way first, to 4 px;
+  then the rungs (digits and bullets together), to 9 px digits, the smallest that still reads
+  on a phone. At 320 x 568 the gaps alone nearly do it (8 rungs, 9.8 px digits, 7 px clear of
+  the buttons); 360 x 640 and up, and landscape, are as before.
+- Below 9 px a window of rungs takes the row (280 x 500: 5 of 8). It shows the last climbed
+  rung, the next one and the ones after it, then "…" and the top rung, the maximum win, which
+  a player should always see; near the top it closes up into the last rungs in a row. The
+  count is worked out with the widest rung, so it stays the same while the run climbs. The
+  rungs left out stay in the list for a screen reader (visually hidden, like the "×"), and the
+  ellipsis is `aria-hidden`. Turned down: smaller corner buttons (they are touch targets, 36 px
+  already), the ladder under the buttons or in two rows (on the resting coin, see step 15).
+- The ladder in landscape has no `max-width`: between the balance and the four buttons it has
+  room down to the smallest landscape stage the smoke test runs (640 x 360). A tiny landscape
+  iframe would want the same fit, with the balance's width as the left edge.
 - With the ladder gone from over the bet, the cash out stands at 3% from the bottom like the
   bet, not 2%.
 - The last flips (step 15) are in the settings: history a player looks up, not a control.

@@ -124,32 +124,55 @@
 /* a row of rungs to climb, under the title sign (TopBar.tsx). In landscape each rung is
    a bullet beside its multiplier, one line high: the top of the coin's flip comes right
    under it. It must also clear the balance in the top left corner. */
+/* Where `max-width` is set, the ladder fits itself to it (useFitLadder): the gaps give
+   way first (--gap-fit), then the rungs (--rung-fit), and below 9 px digits a window of
+   rungs takes the row (`.out` rungs stay for a screen reader, the ellipsis shows). */
 .ladder {
   display: flex;
-  gap: 1.2cqmin;
+  gap: calc(1.2cqmin * var(--gap-fit, 1));
   margin: 0;
-  padding: 0.4cqmin 1.6cqmin;
+  padding: 0.4cqmin calc(1.6cqmin * var(--gap-fit, 1));
   list-style: none;
   border-radius: 99px;
   background: rgba(12, 6, 9, 0.6);
 }
 
-.rung {
+.rung,
+.rung-gap {
+  flex: none;
   display: flex;
   align-items: center;
   font-weight: 700;
-  font-size: clamp(9px, 2cqmin, 14px);
+  font-size: calc(clamp(9px, 2cqmin, 14px) * var(--rung-fit, 1));
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--muted);
   text-shadow: 0 1px 2px #000;
 }
 
+.rung-gap {
+  display: none;
+}
+
+.rung-gap.shown,
+.ladder.measuring .rung-gap {
+  display: flex;
+}
+
+.ladder:not(.measuring) .rung.out {
+  position: absolute;
+  width: 1px;
+  min-width: 0;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 .rung::before {
   content: '';
   flex: none;
-  width: 3.2cqmin;
-  margin-right: 0.5cqmin;
+  width: calc(3.2cqmin * var(--rung-fit, 1));
+  margin-right: calc(0.5cqmin * var(--rung-fit, 1));
   aspect-ratio: 1;
   background: url(./art/bullet-copper.webp) center / 100% 100% no-repeat;
   opacity: 0.5;
@@ -339,31 +362,42 @@
   }
 
   /* between the corner buttons the ladder has too little width for one line: each
-     bullet stands over its multiplier */
+     bullet stands over its multiplier. Its room is the width between the corner
+     buttons, less a clearance on each side; on a small stage it fits itself to it. */
   .ladder {
-    gap: 2.2cqmin;
-    padding: 0.6cqmin 2.4cqmin;
+    max-width: calc(100cqw - 2 * (3cqw + var(--tool) + max(6px, 2.4cqmin)));
+    gap: calc(2.2cqmin * var(--gap-fit, 1));
+    padding: 0.6cqmin calc(2.4cqmin * var(--gap-fit, 1));
     border-radius: 2.4cqmin;
   }
 
+  .rung,
+  .rung-gap {
+    font-size: calc(clamp(10px, 3cqmin, 22px) * var(--rung-fit, 1));
+  }
+
   .rung {
-    min-width: 5.4cqmin;
+    min-width: calc(5.4cqmin * var(--rung-fit, 1));
     display: grid;
     grid-template-columns: auto auto;
     justify-content: center;
-    row-gap: 0.3cqmin;
-    font-size: clamp(10px, 3cqmin, 22px);
+    row-gap: calc(0.3cqmin * var(--rung-fit, 1));
   }
 
   .rung::before {
     grid-column: 1 / -1;
     justify-self: center;
-    width: 5.4cqmin;
+    width: calc(5.4cqmin * var(--rung-fit, 1));
     margin-right: 0;
   }
 
+  /* the ellipsis on the numbers' line, under the bullets */
+  .rung-gap {
+    align-items: flex-end;
+  }
+
   /* only the next rung keeps its "×": the others are clear from the row */
-  .rung:not(.next) .rung-x {
+  .ladder:not(.measuring) .rung:not(.next) .rung-x {
     position: absolute;
     width: 1px;
     height: 1px;

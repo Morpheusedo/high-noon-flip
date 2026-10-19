@@ -23,7 +23,8 @@ export default defineConfig({
   // Headless Chromium draws WebGL in software (SwiftShader), a few frames a second
   // on a phone-sized canvas: rounds take seconds, so tests get a minute.
   timeout: 60_000,
-  // A Moto G4 (360 x 640) is the smallest screen the layout must hold. Its 3x pixel
+  // A Moto G4 (360 x 640) is the smallest screen the whole layout must hold; one portrait
+  // test resizes to 320 x 568 and 280 x 500 for the ladder under the title. Its 3x pixel
   // density only makes software WebGL slower; the layout is the same in CSS pixels.
   // Speed on a phone is checked separately: docs/LOW_END_CHECK.md.
   projects: [

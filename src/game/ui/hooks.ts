@@ -1,5 +1,6 @@
 /** Small hooks the interface components share. */
 import { useEffect, useLayoutEffect, useRef, useState, type MutableRef } from 'preact/hooks';
+import { fitLadder } from './ladderFit';
 
 const reducedQuery =
   typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
@@ -87,6 +88,57 @@ export function useFitText(ref: MutableRef<HTMLElement | null>, text: string): v
     observer.observe(stage);
     return () => observer.disconnect();
   }, [ref, text]);
+}
+
+/**
+ * Fits the ladder in `ref` to its own `max-width` (ladderFit.ts): sets `--gap-fit`
+ * and `--rung-fit` on it and returns how many rungs a window shows, null for all.
+ * Measures every rung with its "×" under the `measuring` class, again when the
+ * stage resizes, the fonts arrive or the next rung changes.
+ */
+export function useFitLadder(
+  ref: MutableRef<HTMLElement | null>,
+  labels: string,
+  step: number,
+): number | null {
+  const [size, setSize] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.setProperty('--gap-fit', '1');
+      el.style.setProperty('--rung-fit', '1');
+      el.classList.add('measuring');
+      const css = getComputedStyle(el);
+      const rungs = [...el.querySelectorAll<HTMLElement>('.rung')];
+      const first = rungs[0];
+      const result = fitLadder({
+        room: css.maxWidth === 'none' ? Infinity : parseFloat(css.maxWidth),
+        rungs: rungs.map((r) => r.getBoundingClientRect().width),
+        x: el.querySelector('.rung-x')?.getBoundingClientRect().width ?? 0,
+        ellipsis: el.querySelector('.rung-gap')?.getBoundingClientRect().width ?? 0,
+        gap: parseFloat(css.columnGap) || 0,
+        padding: parseFloat(css.paddingLeft) + parseFloat(css.paddingRight),
+        font: first ? parseFloat(getComputedStyle(first).fontSize) : 0,
+        step,
+      });
+      el.classList.remove('measuring');
+      el.style.setProperty('--gap-fit', result.gap.toFixed(3));
+      el.style.setProperty('--rung-fit', result.rung.toFixed(3));
+      setSize(result.window);
+    };
+    fit();
+    let live = true;
+    void document.fonts?.ready.then(() => live && fit());
+    const stage = el.closest('.stage');
+    const observer = stage ? new ResizeObserver(fit) : null;
+    if (stage) observer?.observe(stage);
+    return () => {
+      live = false;
+      observer?.disconnect();
+    };
+  }, [ref, labels, step]);
+  return size;
 }
 
 /**

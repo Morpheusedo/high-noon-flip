@@ -4,10 +4,12 @@
  * space bar beside them. The bet itself is the cylinder dial (`BetDial`); the
  * ladder of rungs hangs under the title sign.
  */
+import { Fragment } from 'preact';
 import { useLayoutEffect, useRef, type MutableRef } from 'preact/hooks';
 import type { Minor, Side } from '../../server/protocol';
 import type { Formats } from './format';
-import { useCountUp, useFitText } from './hooks';
+import { useCountUp, useFitLadder, useFitText } from './hooks';
+import { ladderWindow } from './ladderFit';
 import { useText } from './text';
 import './Plaques.css';
 
@@ -83,20 +85,35 @@ interface LadderProps {
   fmt: Formats;
 }
 
+/**
+ * The rungs in a row. Where even small rungs do not fit (a tiny portrait screen)
+ * the row shows a window of them that slides as the run climbs, with the top rung
+ * after an ellipsis; a screen reader still gets every rung.
+ */
 export function Ladder({ ladder, step, fmt }: LadderProps) {
   const { t } = useText();
+  const list = useRef<HTMLOListElement>(null);
+  const size = useFitLadder(list, ladder.join(' '), step);
+  const view = ladderWindow(ladder.length, step, size);
   return (
-    <ol class="ladder" aria-label={t('ladder')}>
+    <ol class="ladder" ref={list} aria-label={t('ladder')}>
       {ladder.map((m, i) => (
-        <li
-          class={`rung${i < step ? ' on' : i === step ? ' next' : ''}`}
-          aria-current={i === step - 1 ? 'step' : undefined}
-        >
-          {/* in portrait only the next rung shows its "×", so the numbers have room;
-              the others keep it for a screen reader */}
-          <span class="rung-x">×</span>
-          {fmt.factor(m)}
-        </li>
+        <Fragment key={i}>
+          {i === ladder.length - 1 && (
+            <li class={`rung-gap${view.ellipsis ? ' shown' : ''}`} aria-hidden="true">
+              …
+            </li>
+          )}
+          <li
+            class={`rung${i < step ? ' on' : i === step ? ' next' : ''}${view.shown[i] ? '' : ' out'}`}
+            aria-current={i === step - 1 ? 'step' : undefined}
+          >
+            {/* in portrait only the next rung shows its "×", so the numbers have room;
+                the others keep it for a screen reader */}
+            <span class="rung-x">×</span>
+            {fmt.factor(m)}
+          </li>
+        </Fragment>
       ))}
     </ol>
   );

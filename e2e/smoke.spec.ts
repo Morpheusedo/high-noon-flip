@@ -478,6 +478,41 @@ test('fits the screen and survives a rotation', async ({ page }, info) => {
   }
 });
 
+test('fits the ladder between the corner buttons on a small phone', async ({ page }, info) => {
+  test.skip(info.project.name !== 'portrait', 'a portrait layout');
+  const ladder = page.getByRole('list', { name: 'Multiplier ladder' });
+  const runAt = (step: number) =>
+    page.evaluate(async (s) => {
+      const hnf = window.hnf;
+      if (!hnf?.model) return;
+      hnf.server.openRunAt(s, hnf.model.state.bet);
+      await hnf.model.refresh();
+    }, step);
+
+  // an iPhone SE (1st gen): the gaps give way, and all eight rungs still show
+  await page.setViewportSize({ width: 320, height: 568 });
+  await openGame(page);
+  await expectControlsOnScreen(page);
+  await expect(ladder.locator('.rung.out')).toHaveCount(0);
+  for (const step of [1, 4, 7]) {
+    await runAt(step);
+    await expect(ladder.locator('.rung.on')).toHaveCount(step);
+    await expectApart(page, ['.ladder'], BESIDE_LADDER);
+  }
+  await info.attach('320 x 568', { body: await page.screenshot(), contentType: 'image/png' });
+
+  // narrower still (a small iframe): a window of rungs with the top one after an
+  // ellipsis; a screen reader still gets all eight
+  await page.setViewportSize({ width: 280, height: 500 });
+  await runAt(1);
+  await expect(ladder.locator('.rung.out')).not.toHaveCount(0);
+  await expect(ladder.getByRole('listitem')).toHaveCount(8);
+  for (const shown of ['.rung.on', '.rung.next', '.rung-gap', '.rung:last-child'])
+    await expect(ladder.locator(shown), shown).toBeInViewport();
+  await expectApart(page, ['.ladder'], BESIDE_LADDER);
+  await info.attach('280 x 500', { body: await page.screenshot(), contentType: 'image/png' });
+});
+
 /** Each of `these` stands clear of each of `those`. */
 async function expectApart(page: Page, these: string[], those: string[]): Promise<void> {
   for (const a of these)
@@ -507,10 +542,10 @@ const CONTROLS = [
   '.ladder',
 ];
 
-/** What the ladder under the title must not run into. */
 /** The controls at the bottom, which must stand apart. */
 const BOTTOM = ['.plaque.balance', '.dial-tab', '.dchamber.on', '.bet-button'];
 
+/** What the ladder under the title must not run into. */
 const BESIDE_LADDER = [
   '.plaque.balance',
   '.tool.speed',

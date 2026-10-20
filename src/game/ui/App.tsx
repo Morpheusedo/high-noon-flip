@@ -173,16 +173,22 @@ export function App(props: Props) {
     },
     [sounds],
   );
-  // back to the button that opened it, so a keyboard player keeps their place
+  // back to the button that opened it, so a keyboard player keeps their place; once
+  // the panel is gone, since the page behind a dialog takes no focus while it is open
+  const returnTo = useRef<HTMLElement | null>(null);
   const close = useCallback(
     (quiet = false) => {
       if (!quiet) sounds.click();
-      if (panel)
-        hud.current?.querySelector<HTMLElement>(OPENER[panel])?.focus({ preventScroll: true });
+      if (panel) returnTo.current = hud.current?.querySelector<HTMLElement>(OPENER[panel]) ?? null;
       setPanel(null);
     },
     [sounds, panel],
   );
+  useEffect(() => {
+    if (panel !== null || !returnTo.current) return;
+    returnTo.current.focus({ preventScroll: true });
+    returnTo.current = null;
+  }, [panel]);
   const closePanel = useCallback(() => close(), [close]);
   const set = (patch: Partial<typeof prefs>) => settings.set({ ...settings.get(), ...patch });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GameConfig } from '../src/server/protocol';
 import { checkTypedBet } from '../src/game/ui/typedBet';
+import { parseAmount } from '../src/shell/money';
 
 const config: GameConfig = {
   currency: { code: 'FUN', decimals: 2 },
@@ -26,6 +27,9 @@ describe('checkTypedBet', () => {
     expect(checkTypedBet(config, 10_000, 1)).toEqual({ kind: 'bet', stake: 10 });
     expect(checkTypedBet(config, 10_000, 2001)).toEqual({ kind: 'bet', stake: 2000 });
     expect(checkTypedBet(config, 10_000, 500_000)).toEqual({ kind: 'bet', stake: 2000 });
+    // twenty nines, as the field reads them
+    const huge = parseAmount('99999999999999999999', config.currency, 'en');
+    expect(checkTypedBet(config, 10_000, huge)).toEqual({ kind: 'bet', stake: 2000 });
   });
 
   it('clamps onto the grid and to a level beyond the typed range', () => {

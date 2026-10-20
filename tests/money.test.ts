@@ -98,6 +98,20 @@ describe('parseAmount', () => {
     for (const bad of ['', ' ', '.', '-1', 'abc', '1e3', '7.3.5', '10 00', '1,00,000', '1 0,5'])
       expect(parseAmount(bad, fun, 'en'), bad).toBeNull();
   });
+
+  it('reads the digits the language writes, as the game prints them', () => {
+    for (const lang of ['ar-EG', 'fa', 'mr', 'bn', 'en-u-nu-thai'])
+      for (const amount of [500, 735, 123_450])
+        expect(parseAmount(formatInput(amount, fun, lang), fun, lang), lang).toBe(amount);
+    expect(parseAmount('١٬٢٣٤٫٥', fun, 'ar-EG')).toBe(123_450);
+    // Latin digits still work everywhere
+    expect(parseAmount('7.35', fun, 'ar-EG')).toBe(735);
+  });
+
+  it('reads an amount too long to hold exactly as the largest it can hold', () => {
+    expect(parseAmount('99999999999999999999', fun, 'en')).toBe(Number.MAX_SAFE_INTEGER);
+    expect(parseAmount('9'.repeat(400), fun, 'en')).toBe(Number.MAX_SAFE_INTEGER);
+  });
 });
 
 describe('formatInput', () => {

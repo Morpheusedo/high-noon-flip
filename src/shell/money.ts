@@ -56,12 +56,17 @@ export function toMinor(text: string, currency: Currency): Minor | null {
  * English, "1.234,5" in German, "1 234,5" in Russian. Forgiving where the meaning
  * is clear: a lone mark that cannot be grouping is the decimal mark ("7,35" in
  * English, "7.35" in German or Russian), and trailing zeros past the currency's
- * decimals are dropped ("7.350" EUR). Null for anything else, including a cent
- * the currency does not have ("1.5" JPY): that is not an amount, not a rounding.
+ * decimals are dropped ("7.350" EUR). The language's own digits are read too
+ * ("٥٫٠٠" in Arabic), as the game prints them. An amount too long to hold exactly
+ * reads as the largest that can be held: any stake range caps it anyway. Null for
+ * anything else, including a cent the currency does not have ("1.5" JPY): that is
+ * not an amount, not a rounding.
  */
 export function parseAmount(text: string, currency: Currency, locale: string): Minor | null {
   // spaces (\s takes the no-break ones too) and apostrophes only ever group digits
-  const s = text.trim().replace(/[\s'’]/g, ' ');
+  const s = latinDigits(text, locale)
+    .trim()
+    .replace(/[\s'’]/g, ' ');
   if (!/^[\d .,]+$/.test(s) || !/\d/.test(s)) return null;
   const marks = new Set(s.replace(/[\d ]/g, ''));
 
@@ -93,7 +98,7 @@ export function parseAmount(text: string, currency: Currency, locale: string): M
   if (kept.length > currency.decimals) return null;
   // in strings, not floats: 0.29 * 100 is 28.999999999999996
   const minor = Number((digits || '0') + kept.padEnd(currency.decimals, '0'));
-  return Number.isSafeInteger(minor) ? minor : null;
+  return Math.min(minor, Number.MAX_SAFE_INTEGER);
 }
 
 /** An amount as a player would type it back: no grouping, the locale's decimal mark. */
@@ -110,19 +115,50 @@ function isGrouped(s: string): boolean {
   return /^[1-9]\d{0,2}( \d{3})+$/.test(s);
 }
 
-const separatorCache = new Map<string, { decimal: string; group: string }>();
+interface Numerals {
+  /** The locale's digits, 0 to 9; Latin for most languages. */
+  digits: string[];
+  /** Its marks as typed in Latin text: Arabic's "٫" and "٬" read as "." and ",". */
+  decimal: string;
+  group: string;
+}
 
-function separators(locale: string): { decimal: string; group: string } {
-  let found = separatorCache.get(locale);
+const numeralCache = new Map<string, Numerals & { nativeDecimal: string; nativeGroup: string }>();
+
+function numerals(locale: string) {
+  let found = numeralCache.get(locale);
   if (!found) {
     const parts = new Intl.NumberFormat(locale).formatToParts(1_234_567.5);
+    const nativeDecimal = parts.find((p) => p.type === 'decimal')?.value ?? '.';
+    const nativeGroup = parts.find((p) => p.type === 'group')?.value ?? ',';
+    const latin = (mark: string, fallback: string) => (/^[\s.,'’]$/.test(mark) ? mark : fallback);
+    const decimal = latin(nativeDecimal, '.');
     found = {
-      decimal: parts.find((p) => p.type === 'decimal')?.value ?? '.',
-      group: parts.find((p) => p.type === 'group')?.value ?? ',',
+      digits: [...Array(10).keys()].map((d) => new Intl.NumberFormat(locale).format(d)),
+      decimal,
+      group: latin(nativeGroup, decimal === '.' ? ',' : '.'),
+      nativeDecimal,
+      nativeGroup,
     };
-    separatorCache.set(locale, found);
+    numeralCache.set(locale, found);
   }
   return found;
+}
+
+function separators(locale: string): { decimal: string; group: string } {
+  const { decimal, group } = numerals(locale);
+  return { decimal, group };
+}
+
+/** `text` with the locale's own digits and marks in Latin, and no direction marks. */
+function latinDigits(text: string, locale: string): string {
+  const { digits, decimal, group, nativeDecimal, nativeGroup } = numerals(locale);
+  let out = '';
+  for (const ch of text.replace(/\p{Cf}/gu, '')) {
+    const d = digits.indexOf(ch);
+    out += d >= 0 ? String(d) : ch === nativeDecimal ? decimal : ch === nativeGroup ? group : ch;
+  }
+  return out;
 }
 
 /**

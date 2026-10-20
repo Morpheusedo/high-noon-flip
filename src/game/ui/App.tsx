@@ -530,8 +530,10 @@ export function App(props: Props) {
           history={s.history}
           onSfx={(v) => set({ sfxVolume: v })}
           onSfxSet={() => sounds.latch()}
-          // turning the music up is a clear wish to hear it, so it also unmutes
-          onMusic={(v) => set({ musicVolume: v, ...(v > 0 ? { muted: false } : {}) })}
+          // turning the music up is a clear wish to hear it, so it also unmutes; turning it down is not
+          onMusic={(v) =>
+            set({ musicVolume: v, ...(v > prefs.musicVolume ? { muted: false } : {}) })
+          }
           onSpeed={(v) => {
             set({ speed: v });
             sounds.click();

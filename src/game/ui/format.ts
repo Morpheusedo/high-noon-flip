@@ -36,7 +36,15 @@ export function formats(currency: Currency, lang: string): Formats {
   const fourDigits = new Intl.NumberFormat(lang, { maximumFractionDigits: 4 });
   const compact = new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 });
   const share = new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: 2 });
-  const factor = (value: number) => (value < 10 ? two : value < 100 ? one : none).format(value);
+  // shortened down, never up: the ladder must not promise more than the game pays (×126, not ×127)
+  const down = (value: number, places: number) =>
+    Math.floor(value * 10 ** places + 1e-9) / 10 ** places;
+  const factor = (value: number) =>
+    value < 10
+      ? two.format(down(value, 2))
+      : value < 100
+        ? one.format(down(value, 1))
+        : none.format(down(value, 0));
   const exact = (value: Minor) => {
     const major = toMajor(value, currency);
     return Number.isInteger(major) ? none.format(major) : formatAmount(value, currency, lang);

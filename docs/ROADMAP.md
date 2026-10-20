@@ -300,7 +300,8 @@ three rounds, then only the glow and the hop on what is next. No side is kept be
   8, interface art 4, fonts 1 (fonts give up after 3 s). Sound is not counted. A failed
   load shows the reason and "Reload".
 - The rules show exact multipliers (×15.84, not the ladder's ×15.8): a regulator checks them
-  against the math. Max win is the top multiplier of any mode times the highest bet, rounded
+  against the math. The ladder's short forms round down (×126 for ×126.72), so it never shows
+  more than the game pays. Max win is the top multiplier of any mode times the highest bet, rounded
   down as the server pays. "Malfunction voids all pays and plays" is always shown.
 - `__APP_VERSION__` comes from `package.json` and `__BUILD_HASH__` from git, both through
   Vite `define`. The hash is `GIT_COMMIT` if a CI sets it, else the short commit of this

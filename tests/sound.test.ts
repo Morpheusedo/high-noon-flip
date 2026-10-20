@@ -12,6 +12,11 @@ describe('music', () => {
     expect(musicIntensity(model.state)).toBe(0);
     model.setBet(10_000);
     expect(musicIntensity(model.state)).toBe(1);
+    // a typed stake stands between the levels around it
+    model.setBet(9_995);
+    expect(musicIntensity(model.state)).toBeGreaterThan(0.99);
+    model.setBet(1_750);
+    expect(musicIntensity(model.state)).toBeCloseTo(2.5 / 5);
 
     model.setBet(500);
     server.forceOutcomes('sheriff', 'sheriff');

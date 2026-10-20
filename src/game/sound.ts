@@ -210,9 +210,19 @@ export class GameSounds implements RoundSounds, UiSounds {
 /** How tense the moment is, 0 to 1: the stake among the operator's levels, raised by a multiply run. */
 export function musicIntensity(s: RoundState): number {
   const { bets } = s.config;
-  let i = bets.length > 1 ? Math.max(0, bets.indexOf(s.bet)) / (bets.length - 1) : 0;
+  let i = bets.length > 1 ? levelAt(bets, s.bet) / (bets.length - 1) : 0;
   if (s.openRun) i += 0.12 + 0.13 * s.openRun.step;
   return Math.max(0, Math.min(1, i));
+}
+
+/** Where `bet` stands among the ascending `levels`, by index: a typed amount between two falls between them. */
+function levelAt(levels: readonly number[], bet: number): number {
+  const above = levels.findIndex((level) => level >= bet);
+  if (above === -1) return levels.length - 1;
+  const below = levels[above - 1];
+  const at = levels[above] ?? bet;
+  if (above === 0 || below === undefined || at === bet) return above;
+  return above - 1 + (bet - below) / (at - below);
 }
 
 /**

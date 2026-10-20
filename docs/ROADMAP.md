@@ -177,6 +177,20 @@ chosen with a tap and the coin in the scene changes at once; a locked one is a s
 the play that unlocks it. A new coin is announced after the result ("New coin: Gold"), and a
 tap on the note opens the coins. The math does not change.
 
+### 23. From a rusty coin to gold — done
+
+The collection is now a path that keeps a player going and brings them back, with nothing to
+set up on entry. A new player wears the rusty coin and polishes it up to gold: Rusty (the
+start), Classic "Rookie" (10 flips), Silver "Old hand" (rung 3 in three runs), Bullet-holed
+"Survived the shootout" (a cash out at ×15.84, rung 4, or higher) and Gold "Legend" (rung 7,
+×126.72). The settings show the coins in that order and, under them, the next one and how far
+the player is ("Next: Silver, rung 3 in 2 of 3 runs", with a bar), or "Collection complete". A
+returning player with progress towards the next coin sees the same line once after the game
+loads, as a short note under the ladder. Lucky left the game and waits in `assets-src/coins/`
+for a promotion. The last bet is kept between visits, so a returning player can press BET at
+once (the side is not: the round flow is about to put BET before the side). Saved progress
+from step 22 still loads.
+
 ## Decisions
 
 - Server decides; the client never picks outcomes or computes balances.
@@ -584,7 +598,7 @@ tap on the note opens the coins. The math does not change.
 - Progress and the chosen coin sit behind `CollectionStore` (`load`, `save`, both async so a
   provider's profile API fits), with `localCollectionStore` on localStorage (`hnf.coins`) now.
   A saved value is checked field by field, as the settings are; a chosen coin that is locked
-  or gone becomes the classic one. Unlocked coins stay unlocked when a rule changes; a rule
+  or gone becomes the starting one (the classic one until step 23). Unlocked coins stay unlocked when a rule changes; a rule
   made easier unlocks quietly at the next start. Progress kept in the browser is lost on
   another device or after clearing it: see open question 13.
 - Loading: the chosen coin's faces load with the game, in place of the classic ones (still
@@ -598,8 +612,8 @@ tap on the note opens the coins. The math does not change.
   (`<skin>-icon.webp`) and the rim's three colours (shade, light, streak), which the scene
   draws in code. The classic faces moved into `coins/` as `classic-*.webp`. The placeholders
   are the classic coin tinted by `scripts/coin-placeholders.sh` (ImageMagick): silver
-  desaturated, gold warmer, rusty brown and grainy, bullet-holed with three holes, lucky
-  green. It only writes missing files, so real art dropped in is never overwritten.
+  desaturated, gold warmer, rusty brown and grainy, bullet-holed with three holes. It only
+  writes missing files, so real art dropped in is never overwritten.
 - The note "New coin: Gold" waits for the round to be idle and no panel to be open: never
   over a flip, a result stamp or a dialog. It stands under the ladder, far from the cash out
   and BET; it covers the top edge of the resting coin for its 4.5 s. A round that
@@ -656,6 +670,44 @@ tap on the note opens the coins. The math does not change.
   tablet the pushed-in coin needs about 720 px, so it is upscaled by some 12% there; see the
   open question for the artist.
 
+- The collection as a path (step 23): Rusty → Classic → Silver → Bullet-holed → Gold. Each coin
+  looks pricier than the last and is harder to get, and each asks for one kind of feat: play
+  (flips), climbing (rungs, several times), nerve (cashing out high), and the summit (a rung
+  near the top). Reaching rung N takes 1 run in 2^N on a fair coin, a run that aims there costs
+  about two flips, and a flip takes about 6–7 s with BET. If the player aims for each coin:
+  Classic in about a minute (10 flips); Silver in 5–10 minutes (some 40 flips for three runs to
+  rung 3); Bullet-holed within a session (some 30 flips if aiming, more as players cash out
+  lower); Gold over several sessions (1 run in 128, some 250 flips). Gold is rung 7, not the
+  top: within reach of a regular, yet a finale worth coming back for, and the top rung is left
+  for a promotion. The rules stay in `coins.json`, so the provider can tune them.
+- The manifest keeps the fallback and the start apart: `classic` names the faces shown when a
+  skin's art is missing (required art, a loading error if it fails, though players now earn
+  it), `start` the coin a new player wears and owns (its rule is null). Every coin a player owns
+  is listed in the progress, the start included; a skin with a null rule is everyone's.
+- Saved progress has a version (`v: 2`). A save without one is step 22's, where the classic coin
+  was everyone's and unlisted: it gets the classic coin, so a player who wore it keeps it, and
+  the rusty coin is added for everyone. Coins unlocked under the old rules stay unlocked. Skins
+  the manifest no longer has (Lucky) are dropped from the list and the choice, which falls back
+  to the start.
+- Lucky is a promotional coin: it stays in the project (`assets-src/coins/lucky/`, not shipped)
+  and comes back once its math and mechanics exist, granted by the server for an operator or
+  provider campaign, as one manifest entry marked as granted by the server, never by a rule the
+  client counts. A client-side unlock could be copied between browsers; a grant cannot.
+- The next coin is the first one still locked in the path's order. Its progress is a count for
+  flips and runs, and the best so far for a rung or a cash out ("reach rung 7 (best so far: 5)"),
+  so even a one-feat goal shows how near the player came; the bar shares that count. The
+  returning note shows it once after the game loads, for 3.5 s, only when the player has some
+  progress towards it (never on a first visit), never in an open run, and a round that starts
+  drops it for good; it stands where the unlock note does and opens the coins on a tap. A new
+  coin's note takes precedence. With every coin collected there is no note, and the settings say
+  "Collection complete".
+- The last bet (`game/lastBet.ts`, `hnf.bet` in localStorage) is kept apart from the settings:
+  it belongs to a currency and is only a wish the config must accept (`isValidBet`, the same
+  rule the server applies). A saved bet in another currency or no longer valid falls back to the
+  default bet; an open run's bet wins. The side is not kept: the next step has the player press
+  BET first and choose a side after. Like the collection, the bet lives in the browser (open
+  question 13).
+
 ## Open questions for the provider
 
 1. Is there a client SDK and a protocol spec?
@@ -689,9 +741,9 @@ tap on the note opens the coins. The math does not change.
 13. The coin collection (step 22) keeps its progress in the browser: it is lost on another
     device or after clearing the browser, a real complaint from players. Can the provider
     keep it in the player's profile on its side? `CollectionStore` is the one place to
-    change. And do any target markets restrict achievements or collectibles in a gambling
-    game? If so, it becomes a `Jurisdiction` flag that hides the section and the note.
-14. Does the provider accept art generated by an AI model? The five collection coins were made
-    in Gemini from the classic faces. Some providers require that they own the rights to every
+    change; the last bet (`game/lastBet.ts`) could move with it. And do any target
+    markets restrict achievements or collectibles in a gambling game? If so, it becomes a `Jurisdiction` flag that hides the section and the note.
+14. Does the provider accept art generated by an AI model? The collection coins (and Lucky, kept
+    for a promotion) were made in Gemini from the classic faces. Some providers require that they own the rights to every
     asset, and generated images may not be protected by copyright in some countries. Fine for
     the concept; before a release the coins either get a yes or are redrawn by an artist.

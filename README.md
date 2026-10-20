@@ -73,9 +73,11 @@ and cashed out with Space, the controls on screen (the ladder clear of the corne
 apart) before and after a rotation, and in portrait on an iPhone SE (320 x 568) the ladder
 fitted between the corner buttons through a run, then at 280 x 500 a window of rungs with the
 top one after an ellipsis, and a showdown from the 6th rung at 1x and the 7th at 4x (the
-controls dimmed but for the ladder, then calm again and back to idle), and a coin unlocked
-by play (a run opened at rung 4, one more win: "New coin: Gold" clear of the cash out, its
-note opening the coins, Gold chosen and only then its faces fetched). Outcomes are forced through `hnf`, so
+controls dimmed but for the ladder, then calm again and back to idle), and the coin
+collection (a first visit wears the rusty coin and fetches only its faces; 10 flips unlock
+Classic: "New coin: Classic — Rookie" clear of BET, its note opening the coins with the next
+one under them, Classic chosen and only then its faces fetched; after a reload the same coin
+and bet, and a short note on the next coin that fades by itself). Outcomes are forced through `hnf`, so
 every run is the same; any console error or failed request fails it.
 
 `npm run lowend` measures load time, bytes, frame rate and memory with the CPU and
@@ -108,6 +110,7 @@ src/
 └─ game/
    ├─ model/          RoundModel: the round state machine, the source of truth
    ├─ collection/     the coin collection: skins, unlock rules counted from results, storage
+   ├─ lastBet.ts      the last bet, kept between visits; the config decides whether it holds
    ├─ director.ts     turns phase changes into animations, reports back when done
    ├─ timing.ts       every duration of a round, scaled by speed in one place
    ├─ tension.ts      the showdown on the high rungs: its levels by rung, cues and times
@@ -136,7 +139,8 @@ src/
       ├─ Payout.tsx       coins flying from the cash out to the balance
       ├─ BetPicker.tsx    every bet level at once, when the server takes levels only
       ├─ Settings.tsx     mute, the settings button and panel (volumes, speed, last flips, coins)
-      ├─ Coins.tsx        the coins in the settings, and the note that one was unlocked
+      ├─ Coins.tsx        the coins in the settings with the next one, and the notes: a coin
+      │                   unlocked, or how near the next one is when a player comes back
       ├─ Rules.tsx        the info button and the rules screen
       ├─ Notices.tsx      result stamp, insufficient funds, error dialogs
       ├─ Dialog.tsx       the frame every dialog uses
@@ -152,9 +156,11 @@ docs/
    └─ PREVIEW.md      the preview link for the provider
 public/assets/        scene images and sounds, loaded at run time
    ├─ images/scene-layout.json  positions on the stage and measurements on the art
-   ├─ images/coins/   coin skins: coins.json (faces, icon, rim, unlock rule) and their art
+   ├─ images/coins/   coin skins in the order of the path: coins.json (faces, icon, rim, unlock
+   │                  rule; the starting and the fallback skin) and their art
    └─ audio/          built by `npm run audio`: sfx.m4a sprite, music loops, audio.json
 assets-src/audio/     the sound sources the audio build reads; not shipped
+assets-src/coins/     coin art kept out of the game: Lucky, a promotional coin for later
 scripts/              the audio sprite, the build hash, the size report, the preview deploy,
                       placeholder coin skins (`coin-placeholders.sh`, ImageMagick)
 index.html            the loading screen, styled inline so it shows before any script
@@ -188,7 +194,9 @@ Rules the code follows:
   highest stake; the drum stops at a typed amount between two levels
   and turns from it to the next one. A typed amount too long for its chamber (measured, in
   any currency) shows a pencil mark there, and the tab names every digit. `server/bets.ts` holds the rule, and the client and the
-  mock server both use it.
+  mock server both use it. The last bet is kept between visits (`game/lastBet.ts`); one the
+  config no longer takes (another currency, a changed list, outside the typed range) gives way
+  to the default bet, and an open run's own bet wins over it.
 - **A round starts in two steps.** A tap on an emblem (or ← →) chooses the side, BET places
   the bet on it, and the side stays chosen for the next round. The choice lives in the
   interface, not in the model: the server hears of it only with the bet. In a run a tap on a
@@ -198,11 +206,15 @@ Rules the code follows:
   coin, the music ducks, a heartbeat, slow motion at the end of the flight, on the last two a
   push-in and a sting. It runs from the tap to the landing only, and the same whatever the
   server decided: while the player decides whether to cash out, the screen is calm.
-- **Coins are earned by play, never by money.** A coin skin unlocks from round results (flips,
+- **Coins are earned by play, never by money.** The collection is a path from a rusty coin to
+  gold: a new player wears the rusty one, and each next coin unlocks from round results (flips,
   rungs reached, a cash out's rung), never from the stake, and changes only how the coin looks.
-  Skins and their rules live in `images/coins/coins.json`; a new skin is its art and a line
-  there. Progress sits behind `CollectionStore` (localStorage today). Only the chosen skin's
-  faces load with the game; missing art for a skin shows the classic coin and a console
+  Skins and their rules live in `images/coins/coins.json`, in the path's order; a new skin is
+  its art and a line there. The manifest keeps two roles apart: `start` is the coin a new
+  player wears, `classic` the fallback whose faces stand in for missing art (part of the
+  game's required art, though players earn it). Progress sits behind `CollectionStore`
+  (localStorage today); the coins show the next one and how far the player is. Only the chosen
+  skin's faces load with the game; missing art for a skin shows the classic coin and a console
   warning, not a loading error.
 - **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A held key
   does not repeat, so it cannot act as autoplay. A button reached with Tab keeps its own

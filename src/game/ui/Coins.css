@@ -83,7 +83,53 @@
   font-weight: 500;
 }
 
-/* "New coin: Silver" under the ladder, clear of the cash out and BET at the bottom */
+/* the title a coin stands for, under its name or its rule */
+.coin-rank {
+  color: var(--muted);
+  font-size: clamp(9px, 2.2cqmin, 13px);
+  font-style: italic;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* the next coin and how far the player is, under the grid */
+.coin-next {
+  display: grid;
+  gap: 0.6cqmin;
+}
+
+.coin-next p {
+  margin: 0;
+  color: var(--cream);
+  font-size: clamp(11px, 2.8cqmin, 16px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.coin-next.complete {
+  margin: 0;
+  color: var(--gold);
+  font-size: clamp(11px, 2.8cqmin, 16px);
+  font-weight: 700;
+}
+
+.coin-bar {
+  display: block;
+  height: clamp(4px, 1cqmin, 7px);
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(232, 200, 140, 0.18);
+  overflow: hidden;
+}
+
+.coin-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brass), var(--gold));
+}
+
+/* "New coin: Silver" or the next coin under the ladder, clear of the cash out and BET at the bottom */
 .unlock-toast-region {
   position: absolute;
   left: 50%;
@@ -118,6 +164,11 @@
 
 .unlock-toast .coin-icon {
   width: clamp(26px, 7cqmin, 44px);
+}
+
+/* the next coin, still to be won: its silhouette, as in the grid */
+.unlock-toast.locked .coin-icon {
+  filter: brightness(0) opacity(0.55) drop-shadow(0 0 1px rgba(232, 200, 140, 0.5));
 }
 
 /* reduced motion: it fades in, it does not slide */

@@ -190,8 +190,9 @@ Square 1:1, sharp, high detail, game asset.
 
 ## 5. Lucky — счастливая
 
-Самая редкая, открывается на вершине лестницы. Файлы: `lucky-sheriff.webp`,
-`lucky-outlaw.webp`, `lucky-icon.webp`.
+Промо-монета: с шага 23 её нет в игре, файлы `lucky-sheriff.webp`, `lucky-outlaw.webp`,
+`lucky-icon.webp` лежат в `assets-src/coins/lucky/` и вернутся, когда сервер начнёт выдавать её
+по акции (docs/ROADMAP.md, Decisions).
 
 Фон здесь пурпурный, а не зелёный: у монеты зелёная эмаль, и при удалении зелёного
 фона она пропала бы вместе с ним.

@@ -7,9 +7,17 @@
  */
 import { Store } from '../../shell/store';
 import type { RoundState } from '../model/RoundModel';
-import { classicOf, skinOf, type CoinManifest, type CoinSkin } from './skins';
+import { isFree, skinOf, type CoinManifest, type CoinSkin } from './skins';
 import type { CollectionStore } from './store';
-import { count, eventsOf, isUnlocked, unlock, type CollectionProgress } from './unlock';
+import {
+  count,
+  eventsOf,
+  isUnlocked,
+  nextCoin,
+  unlock,
+  type CollectionProgress,
+  type NextCoin,
+} from './unlock';
 
 export interface CollectionState {
   progress: CollectionProgress;
@@ -27,11 +35,7 @@ export class Collection {
     /** The server's ladder length, for rules on the top rung. */
     private readonly ladderLength: number,
   ) {
-    // a rule made easier since the last session unlocks quietly; a chosen skin that
-    // is gone or locked is the classic one
-    let { progress } = unlock(manifest, saved, ladderLength);
-    const chosen = chosenSkin(manifest, progress);
-    if (chosen !== progress.chosen) progress = { ...progress, chosen };
+    const progress = settle(manifest, saved, ladderLength);
     this.store = new Store<CollectionState>({ progress, news: [] });
     if (progress !== saved) this.save();
   }
@@ -41,7 +45,16 @@ export class Collection {
   }
 
   get chosen(): CoinSkin {
-    return skinOf(this.manifest, this.state.progress.chosen) ?? classicOf(this.manifest);
+    const { manifest } = this;
+    // `settle` and `choose` keep the chosen skin in the manifest
+    return (
+      skinOf(manifest, this.state.progress.chosen) ?? (skinOf(manifest, manifest.start) as CoinSkin)
+    );
+  }
+
+  /** The coin the player is working towards and how far they are; null with every coin collected. */
+  get next(): NextCoin | null {
+    return nextCoin(this.manifest, this.state.progress, this.ladderLength);
   }
 
   isUnlocked(id: string): boolean {
@@ -83,8 +96,30 @@ export class Collection {
   }
 }
 
-/** The skin to show for a saved progress: the chosen one if it exists and is unlocked, else the classic. */
+/** The skin to show for a saved progress: the chosen one if it exists and is unlocked, else the start. */
 export function chosenSkin(manifest: CoinManifest, progress: CollectionProgress): string {
   const id = progress.chosen;
-  return skinOf(manifest, id) && isUnlocked(manifest, progress, id) ? id : manifest.classic;
+  return isUnlocked(manifest, progress, id) ? id : manifest.start;
+}
+
+/**
+ * A saved progress made whole for this manifest: the free skins (the start) listed
+ * as owned, skins the manifest no longer has dropped (a promotional coin taken out
+ * of the game comes back only when granted again), a rule made easier since the
+ * last session unlocked quietly, and a chosen skin that is gone or locked replaced
+ * by the start. The same progress comes back when nothing changes.
+ */
+export function settle(
+  manifest: CoinManifest,
+  saved: CollectionProgress,
+  ladderLength: number,
+): CollectionProgress {
+  let progress = saved;
+  const known = saved.unlocked.filter((id) => skinOf(manifest, id));
+  const free = manifest.skins.filter((s) => isFree(s) && !known.includes(s.id)).map((s) => s.id);
+  if (free.length || known.length !== saved.unlocked.length)
+    progress = { ...progress, unlocked: [...free, ...known] };
+  progress = unlock(manifest, progress, ladderLength).progress;
+  const chosen = chosenSkin(manifest, progress);
+  return chosen === progress.chosen ? progress : { ...progress, chosen };
 }

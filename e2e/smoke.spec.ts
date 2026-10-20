@@ -463,55 +463,101 @@ test('plays a showdown on the high rungs, then calms down for the decision', asy
   await expect(page.locator('.bet-button')).toBeVisible();
 });
 
-test('unlocks a coin by play and wears it', async ({ page }) => {
-  // the coins' faces the game asks for: the classic ones only, until another is chosen
+test('starts on the rusty coin, unlocks the next by play and shows the way on', async ({
+  page,
+}) => {
+  // the coins' faces the game asks for: the starting coin's only, until another is chosen
   const faces: string[] = [];
   page.on('request', (r) => {
     const face = /coins\/([a-z-]+)-(sheriff|outlaw|icon)\.webp$/.exec(r.url());
     if (face) faces.push(`${face[1]}-${face[2]}`);
   });
   await openGame(page);
-  expect(faces.sort()).toEqual(['classic-outlaw', 'classic-sheriff']);
+  expect(faces.sort()).toEqual(['rusty-outlaw', 'rusty-sheriff']);
+  // a first visit has nothing to be reminded of
+  await expect(page.locator('.unlock-toast')).toHaveCount(0);
 
-  // a run opened at rung 4 by the test server; one more win reaches rung 5: Gold
+  // 10 flips, all lost: Classic, the Rookie's coin. The first through BET, the rest
+  // through the QA hooks, each played to its result by the director
+  test.setTimeout(150_000);
+  await page.evaluate(() => window.hnf?.server.forceOutcomes(...Array(10).fill('lose')));
+  expect(await playRound(page, () => bet(page, 'sheriff'))).toBe('lose');
+  await page.evaluate(async () => {
+    const model = window.hnf?.model;
+    if (!model) throw new Error('the game is not running');
+    const idle = () =>
+      new Promise<void>((done) => {
+        const stop = model.store.subscribe((s) => {
+          if (s.phase.name !== 'idle') return;
+          stop();
+          done();
+        });
+      });
+    for (let i = 1; i < 10; i++) {
+      const settled = idle();
+      await model.pick('sheriff');
+      await settled;
+    }
+  });
+  const toast = page.getByRole('button', { name: 'New coin: Classic — Rookie. Show my coins.' });
+  await expect(toast).toBeVisible();
+  // after the result, clear of BET; measured and tapped at once, as it stays 4.5 s
+  const clear = await page.evaluate(() => {
+    const note = document.querySelector('.unlock-toast')?.getBoundingClientRect();
+    const button = document.querySelector('.bet-button')?.getBoundingClientRect();
+    return !!note && !!button && note.bottom < button.top;
+  });
+  expect(clear).toBe(true);
+
+  // the note opens the settings at the coins, the worn one focused, the next one under them
+  await toast.click();
+  const coins = page.getByRole('dialog', { name: 'Settings' });
+  await expect(coins.getByRole('button', { name: 'Rusty' })).toBeFocused();
+  await expect(
+    coins.getByRole('button', { name: /^Silver — Old hand, locked: Reach rung 3 in 3 runs/ }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  await expect(coins.locator('.coin-next')).toHaveText('Next: Silver, rung 3 in 0 of 3 runs');
+  await expect(page.locator('.unlock-toast')).toHaveCount(0);
+
+  const classic = coins.getByRole('button', { name: 'Classic — Rookie' });
+  await classic.click();
+  await expect(classic).toHaveAttribute('aria-pressed', 'true');
+  // its faces load only now, and the choice is kept
+  await expect
+    .poll(() => faces.filter((f) => f.startsWith('classic-') && f !== 'classic-icon').sort())
+    .toEqual(['classic-outlaw', 'classic-sheriff']);
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem('hnf.coins') ?? '{}').chosen),
+  ).toBe('classic');
+  await coins.getByRole('button', { name: 'Close' }).click();
+  await expect(coins).toHaveCount(0);
+
+  // one run to rung 3, cashed out: a step towards Silver, and a bet of 25.00 on the dial
   await page.evaluate(() => {
     const hnf = window.hnf;
-    if (hnf?.model) hnf.server.openRunAt(4, hnf.model.state.bet);
+    if (hnf?.model) {
+      hnf.model.setBet(2500);
+      hnf.server.openRunAt(2, 2500);
+    }
     hnf?.server.forceOutcomes('win');
     return hnf?.model?.refresh();
   });
-  await tap(page.locator('.pick.sheriff'));
+  await playRound(page, () => tap(page.locator('.pick.sheriff')));
+  await playRound(page, () => page.locator('.cashout').click());
+
+  // back next time: the same coin and bet, and a short note on the next coin
+  await page.reload();
+  const next = page.getByRole('button', {
+    name: 'Next: Silver, rung 3 in 1 of 3 runs. Show my coins.',
+  });
+  await expect(next).toBeVisible({ timeout: 30_000 });
   await waitIdle(page);
-  const toast = page.getByRole('button', { name: 'New coin: Gold. Show my coins.' });
-  await expect(toast).toBeVisible();
-  // after the result, clear of the cash out
-  const [note, plaque] = await Promise.all([
-    toast.boundingBox(),
-    page.locator('.cashout').boundingBox(),
-  ]);
-  expect(note && plaque && note.y + note.height < plaque.y).toBe(true);
-
-  // the note opens the settings at the coins, with the chosen one focused
-  await tap(toast);
-  const coins = page.getByRole('dialog', { name: 'Settings' });
-  await expect(coins.getByRole('button', { name: 'Classic' })).toBeFocused();
-  await expect(
-    coins.getByRole('button', { name: /^Silver, locked: Make 50 flips/ }),
-  ).toHaveAttribute('aria-disabled', 'true');
-  await expect(page.locator('.unlock-toast')).toHaveCount(0);
-
-  const gold = coins.getByRole('button', { name: 'Gold' });
-  await gold.click();
-  await expect(gold).toHaveAttribute('aria-pressed', 'true');
-  // its faces load only now, and the choice is kept
-  await expect
-    .poll(() => faces.filter((f) => f.startsWith('gold-') && f !== 'gold-icon').sort())
-    .toEqual(['gold-outlaw', 'gold-sheriff']);
+  expect(await page.evaluate(() => window.hnf?.model?.state.bet)).toBe(2500);
   expect(
     await page.evaluate(() => JSON.parse(localStorage.getItem('hnf.coins') ?? '{}').chosen),
-  ).toBe('gold');
-  await coins.getByRole('button', { name: 'Close' }).click();
-  await expect(coins).toHaveCount(0);
+  ).toBe('classic');
+  // it fades by itself
+  await expect(next).toHaveCount(0, { timeout: 8_000 });
 });
 
 test.describe('with reduced motion', () => {

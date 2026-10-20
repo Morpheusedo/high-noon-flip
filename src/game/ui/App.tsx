@@ -39,7 +39,7 @@ import { BetPicker } from './BetPicker';
 import { BetTab } from './BetTab';
 import { CoinTap, Emblems, SideHint } from './Emblems';
 import { formats } from './format';
-import { CoinsSection, UnlockToast } from './Coins';
+import { CoinNote, CoinsSection, useNextNote, useUnlockNote } from './Coins';
 import { useReducedMotion } from './hooks';
 import { ErrorDialog, FundsNotice, ResultStamp } from './Notices';
 import { PAYOUT_FLIGHT_MS, Payout, type Point } from './Payout';
@@ -135,6 +135,26 @@ export function App(props: Props) {
   const newCoin =
     news && idle && panel === null ? (skinOf(collection.manifest, news) ?? null) : null;
   const told = useCallback((id: string) => collection.told(id), [collection]);
+  // once, as the game loads, how near a returning player is to the next coin; a round
+  // that starts drops it, and a game that loads in an open run never shows it
+  const [hint, setHint] = useState(() => {
+    const next = collection.next;
+    return next && next.done > 0 ? next : null;
+  });
+  useEffect(() => {
+    if (hint && (!idle || openRun)) setHint(null);
+  }, [hint, idle, openRun]);
+  const unlockNote = useUnlockNote();
+  const nextNote = useNextNote(config.ladder, fmt);
+  const note = newCoin
+    ? unlockNote(newCoin)
+    : hint && idle && !openRun && panel === null
+      ? nextNote(hint)
+      : null;
+  const noteDone = useCallback(
+    (id: string) => (id.startsWith('next:') ? setHint(null) : told(id)),
+    [told],
+  );
   const onTyping = useCallback(
     (on: boolean) => {
       if (on) {
@@ -460,15 +480,16 @@ export function App(props: Props) {
           />
         ))}
 
-      <UnlockToast
+      <CoinNote
         manifest={collection.manifest}
-        skin={newCoin}
+        note={note}
         reducedMotion={reducedMotion}
         onOpen={() => {
           if (newCoin) collection.told(newCoin.id);
+          setHint(null);
           open('settings', true);
         }}
-        onDone={told}
+        onDone={noteDone}
       />
 
       {panel === 'settings' && (

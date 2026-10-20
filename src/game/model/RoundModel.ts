@@ -100,14 +100,21 @@ export class RoundModel {
   /** The answer being revealed, applied when the coin lands. */
   private pending: { response: RoundResponse; outcome: Outcome } | null = null;
 
-  constructor(server: GameServer, init: InitResponse) {
+  /**
+   * `preferredBet` is the bet the player had last visit; the config must still take
+   * it, or the round starts at the default bet.
+   */
+  constructor(server: GameServer, init: InitResponse, preferredBet: Minor | null = null) {
     this.server = server;
+    const { config } = init;
+    const preferred =
+      preferredBet !== null && isValidBet(config, preferredBet) ? preferredBet : null;
     this.confirmedBalance = init.balance;
     this.store = new Store<RoundState>({
       phase: { name: 'idle' },
       balance: init.balance,
       // a run left open last session comes back with its own bet
-      bet: init.openRun?.bet ?? init.config.defaultBet,
+      bet: init.openRun?.bet ?? preferred ?? config.defaultBet,
       openRun: init.openRun,
       history: [],
       config: init.config,

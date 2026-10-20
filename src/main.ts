@@ -22,6 +22,7 @@ import { GameScene } from './game/scene/GameScene';
 import { RoundModel } from './game/model/RoundModel';
 import { startDirector } from './game/director';
 import { GameSounds, startMusicDirector } from './game/sound';
+import { createLastBet, savedBet, withBet } from './game/lastBet';
 import { CALM, type Tension } from './game/tension';
 import { App } from './game/ui/App';
 import { UI_ART } from './game/ui/art';
@@ -103,7 +104,12 @@ async function boot(): Promise<void> {
     progress.track(loadFonts(FONTS), 1),
   ]);
 
-  const model = new RoundModel(server, init);
+  // the last visit's bet, so a returning player can press BET at once
+  const lastBet = createLastBet(browserStorage());
+  const model = new RoundModel(server, init, savedBet(lastBet.get(), init.config));
+  model.store.subscribe((s, previous) => {
+    if (s.bet !== previous.bet) lastBet.set(withBet(lastBet.get(), s.bet, s.config));
+  });
   // a showdown on the high rungs, which the interface follows by dimming its controls
   const tension = new Store<Tension>(CALM);
   startDirector(model, scene, sounds, settings, tension);

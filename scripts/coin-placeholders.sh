@@ -22,8 +22,6 @@ for face in sheriff outlaw; do
   make "silver-$face.webp" "$src" -modulate 118,6,100 -fill '#c4d2e4' -colorize 14%
   # gold: warmer and richer
   make "gold-$face.webp" "$src" -modulate 108,165,104
-  # lucky: turned green
-  make "lucky-$face.webp" "$src" -modulate 100,90,152
   # rusty: darker, brown, with a grainy surface, keeping the round outline
   make "rusty-$face.webp" "$src" -modulate 78,75,95 \
     \( -size 640x640 xc:gray50 -seed 7 -attenuate 1.4 +noise Gaussian -blur 0x2.2 \
@@ -41,6 +39,6 @@ for face in sheriff outlaw; do
 done
 
 # icons: the sheriff face, small
-for skin in classic silver gold lucky rusty holed; do
+for skin in classic silver gold rusty holed; do
   make "$skin-icon.webp" "$DIR/$skin-sheriff.webp" -resize 128x128
 done

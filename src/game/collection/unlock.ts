@@ -6,7 +6,7 @@
  * same as a 100.00 one, so the collection never pushes a bigger bet.
  */
 import type { RoundState } from '../model/RoundModel';
-import type { CoinManifest, UnlockRule } from './skins';
+import { isFree, skinOf, type CoinManifest, type CoinSkin, type UnlockRule } from './skins';
 
 export interface CollectionProgress {
   /** Flips seen, won or lost. */
@@ -17,9 +17,9 @@ export interface CollectionProgress {
   cashout: number;
   /** The run counted last and its highest rung, so a run resumed after a reload is not counted twice. */
   run: { id: string; best: number } | null;
-  /** Skins unlocked, in the order they were; the classic one is not listed. */
+  /** Every skin the player owns, the starting one included, in the order they came. */
   unlocked: string[];
-  /** The skin the player chose. */
+  /** The skin the player chose; empty until they have one, which means the starting skin. */
   chosen: string;
 }
 
@@ -29,7 +29,7 @@ export const EMPTY_PROGRESS: CollectionProgress = {
   cashout: 0,
   run: null,
   unlocked: [],
-  chosen: 'classic',
+  chosen: '',
 };
 
 /** What a round result means for the collection. */
@@ -84,7 +84,11 @@ function rungOf(rung: number | 'top', ladderLength: number): number {
   return rung === 'top' ? ladderLength : rung;
 }
 
-/** How far the player is towards `rule`: `done` of `goal`. */
+/**
+ * How far the player is towards `rule`: `done` of `goal`. A rule met once (a rung,
+ * a cash out) counts the best rung so far towards it, so even a goal of one feat
+ * shows how near the player came.
+ */
 export function progressOf(
   rule: UnlockRule,
   p: CollectionProgress,
@@ -93,11 +97,18 @@ export function progressOf(
   if ('flips' in rule) return { done: Math.min(p.flips, rule.flips), goal: rule.flips };
   if ('cashout' in rule) {
     const goal = rungOf(rule.cashout, ladderLength);
-    return { done: p.cashout >= goal ? 1 : 0, goal: 1 };
+    return { done: Math.min(p.cashout, goal), goal };
   }
-  const goal = rule.runs ?? 1;
-  const reached = p.runs[rungOf(rule.rung, ladderLength) - 1] ?? 0;
-  return { done: Math.min(reached, goal), goal };
+  const rung = rungOf(rule.rung, ladderLength);
+  if (rule.runs === undefined) return { done: Math.min(bestRung(p), rung), goal: rung };
+  return { done: Math.min(p.runs[rung - 1] ?? 0, rule.runs), goal: rule.runs };
+}
+
+/** The highest rung any run has reached; 0 for none. */
+export function bestRung(p: CollectionProgress): number {
+  let best = p.runs.length;
+  while (best > 0 && !p.runs[best - 1]) best--;
+  return best;
 }
 
 export function isMet(rule: UnlockRule, p: CollectionProgress, ladderLength: number): boolean {
@@ -121,5 +132,27 @@ export function unlock(
 }
 
 export function isUnlocked(manifest: CoinManifest, p: CollectionProgress, id: string): boolean {
-  return id === manifest.classic || p.unlocked.includes(id);
+  const skin = skinOf(manifest, id);
+  return !!skin && (isFree(skin) || p.unlocked.includes(id));
+}
+
+/** The coin the player is working towards: the first one still locked, in the path's order. */
+export interface NextCoin {
+  skin: CoinSkin;
+  rule: UnlockRule;
+  done: number;
+  goal: number;
+}
+
+/** Null once every coin is collected. */
+export function nextCoin(
+  manifest: CoinManifest,
+  p: CollectionProgress,
+  ladderLength: number,
+): NextCoin | null {
+  for (const skin of manifest.skins) {
+    if (!skin.unlock || isUnlocked(manifest, p, skin.id)) continue;
+    return { skin, rule: skin.unlock, ...progressOf(skin.unlock, p, ladderLength) };
+  }
+  return null;
 }

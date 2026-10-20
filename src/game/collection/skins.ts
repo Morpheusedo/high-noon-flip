@@ -27,13 +27,23 @@ export interface CoinSkin {
   icon: string;
   /** The coin's edge: in shade, in light, and its bright streak (`#rrggbb`). */
   rim: readonly [string, string, string];
-  /** Null for the skin every player has. */
+  /** Null for a skin every player owns from the first visit. */
   unlock: UnlockRule | null;
 }
 
+/**
+ * The skins in the order of the path a player climbs, which is the order the
+ * settings show them in. Two roles are kept apart: the fallback and the start.
+ */
 export interface CoinManifest {
-  /** The skin every player has, and the one shown when a skin's art is missing. */
+  /**
+   * The fallback: the faces shown when a skin's art is missing. It is part of the
+   * game's required art (its failure is a loading error), whether or not the
+   * player owns it; owning it is its own rule.
+   */
   classic: string;
+  /** The skin a new player wears, owned from the first visit. */
+  start: string;
   skins: CoinSkin[];
 }
 
@@ -54,10 +64,16 @@ export function skinOf(manifest: CoinManifest, id: string): CoinSkin | undefined
   return manifest.skins.find((s) => s.id === id);
 }
 
+/** The fallback skin, whose faces stand in for missing art. */
 export function classicOf(manifest: CoinManifest): CoinSkin {
   const classic = skinOf(manifest, manifest.classic);
   if (!classic) throw new Error(`coins.json: no skin "${manifest.classic}"`);
   return classic;
+}
+
+/** Whether every player owns `skin` from the first visit. */
+export function isFree(skin: CoinSkin): boolean {
+  return skin.unlock === null;
 }
 
 const COLOR = /^#[0-9a-f]{6}$/i;
@@ -83,7 +99,8 @@ export function checkManifest(json: unknown): CoinManifest {
     );
     at(`${path}.unlock`, s.unlock === null || isRule(s.unlock));
   });
-  at('classic', typeof m.classic === 'string' && skinOf(m, m.classic)?.unlock === null);
+  at('classic', typeof m.classic === 'string' && skinOf(m, m.classic) !== undefined);
+  at('start', typeof m.start === 'string' && skinOf(m, m.start)?.unlock === null);
   return m;
 }
 

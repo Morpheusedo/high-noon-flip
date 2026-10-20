@@ -1,7 +1,7 @@
 /**
  * Where the collection is kept. One interface, so the place can change without
  * the game noticing: today the browser's storage, later perhaps the player's
- * profile on the provider's side (open question 11 in docs/ROADMAP.md), which
+ * profile on the provider's side (open question 13 in docs/ROADMAP.md), which
  * would survive another device and a cleared browser.
  */
 import { readJson, writeJson, type KeyValueStore } from '../../shell/storage';
@@ -16,6 +16,13 @@ export interface CollectionStore {
 
 const STORE_KEY = 'hnf.coins';
 
+/**
+ * The saved shape's version. 1 (step 22, no `v`): the classic coin was every
+ * player's and never listed. 2: the rusty coin is the start and the classic one
+ * is earned, so a version 1 save gets the classic coin it already had.
+ */
+const VERSION = 2;
+
 /** The browser's storage; without one the collection lasts for this page load. */
 export function localCollectionStore(
   storage: KeyValueStore | null,
@@ -24,16 +31,25 @@ export function localCollectionStore(
   return {
     load: () => Promise.resolve(readProgress(readJson(storage, key))),
     save: (progress) => {
-      writeJson(storage, key, progress);
+      writeJson(storage, key, { v: VERSION, ...progress });
       return Promise.resolve();
     },
   };
 }
 
-/** A saved value checked field by field; anything odd falls back to the empty value. */
+/**
+ * A saved value checked field by field; anything odd falls back to the empty value.
+ * Skins it names that the manifest no longer has are dropped by the collection.
+ */
 export function readProgress(saved: unknown): CollectionProgress {
-  const s = typeof saved === 'object' && saved !== null ? (saved as Record<string, unknown>) : {};
+  if (typeof saved !== 'object' || saved === null) return EMPTY_PROGRESS;
+  const s = saved as Record<string, unknown>;
   const e = EMPTY_PROGRESS;
+  const unlocked = Array.isArray(s.unlocked)
+    ? s.unlocked.filter((id): id is string => typeof id === 'string')
+    : [];
+  // version 1 listed no classic coin: every player had it
+  if (s.v === undefined) unlocked.unshift('classic');
   const run = s.run as Record<string, unknown> | null | undefined;
   return {
     flips: whole(s.flips) ?? e.flips,
@@ -43,9 +59,7 @@ export function readProgress(saved: unknown): CollectionProgress {
       typeof run === 'object' && run !== null && typeof run.id === 'string' && whole(run.best)
         ? { id: run.id, best: whole(run.best) ?? 0 }
         : e.run,
-    unlocked: Array.isArray(s.unlocked)
-      ? [...new Set(s.unlocked.filter((id): id is string => typeof id === 'string'))]
-      : e.unlocked,
+    unlocked: [...new Set(unlocked)],
     chosen: typeof s.chosen === 'string' ? s.chosen : e.chosen,
   };
 }

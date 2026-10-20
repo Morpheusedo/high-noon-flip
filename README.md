@@ -2,8 +2,8 @@
 
 [Русская версия](README.ru.md)
 
-A western coin flip: choose Sheriff or Outlaw and press BET, the revolver fires and flips
-the coin.
+A western coin flip: press BET, then choose Sheriff or Outlaw, and the revolver fires and
+flips the coin.
 Each correct pick doubles the prize, from 1.98x up to 253.44x; cash out at any time, and
 one wrong pick loses the stake.
 
@@ -66,11 +66,13 @@ commit, "-dirty" with uncommitted changes, `GIT_COMMIT` when a CI builds without
 `npm run smoke` serves `dist/` with `vite preview` and plays it in Playwright on a
 360 x 640 phone, portrait and landscape: loading, the bet dial (a drag, the wheel, the arrow
 keys), the bet list where the server takes levels only, a bet typed in the tab (a message, an amount out of range clamped,
-rounding, Escape and a tap outside) shown on the drum and played to the server, a typed bet too long for its chamber (a mark on the drum, every digit on the tab), BET with no side (a hint and nothing sent; still outlines with reduced
-motion), a side chosen and kept for the next BET with Space and Enter, a run with its next prize, its rungs lit and its cash out (coins to the balance; none
+rounding, Escape and a tap outside) shown on the drum and played to the server, a typed bet too long for its chamber (a mark on the drum, every digit on the tab), BET first (a side tapped before it sends nothing and
+points at BET; BET locks the bet and lights the emblems; Escape and a second BET let it go;
+BET then a side, and Space then →, each play a round; a returning player's quieter hints; a
+still glow with reduced motion), a run with its next prize, its rungs lit and its cash out (coins to the balance; none
 with reduced motion), the last flips in the settings, a lost answer (NETWORK) and its recovery, a run resumed after a reload
 and cashed out with Space, the controls on screen (the ladder clear of the corners, the balance, the dial and BET
-apart) before and after a rotation, and in portrait on an iPhone SE (320 x 568) the ladder
+apart, and the hints clear of them) before and after a rotation, and in portrait on an iPhone SE (320 x 568) the ladder
 fitted between the corner buttons through a run, then at 280 x 500 a window of rungs with the
 top one after an ellipsis, and a showdown from the 6th rung at 1x and the 7th at 4x (the
 controls dimmed but for the ladder, then calm again and back to idle), and the coin
@@ -129,7 +131,8 @@ src/
    └─ ui/             Preact: the HTML interface over the canvas
       ├─ App.tsx          lays out the controls, keyboard shortcuts
       ├─ TopBar.tsx       title with the ladder under it, speed
-      ├─ Emblems.tsx      Sheriff and Outlaw (choose a side; flip in a run), keycaps, hint, coin tap
+      ├─ Emblems.tsx      Sheriff and Outlaw (the side after BET; flip in a run), keycaps, hint, coin tap
+      ├─ guide.ts         what to press next (BET, then a side) and how loudly to say it
       ├─ BetDial.tsx      the bet: the revolver's cylinder in the right edge
       ├─ BetTab.tsx       the tab over the chosen chamber: the amount, and the field it turns into
       ├─ typedBet.ts      what a typed amount means: the stake, a rounding, or why not
@@ -197,10 +200,12 @@ Rules the code follows:
   mock server both use it. The last bet is kept between visits (`game/lastBet.ts`); one the
   config no longer takes (another currency, a changed list, outside the typed range) gives way
   to the default bet, and an open run's own bet wins over it.
-- **A round starts in two steps.** A tap on an emblem (or ← →) chooses the side, BET places
-  the bet on it, and the side stays chosen for the next round. The choice lives in the
-  interface, not in the model: the server hears of it only with the bet. In a run a tap on a
-  side flips at once.
+- **A round starts in two steps: BET, then a side.** BET arms the bet (`RoundModel.arm`): the
+  client's own state, so nothing is sent and the bet locks; the side then sends
+  `play({ bet, pick })`, the same request as before. A side tapped first does nothing but point
+  at BET; BET again or Escape disarms. Whatever is next glows (`ui/guide.ts`), with a pointer
+  and a label for the first three rounds (counted in the settings). In a run a tap on a side
+  flips at once.
 - **The showdown follows the rung, never the outcome.** A flip to the last four rungs of the
   ladder is a duel, to the last two a showdown (`game/tension.ts`): the light closes in on the
   coin, the music ducks, a heartbeat, slow motion at the end of the flight, on the last two a
@@ -216,8 +221,8 @@ Rules the code follows:
   (localStorage today); the coins show the next one and how far the player is. Only the chosen
   skin's faces load with the game; missing art for a skin shows the classic coin and a console
   warning, not a loading error.
-- **Keys:** ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A held key
-  does not repeat, so it cannot act as autoplay. A button reached with Tab keeps its own
+- **Keys:** Space or Enter BET (cash out in a run), then ← Outlaw, → Sheriff; Escape lets BET
+  go; ↑ ↓ bet. A held key does not repeat, so it cannot act as autoplay or run BET into a pick. A button reached with Tab keeps its own
   Space and Enter. While the player types a bet, the keys are the field's and BET waits.
 - **No string in code.** Every text the player reads is a key in `src/locales/en.json`.
   English is bundled; any other language is a small chunk loaded only when `lang` asks for

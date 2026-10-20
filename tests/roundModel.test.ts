@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { affordableBet, canCashOut, canPick, RoundModel } from '../src/game/model/RoundModel';
+import {
+  affordableBet,
+  canBet,
+  canCashOut,
+  canChangeSetup,
+  canPick,
+  RoundModel,
+} from '../src/game/model/RoundModel';
 import { MockServer } from '../src/server/mockServer';
 
 async function setup(options: ConstructorParameters<typeof MockServer>[0] = {}) {
@@ -117,6 +124,87 @@ describe('first pick', () => {
     server.setBalance(87);
     await model.refresh();
     expect(affordableBet(model.state)).toBe(85);
+  });
+});
+
+describe('BET, then a side', () => {
+  it('arms without asking the server, locks the bet, and plays the side chosen next', async () => {
+    const { server, model } = await setup();
+    const play = vi.spyOn(server, 'play');
+    model.arm();
+    expect(model.state).toMatchObject({ armed: true, balance: 100_000, phase: { name: 'idle' } });
+    expect(play).not.toHaveBeenCalled();
+    // the bet is set: the dial and the keys cannot change it now
+    expect(canChangeSetup(model.state)).toBe(false);
+    model.setBet(1000);
+    expect(model.state.bet).toBe(500);
+    // BET still answers, to let it go
+    expect(canBet(model.state)).toBe(true);
+
+    server.forceOutcomes('sheriff');
+    await model.pick('sheriff');
+    expect(play).toHaveBeenCalledWith({ bet: 500, pick: 'sheriff' });
+    expect(model.state.armed).toBe(false);
+    present(model);
+    expect(model.state.armed).toBe(false);
+  });
+
+  it('lets the bet go on a second press', async () => {
+    const { model } = await setup();
+    model.arm();
+    model.disarm();
+    expect(model.state.armed).toBe(false);
+    expect(canChangeSetup(model.state)).toBe(true);
+    model.setBet(1000);
+    expect(model.state.bet).toBe(1000);
+  });
+
+  it('goes to the insufficient-funds notice instead of arming', async () => {
+    const { server, model } = await setup({ balance: 50 });
+    const play = vi.spyOn(server, 'play');
+    model.arm();
+    expect(model.state.armed).toBe(false);
+    expect(model.state.phase).toEqual({ name: 'error', code: 'INSUFFICIENT_FUNDS', fatal: false });
+    expect(play).not.toHaveBeenCalled();
+    await model.dismissError();
+    expect(model.state).toMatchObject({ phase: { name: 'idle' }, armed: false });
+  });
+
+  it('returns to the bet, not armed, after a server error on the pick', async () => {
+    const { server, model } = await setup();
+    model.arm();
+    server.failNext('NETWORK');
+    await model.pick('outlaw');
+    expect(model.state).toMatchObject({ phase: { name: 'error' }, armed: false });
+    await model.dismissError();
+    expect(model.state).toMatchObject({ phase: { name: 'idle' }, armed: false });
+  });
+
+  it('does not arm in a run, and a run resumed after a reload starts unarmed', async () => {
+    const store = new Map<string, string>();
+    const kv = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
+    const first = await setup({ store: kv });
+    first.model.arm();
+    first.server.forceOutcomes('outlaw');
+    await first.model.pick('outlaw');
+
+    const server = new MockServer({ store: kv });
+    const model = new RoundModel(server, await server.init());
+    expect(model.state).toMatchObject({ armed: false, openRun: { step: 1 } });
+    expect(canBet(model.state)).toBe(false);
+    model.arm();
+    expect(model.state.armed).toBe(false);
+  });
+
+  it('drops the armed bet on a resync, e.g. a balance changed elsewhere', async () => {
+    const { model } = await setup();
+    model.arm();
+    await model.refresh();
+    expect(model.state.armed).toBe(false);
   });
 });
 

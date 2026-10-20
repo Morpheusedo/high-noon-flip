@@ -71,9 +71,9 @@ test('runs on a slow phone', async ({ page }, info) => {
   const idle = await frames(page, () => page.waitForTimeout(3000));
   const round = await frames(page, async () => {
     await page.evaluate(() => window.hnf?.server.forceOutcomes('win'));
-    // choose the side, then BET
-    await page.locator('.pick.sheriff').dispatchEvent('click');
+    // BET, then the side
     await page.locator('.bet-button').dispatchEvent('click');
+    await page.locator('.pick.sheriff').dispatchEvent('click');
     await page.waitForFunction(() => window.hnf?.model?.state.phase.name !== 'idle');
     await page.waitForFunction(() => window.hnf?.model?.state.phase.name === 'idle', null, {
       timeout: 30_000,

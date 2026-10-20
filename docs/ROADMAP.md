@@ -120,7 +120,8 @@ A tap on the Sheriff or Outlaw emblem (or ← →) only chooses the side: the ch
 stands raised and lit, the other dims. A large gold BET button beside the bet places the
 bet on it, and the side stays chosen for the next round. BET with no side sends nothing,
 says "Choose Sheriff or Outlaw first" and pulses both emblems once. In a run a tap on a
-side still flips at once. Space and Enter press BET, or cash out in a run.
+side still flips at once. Space and Enter press BET, or cash out in a run. (The order is
+reversed in step 24: BET first, then the side, and no side is kept.)
 
 ### 17. The cylinder dial is back — done
 
@@ -190,6 +191,17 @@ loads, as a short note under the ladder. Lucky left the game and waits in `asset
 for a promotion. The last bet is kept between visits, so a returning player can press BET at
 once (the side is not: the round flow is about to put BET before the side). Saved progress
 from step 22 still loads.
+
+### 24. BET first, then a side — done
+
+A player coming from the casino lobby presses BET first and only then chooses a side; a side
+tapped first does nothing to the round. Before BET the emblems wait, dimmed and still, and
+BET glows and breathes; a tap on an emblem (or ← →) pulses BET once and says "Press BET
+first" over it, with a pointer down at it. BET sets the bet without sending anything: it
+stays pressed, the dial locks, and both emblems light up and take turns hopping, with
+"< Choose a side >" between them; the side then plays the round as before (`play({ bet, pick
+})`). BET again or Escape lets it go. A new player gets the pointers and labels for the first
+three rounds, then only the glow and the hop on what is next. No side is kept between rounds.
 
 ## Decisions
 
@@ -434,7 +446,7 @@ from step 22 still loads.
   round history, which the shell does not show yet, is the real record.
 - The settings panel has two columns in landscape (sound | speed and the last flips): one
   column ran 31 px past a 390 px tall screen.
-- Choose, then BET (step 16), asked for: a tap on an emblem or ← → only chooses the side,
+- Choose, then BET (step 16; reversed in step 24, see below), asked for: a tap on an emblem or ← → only chooses the side,
   and BET places the bet with it through the same `model.pick(side)` (`play({ bet, pick })`,
   the protocol is unchanged). A lone tap no longer stakes money, which a stray touch on a
   phone did before. The chosen side lives in `App` state, not in `RoundModel`: the server
@@ -444,10 +456,10 @@ from step 22 still loads.
   string of quick decisions, and BET only starts the round. The emblems show no choice then
   (no dimming), since both are live, and the side tapped last becomes the chosen one for the
   next round.
-- The chosen emblem stands raised (8% up, scale 1.1) with its green outline lit, no hop; the
+- (Gone in step 24, with the kept side.) The chosen emblem stands raised (8% up, scale 1.1) with its green outline lit, no hop; the
   other stops hopping and dims to half, still one tap away. With nothing chosen they take
   turns hopping, as before. `aria-pressed` tells a screen reader which one is chosen.
-- BET with no side sends nothing: the hint "Choose Sheriff or Outlaw first" appears between
+- (Gone in step 24: BET comes first.) BET with no side sends nothing: the hint "Choose Sheriff or Outlaw first" appears between
   the emblems (a `role="status"` region, kept mounted so it is announced) until a side is
   chosen, and both emblems pulse once (scale 1.18, outline flashed, 0.7 s; two keyframe names
   so a second press restarts it). Reduced motion: no pulse, both outlines fully lit and still
@@ -707,6 +719,52 @@ from step 22 still loads.
   default bet; an open run's bet wins. The side is not kept: the next step has the player press
   BET first and choose a side after. Like the collection, the bet lives in the browser (open
   question 13).
+
+- BET first, then a side (step 24), asked for: a player arriving from the lobby taps what
+  catches the eye, and with the side first a stray tap chose it and BET then staked on it
+  without the player having decided. Now BET, the brightest control, is the one live action
+  between rounds, and the side is the decision that sends the bet. Both steps still make one
+  request, `play({ bet, pick })`, sent on the side: the protocol does not change, and no
+  money moves until then, so leaving after BET costs nothing.
+- Armed is `RoundState.armed`, set by `RoundModel.arm()` and never sent to the server. It is
+  in the model rather than in `App`, so `canChangeSetup` is false while armed and the dial,
+  the tab and ↑ ↓ lock with no extra checks, and so every path out of a round clears it: a
+  pick, a cash out, an error (a server error on the pick comes back to idle, not armed), a
+  resync, and a run restored after a reload, which starts unarmed. `pick()` still starts a new
+  round without `arm()`: the order is the interface's rule, and the tests and QA pick directly.
+- BET with too little balance goes to the insufficient-funds notice at once (`arm()` checks
+  it), instead of arming a bet the side would then refuse. `pick()` keeps its own check.
+- Before BET a side does nothing to the round: no sound of a bet, no request, no state. BET
+  pulses once (scale 1.14, 0.6 s, two keyframe names so a second tap restarts it) and "Press
+  BET first" shows over it with a pointer down at it; the word in the label is the button's
+  own (`{bet}`, "ПОСТАВИТЬ" in Russian), in its gold letters. The emblems stay enabled, so the
+  tap can be answered, and wait at 45% with no hop and no outline; their keycaps dim with them.
+- BET armed stays pressed in (as on `:active`), duller, with `aria-pressed`; pressed again,
+  or Escape, lets it go. Hidden was considered, but a button that vanishes leaves the player
+  no visible way back, and the spot is where the cash out appears in a run anyway.
+- What is next (`ui/guide.ts` `nextAction`): BET between rounds, a side once armed, nothing
+  while a round plays or in a run (a run is as before). The interface's root carries it as
+  `data-next`. BET next: a radial glow breathes behind it (opacity and scale only, 1.6 s) and
+  the button swells 3.5% with it. A side next: the emblems' hop and lit outline of before.
+- Hints quiet down with experience: pointer and label for a first visit and the first three
+  rounds started (`hintLevel`), then the glow and the hop alone; after a side tapped too early
+  the label still comes back for 3 s. The count is `roundsPlayed` in the player's settings
+  (`hnf.settings`), counted when a round starts and only up to 3, so it is not a play log.
+  It is per browser, like the settings: a player on a new device sees the strong hints again,
+  which is harmless.
+- The labels are `role="status"` regions kept mounted, so a screen reader hears "Press BET
+  first" and "Choose a side" arrive. The pointers are inline SVG chevrons that nudge the way
+  they point (0.9 s); with reduced motion nothing moves: BET has a still glow (0.8), the
+  emblems both outlines fully lit, the pointers stand still.
+- In portrait the balance and the dial's tab stand level just above BET with 88 px between
+  them at 390 x 780, too little for the label: it sits above that row and its pointer runs down
+  between them to BET. In landscape it sits right over BET. Checked at 390 x 780 and 844 x 390,
+  first visit and returning player, idle, after an early tap and armed; the smoke test checks
+  both labels clear of the balance, the tab, the chosen bullet, BET and the emblems before and
+  after a rotation. Reduced motion is checked by the smoke test (Playwright's emulation).
+- Keys: Space or Enter press BET (arm, or disarm when armed), then ← → pick; Escape disarms.
+  Auto-repeat is still ignored, so a held key never chains BET into a pick: the pick always
+  takes a second, separate key.
 
 ## Open questions for the provider
 

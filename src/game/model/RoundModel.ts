@@ -11,6 +11,11 @@
  *   is known but not shown yet, so the balance still excludes the win.
  * - `result`: the coin has landed; the stamp shows the win or loss.
  *
+ * A new round starts in two steps: `arm()` (BET) and then `pick(side)`. Armed
+ * is the client's own state: nothing is sent and no money moves until the side
+ * is chosen, so `play({ bet, pick })` still carries both. While armed the bet is
+ * locked; a pick, `disarm()`, an error or a resync ends it.
+ *
  * The director (animations) calls `finishReveal()` and `finishResult()` when
  * its part is done. Anything a player does in the wrong phase is ignored, which
  * is what stops a double tap from sending two bets.
@@ -56,6 +61,8 @@ export interface RoundState {
   balance: Minor;
   bet: Minor;
   openRun: OpenRun | null;
+  /** BET was pressed and the round waits for a side. Never sent to the server. */
+  armed: boolean;
   /** Past outcomes, newest first. */
   history: Side[];
   readonly config: GameConfig;
@@ -82,8 +89,11 @@ export const isIdle = (s: RoundState): boolean => s.phase.name === 'idle';
 export const canPick = (s: RoundState): boolean =>
   isIdle(s) && (s.openRun !== null || s.balance >= s.bet);
 export const canCashOut = (s: RoundState): boolean => isIdle(s) && s.openRun !== null;
-/** The bet is locked while a run is open. */
-export const canChangeSetup = (s: RoundState): boolean => isIdle(s) && s.openRun === null;
+/** The bet is locked while a run is open, and once BET is pressed. */
+export const canChangeSetup = (s: RoundState): boolean =>
+  isIdle(s) && s.openRun === null && !s.armed;
+/** BET works between rounds: it arms, and pressed again it disarms. */
+export const canBet = (s: RoundState): boolean => isIdle(s) && s.openRun === null;
 /**
  * The highest level the balance covers. Below every level, with typed bets on, the
  * balance itself on the grid: never an odd all-in amount while a level fits.
@@ -116,6 +126,7 @@ export class RoundModel {
       // a run left open last session comes back with its own bet
       bet: init.openRun?.bet ?? preferred ?? config.defaultBet,
       openRun: init.openRun,
+      armed: false,
       history: [],
       config: init.config,
       jurisdiction: init.jurisdiction,
@@ -128,18 +139,45 @@ export class RoundModel {
 
   /* ---------- player actions ---------- */
 
+  /**
+   * BET: the bet is set and the round waits for a side. A bet the balance cannot
+   * cover goes to the insufficient-funds notice instead, as a pick would.
+   */
+  arm(): void {
+    const s = this.state;
+    if (!canChangeSetup(s)) return;
+    if (s.balance < s.bet) {
+      this.update({ phase: { name: 'error', code: 'INSUFFICIENT_FUNDS', fatal: false } });
+      return;
+    }
+    this.update({ armed: true });
+  }
+
+  /** BET pressed again, or Escape: back to choosing the bet. */
+  disarm(): void {
+    if (this.state.armed && isIdle(this.state)) this.update({ armed: false });
+  }
+
+  /**
+   * In a run, the next flip. Between rounds it starts a round, armed or not: the
+   * order BET, then a side, is the interface's rule (tests and QA pick directly).
+   */
   async pick(side: Side): Promise<void> {
     const s = this.state;
     if (!isIdle(s)) return;
     const run = s.openRun;
     if (!run && s.balance < s.bet) {
-      this.update({ phase: { name: 'error', code: 'INSUFFICIENT_FUNDS', fatal: false } });
+      this.update({
+        phase: { name: 'error', code: 'INSUFFICIENT_FUNDS', fatal: false },
+        armed: false,
+      });
       return;
     }
 
     // a new round shows the stake leaving the balance at once; a run already paid it
     this.update({
       phase: { name: 'requesting', pick: side },
+      armed: false,
       balance: run ? s.balance : s.balance - s.bet,
     });
     const stake = run ? run.bet : s.bet;
@@ -156,7 +194,7 @@ export class RoundModel {
     const s = this.state;
     const run = s.openRun;
     if (!canCashOut(s) || !run) return;
-    this.update({ phase: { name: 'requesting', pick: null } });
+    this.update({ phase: { name: 'requesting', pick: null }, armed: false });
     await this.send(() => this.server.action({ roundId: run.roundId, type: 'cashout' }), run.bet);
   }
 
@@ -170,7 +208,7 @@ export class RoundModel {
     const { phase } = this.state;
     if (phase.name !== 'error' || phase.fatal) return;
     if (!RESYNC_AFTER.includes(phase.code)) {
-      this.update({ phase: { name: 'idle' }, balance: this.confirmedBalance });
+      this.update({ phase: { name: 'idle' }, balance: this.confirmedBalance, armed: false });
       return;
     }
     await this.resync();
@@ -206,7 +244,7 @@ export class RoundModel {
 
   /** Locks the controls while it fetches the session again, as on a fresh load. */
   private async resync(): Promise<void> {
-    this.update({ phase: { name: 'requesting', pick: null } });
+    this.update({ phase: { name: 'requesting', pick: null }, armed: false });
     try {
       const init = await this.server.init();
       this.confirmedBalance = init.balance;
@@ -259,6 +297,7 @@ export class RoundModel {
     this.update({
       phase: { name: 'error', code, fatal: FATAL.includes(code) },
       balance: this.confirmedBalance,
+      armed: false,
     });
   }
 

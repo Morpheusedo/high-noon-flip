@@ -25,6 +25,9 @@ describe('settings', () => {
       sfxVolume: 100,
     });
     expect(readSettings('garbage')).toEqual(DEFAULT_SETTINGS);
+    for (const roundsPlayed of [-1, 2.5, '3', null])
+      expect(readSettings({ roundsPlayed }).roundsPlayed).toBe(0);
+    expect(readSettings({ roundsPlayed: 3 }).roundsPlayed).toBe(3);
     const store = memoryStore();
     store.setItem('hnf.settings', '{not json');
     expect(createSettings(store).get()).toEqual(DEFAULT_SETTINGS);

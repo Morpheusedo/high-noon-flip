@@ -2,11 +2,10 @@
  * The two choices: the Sheriff star and the Outlaw revolvers, cut from the coin
  * art, with brass keycaps under them for the arrow keys on a desktop.
  *
- * Between rounds a tap only chooses a side: the chosen emblem stands raised and
- * lit, the other dims, and BET places the bet. With no side chosen yet they take
- * turns hopping, and BET without one makes both pulse once. In a run each tap
- * flips at once, so both are live and neither dims. While a round plays they
- * slide out of the way.
+ * Between rounds BET comes first: until it is pressed both emblems wait, dimmed
+ * and still, and a tap on one only points the player at BET. Once BET is pressed
+ * they light up and take turns hopping, and a tap places the bet on that side.
+ * In a run each tap flips at once. While a round plays they slide out of the way.
  *
  * An invisible button over the coin lets the player turn it over by hand. That
  * is for looks only: the server still decides every flip.
@@ -19,34 +18,27 @@ interface Props {
   disabled: boolean;
   /** The arrow key just pressed, so its keycap dips. */
   pressed: Side | null;
-  /** The side BET will bet on; null shows them both waiting for a choice. */
-  chosen: Side | null;
-  /** A tap chooses a side for BET (between rounds), rather than flipping (in a run). */
-  choosing: boolean;
-  /** Counts BETs pressed with no side chosen: each one pulses both emblems once. */
-  nudge: number;
+  /** BET is not pressed yet: dimmed and still, a tap points at BET instead. */
+  waiting: boolean;
   onPick(side: Side): void;
 }
 
-export function Emblems({ disabled, pressed, chosen, choosing, nudge, onPick }: Props) {
+export function Emblems({ disabled, pressed, waiting, onPick }: Props) {
   const { t } = useText();
-  const shown = choosing ? chosen : null;
-  // two names for one pulse, so a second BET restarts it
-  const nudged = choosing && !chosen && nudge > 0 ? ` nudge-${nudge % 2 ? 'a' : 'b'}` : '';
+  const wait = waiting ? ' waiting' : '';
   return (
     <>
       {(['outlaw', 'sheriff'] as const).map((side) => (
         <button
-          class={`pick ${side}${shown ? (shown === side ? ' chosen' : ' other') : ''}${nudged}`}
+          class={`pick ${side}${wait}`}
           aria-label={t(`side.${side}`)}
-          aria-pressed={choosing ? chosen === side : undefined}
           disabled={disabled}
           onClick={() => onPick(side)}
         />
       ))}
       {(['outlaw', 'sheriff'] as const).map((side) => (
         <button
-          class={`key ${side}${pressed === side ? ' down' : ''}`}
+          class={`key ${side}${pressed === side ? ' down' : ''}${wait}`}
           tabIndex={-1}
           aria-label={t(`pick.key.${side}`)}
           disabled={disabled}
@@ -81,14 +73,40 @@ export function CoinTap({ disabled, onTap }: { disabled: boolean; onTap(): void 
 }
 
 /**
- * "Choose Sheriff or Outlaw first", between the emblems, after BET with no side
- * chosen. The live region stays mounted so a screen reader hears the text arrive.
+ * "Choose a side" between the emblems once BET is pressed, with an arrow towards
+ * each. For a new player only; the emblems' hop says it to everyone. The live
+ * region stays mounted so a screen reader hears the text arrive.
  */
 export function SideHint({ shown }: { shown: boolean }) {
   const { t } = useText();
   return (
     <div class="side-hint" role="status">
-      {shown && <span>{t('bet.chooseSide')}</span>}
+      {shown && (
+        <span>
+          <Chevron dir="left" />
+          {t('hint.side')}
+          <Chevron dir="right" />
+        </span>
+      )}
     </div>
+  );
+}
+
+/** A pointer for the hints: an inline SVG, so no font has to have the glyph. */
+export function Chevron({ dir }: { dir: 'left' | 'right' | 'down' }) {
+  const d = { left: 'M15 5l-7 7 7 7', right: 'M9 5l7 7-7 7', down: 'M5 9l7 7 7-7' }[dir];
+  return (
+    <svg
+      class={`chevron ${dir}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="3.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d={d} />
+    </svg>
   );
 }

@@ -6,15 +6,17 @@
  * from the model's questions (`canChangeSetup`, `canCashOut`...), and the CSS
  * hides or dims the rest from the `data-*` attributes on the root.
  *
- * A round starts in two steps: a tap on an emblem (or ← →) chooses the side, and
- * BET places the bet on it. The side stays chosen for the next round. It lives
- * here, not in the model: the server only hears of it with the bet. In a run a
- * tap on a side flips at once, as the run is a string of quick decisions.
+ * A round starts in two steps: BET sets the bet (`model.arm()`, nothing is sent),
+ * then a tap on an emblem (or ← →) places it on that side. A side tapped before
+ * BET does nothing but point at BET; BET pressed again, or Escape, lets it go.
+ * Whatever is next glows (`guide.ts`), with a pointer and a label for a new
+ * player. In a run a tap on a side flips at once, as the run is a string of
+ * quick decisions.
  *
- * Keys: ← Outlaw, → Sheriff, ↑ ↓ bet, Space or Enter BET (cash out in a run). A
- * held key does not repeat: one press is one bet, so a key held down can never
- * act as autoplay. While the player types a bet in the tab, the keys are theirs
- * and BET waits.
+ * Keys: Space or Enter BET (cash out in a run), then ← Outlaw, → Sheriff; Escape
+ * lets BET go; ↑ ↓ bet. A held key does not repeat: one press is one action, so
+ * a key held down can never act as autoplay or run BET into a pick. While the
+ * player types a bet in the tab, the keys are theirs and BET waits.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { nextLevel } from '../../server/bets';
@@ -24,6 +26,7 @@ import type { Store } from '../../shell/store';
 import { useStore } from '../../shell/useStore';
 import {
   affordableBet,
+  canBet,
   canCashOut,
   canChangeSetup,
   isIdle,
@@ -39,6 +42,7 @@ import { BetPicker } from './BetPicker';
 import { BetTab } from './BetTab';
 import { CoinTap, Emblems, SideHint } from './Emblems';
 import { formats } from './format';
+import { countRound, hintLevel, nextAction } from './guide';
 import { CoinNote, CoinsSection, useNextNote, useUnlockNote } from './Coins';
 import { useReducedMotion } from './hooks';
 import { ErrorDialog, FundsNotice, ResultStamp } from './Notices';
@@ -68,6 +72,8 @@ interface Props {
 
 /** How long a keycap stays down after its key. */
 const KEY_DIP_MS = 110;
+/** How long "Press BET first" stays after a side tapped too early, once the hints are quiet. */
+const BET_HINT_MS = 3000;
 
 type Box = Point & { width: number; height: number };
 
@@ -112,10 +118,9 @@ export function App(props: Props) {
   const reducedMotion = useReducedMotion();
   const [pressed, setPressed] = useState<Side | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
-  // the side BET bets on, kept for the next round; null until the player chooses one
-  const [chosen, setChosen] = useState<Side | null>(null);
-  // BET with no side: the hint shows until one is chosen, and each press pulses the emblems
+  // a side tapped before BET: each one pulses BET, and its hint shows for a while
   const [nudge, setNudge] = useState(0);
+  const [nudged, setNudged] = useState(false);
   const [flights, setFlights] = useState<Flight[]>([]);
   const fmt = useMemo(() => formats(s.config.currency, lang), [s.config.currency, lang]);
 
@@ -205,31 +210,44 @@ export function App(props: Props) {
     void model.cashOut();
   }, [model, notePlaque]);
 
-  const chosenNow = useRef(chosen);
-  chosenNow.current = chosen;
-  /** BET: the bet on the chosen side, or a hint and a pulse when there is none. */
-  const placeBet = useCallback(() => {
-    if (!canChangeSetup(model.state)) return;
-    const side = chosenNow.current;
-    if (side) {
-      void model.pick(side);
-      return;
-    }
+  /** BET: sets the bet and waits for a side; pressed again, lets it go. */
+  const onBet = useCallback(() => {
+    const state = model.state;
+    if (!canBet(state)) return;
+    if (state.armed) model.disarm();
+    else model.arm();
     sounds.click();
-    setNudge((n) => n + 1);
+    setNudged(false);
   }, [model, sounds]);
-  /** An emblem or an arrow: between rounds it chooses the side, in a run it flips. */
+  /** An emblem or an arrow: once BET is pressed it places the bet, in a run it flips. */
   const onSide = useCallback(
     (side: Side) => {
       const state = model.state;
       if (!isIdle(state)) return;
-      setChosen(side);
-      setNudge(0);
-      if (state.openRun) void model.pick(side);
-      else if (chosenNow.current !== side) sounds.click();
+      if (state.openRun) {
+        void model.pick(side);
+        return;
+      }
+      if (!state.armed) {
+        // too early: nothing happens to the round, BET pulses and says it comes first
+        sounds.click();
+        setNudge((n) => n + 1);
+        setNudged(true);
+        return;
+      }
+      const played = settings.get().roundsPlayed;
+      if (hintLevel(played) === 'strong')
+        settings.set({ ...settings.get(), roundsPlayed: countRound(played) });
+      void model.pick(side);
     },
-    [model, sounds],
+    [model, sounds, settings],
   );
+  // once the hints are quiet, the note after a side tapped too early fades by itself
+  useEffect(() => {
+    if (!nudged) return;
+    const timer = setTimeout(() => setNudged(false), BET_HINT_MS);
+    return () => clearTimeout(timer);
+  }, [nudged, nudge]);
 
   // a payout (a cash out, or the top rung) sends coins from the plaque to the balance
   const paying =
@@ -277,13 +295,20 @@ export function App(props: Props) {
       const target = e.target instanceof Element ? e.target : null;
       if (panel || typing || target?.closest('input, textarea, select, form')) return;
       const state = model.state;
+      if (e.key === 'Escape') {
+        if (state.armed && isIdle(state)) {
+          e.preventDefault();
+          onBet();
+        }
+        return;
+      }
       if (e.key === ' ' || e.key === 'Enter') {
         // a control reached with Tab keeps its own Space and Enter; focus a click or a
         // tap left behind does not
         const control = target?.closest('button, a, [tabindex]');
         if (control && !control.matches('.cashout, .bet-button') && tabbed.current) return;
         // the one button in the middle at the bottom: BET, or the cash out in a run
-        const press = canCashOut(state) ? cashOut : canChangeSetup(state) ? placeBet : null;
+        const press = canCashOut(state) ? cashOut : canBet(state) ? onBet : null;
         if (!press) return;
         e.preventDefault();
         spaceTaken = e.key === ' ';
@@ -322,7 +347,7 @@ export function App(props: Props) {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('keyup', onKeyUp);
     };
-  }, [model, sounds, panel, typing, cashOut, placeBet, onSide]);
+  }, [model, sounds, panel, typing, cashOut, onBet, onSide]);
 
   // the bet list closes by itself if a round starts some other way, e.g. a key
   useEffect(() => {
@@ -334,6 +359,9 @@ export function App(props: Props) {
   const outcome = phase.name === 'result' ? phase.outcome.kind : undefined;
   const turbo = s.jurisdiction.turboAllowed;
   const lower = affordableBet(s);
+  // what to press next, and whether a new player still gets the pointer and the label
+  const next = panel === null && !typing ? nextAction(s) : null;
+  const strong = hintLevel(prefs.roundsPlayed) === 'strong';
 
   return (
     <div
@@ -344,6 +372,7 @@ export function App(props: Props) {
       data-outcome={outcome === 'lose' ? 'lose' : outcome ? 'win' : undefined}
       data-turbo={turbo ? undefined : 'off'}
       data-tension={showdown.dimHud ? showdown.level : undefined}
+      data-next={next ?? undefined}
       style={{
         '--tension-ms': `${showdown.level ? showdown.inMs : showdown.outMs}ms`,
         '--tension-light': showdown.light,
@@ -378,12 +407,10 @@ export function App(props: Props) {
         <Emblems
           disabled={!idle}
           pressed={pressed}
-          chosen={chosen}
-          choosing={!openRun}
-          nudge={nudge}
+          waiting={!openRun && !s.armed}
           onPick={onSide}
         />
-        <SideHint shown={nudge > 0 && chosen === null && setupOpen} />
+        <SideHint shown={next === 'side' && strong} />
 
         <Balance
           balance={s.balance}
@@ -432,11 +459,14 @@ export function App(props: Props) {
             </BetDial>
             <BetButton
               bet={s.bet}
-              side={chosen}
-              disabled={!setupOpen || panel !== null || typing}
+              armed={s.armed}
+              next={next === 'bet'}
+              hint={next === 'bet' && (strong || nudged)}
+              nudge={nudge}
+              disabled={!canBet(s) || panel !== null || typing}
               fmt={fmt}
               keyDown={spaceDown}
-              onBet={placeBet}
+              onBet={onBet}
             />
           </>
         )}

@@ -6,7 +6,8 @@
  */
 import { Fragment } from 'preact';
 import { useLayoutEffect, useRef, type MutableRef } from 'preact/hooks';
-import type { Minor, Side } from '../../server/protocol';
+import type { Minor } from '../../server/protocol';
+import { Chevron } from './Emblems';
 import type { Formats } from './format';
 import { useCountUp, useFitLadder, useFitText } from './hooks';
 import { ladderWindow } from './ladderFit';
@@ -50,8 +51,14 @@ export function Balance({ balance, demo, reducedMotion, delay, fmt }: BalancePro
 
 interface BetButtonProps {
   bet: Minor;
-  /** The side chosen on the emblems; without one BET asks for it and sends nothing. */
-  side: Side | null;
+  /** Pressed: the round waits for a side, and a second press cancels. */
+  armed: boolean;
+  /** BET is what the player should press now: it glows and pulses. */
+  next: boolean;
+  /** "Press BET first" over it, with a pointer. */
+  hint: boolean;
+  /** Counts taps on a side before BET: each one pulses BET once. */
+  nudge: number;
   disabled: boolean;
   fmt: Formats;
   /** Space or Enter was just pressed, so its keycap dips. */
@@ -59,15 +66,31 @@ interface BetButtonProps {
   onBet(): void;
 }
 
-/** The main action between rounds: places the bet on the side chosen on the emblems. */
-export function BetButton({ bet, side, disabled, fmt, keyDown, onBet }: BetButtonProps) {
-  const { t } = useText();
-  const amount = fmt.full(bet);
+/**
+ * The main action between rounds and the first step of a round: BET sets the bet,
+ * and then a side places it. Pressed, it stays down until the side is chosen; a
+ * second press lets it up again.
+ */
+export function BetButton(props: BetButtonProps) {
+  const { bet, armed, next, hint, nudge, disabled, fmt, keyDown, onBet } = props;
+  const { t, parts } = useText();
+  // two names for one pulse, so a second tap on a side restarts it
+  const nudged = nudge > 0 ? ` nudge-${nudge % 2 ? 'a' : 'b'}` : '';
   return (
-    <div class="bet-spot">
+    <div class={`bet-spot${next ? ' next' : ''}${nudged}`}>
+      <div class="bet-hint" role="status">
+        {hint && (
+          <span key={nudge}>
+            <span class="bet-hint-text">{parts('hint.bet', { bet: <b>{t('bet.place')}</b> })}</span>
+            <Chevron dir="down" />
+          </span>
+        )}
+      </div>
+      <span class="bet-glow" aria-hidden="true" />
       <button
-        class="bet-button"
-        aria-label={t(side ? `bet.place.${side}` : 'bet.place.none', { amount })}
+        class={`bet-button${armed ? ' armed' : ''}`}
+        aria-label={t('bet.place.label', { amount: fmt.full(bet) })}
+        aria-pressed={armed}
         disabled={disabled}
         onClick={onBet}
       >

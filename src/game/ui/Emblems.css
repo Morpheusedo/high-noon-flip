@@ -140,109 +140,20 @@
   }
 }
 
-/* a side chosen for BET: it stands raised with its outline lit, and the other one
-   dims and waits (still a tap away). In a run neither is marked: both flip at once */
-.pick.chosen,
-.pick.other,
-.pick.chosen::before,
-.pick.other::before {
+/* before BET: both wait, dimmed and still, with their outlines dark (still a tap away:
+   the tap points at BET). Once BET is pressed they take turns hopping again */
+.pick.waiting,
+.pick.waiting::before,
+.pick.waiting::after {
   animation: none;
 }
 
-.pick.chosen {
-  transform: translateY(-8%) scale(1.1);
+.pick.waiting {
+  opacity: 0.45;
 }
 
-.pick.chosen::before {
-  opacity: 0.85;
-}
-
-.pick.other {
-  opacity: 0.5;
-}
-
-.pick.other:hover:not(:disabled) {
-  opacity: 0.8;
-}
-
-/* BET with no side chosen: both pulse once with their outlines lit, so the player
-   sees what to tap. Two names for one pulse, so a second BET restarts it. */
-.pick.nudge-a {
-  animation:
-    hop 1.8s infinite,
-    nudge-a 0.7s ease-out;
-}
-
-.pick.nudge-b {
-  animation:
-    hop 1.8s infinite,
-    nudge-b 0.7s ease-out;
-}
-
-.pick.nudge-a::before {
-  animation:
-    lit 1.8s ease-in-out infinite,
-    flash-a 0.9s ease-out;
-}
-
-.pick.nudge-b::before {
-  animation:
-    lit 1.8s ease-in-out infinite,
-    flash-b 0.9s ease-out;
-}
-
-/* the outlaw keeps its half-beat in the hop; the pulse is the same on both */
-.pick.outlaw.nudge-a,
-.pick.outlaw.nudge-b,
-.pick.outlaw.nudge-a::before,
-.pick.outlaw.nudge-b::before {
-  animation-delay: -0.9s, 0s;
-}
-
-@keyframes nudge-a {
-  0%,
-  100% {
-    scale: 1;
-  }
-  35% {
-    scale: 1.18;
-  }
-  70% {
-    scale: 0.98;
-  }
-}
-
-@keyframes nudge-b {
-  0%,
-  100% {
-    scale: 1;
-  }
-  35% {
-    scale: 1.18;
-  }
-  70% {
-    scale: 0.98;
-  }
-}
-
-@keyframes flash-a {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-}
-
-@keyframes flash-b {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
+.key.waiting {
+  opacity: 0.45;
 }
 
 .pick:hover {
@@ -337,7 +248,8 @@
   }
 }
 
-/* BET with no side chosen: a note between the two emblems, over the revolver */
+/* BET pressed, for a new player: "< Choose a side >" between the two emblems, over the
+   revolver, its arrows nudging out towards them */
 .side-hint {
   position: absolute;
   left: 50%;
@@ -351,9 +263,11 @@
   display: none;
 }
 
-.side-hint span {
-  display: block;
-  padding: 0.9cqmin 2.6cqmin 1cqmin;
+.side-hint > span {
+  display: flex;
+  align-items: center;
+  gap: 1cqmin;
+  padding: 0.9cqmin 1.6cqmin 1cqmin;
   border-radius: 99px;
   font-size: clamp(11px, 2.6cqmin, 18px);
   font-weight: 700;
@@ -369,9 +283,49 @@
 }
 
 @starting-style {
-  .side-hint span {
+  .side-hint > span {
     opacity: 0;
     translate: 0 30%;
+  }
+}
+
+/* the hints' pointers (BET's too): gold, nudging the way they point */
+.chevron {
+  width: 1.4em;
+  height: 1.4em;
+  flex: none;
+  color: var(--gold);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.8));
+  animation: 0.9s ease-in-out infinite alternate;
+}
+
+.chevron.left {
+  animation-name: point-left;
+}
+
+.chevron.right {
+  animation-name: point-right;
+}
+
+.chevron.down {
+  animation-name: point-down;
+}
+
+@keyframes point-left {
+  to {
+    translate: -35% 0;
+  }
+}
+
+@keyframes point-right {
+  to {
+    translate: 35% 0;
+  }
+}
+
+@keyframes point-down {
+  to {
+    translate: 0 35%;
   }
 }
 
@@ -418,7 +372,7 @@
     top: 71%;
   }
 
-  .side-hint span {
+  .side-hint > span {
     font-size: clamp(11px, 3.4cqmin, 18px);
   }
 
@@ -443,33 +397,21 @@
     animation: none;
   }
 
-  .side-hint span {
+  .side-hint > span {
     transition: opacity 0.2s;
   }
 
-  /* chosen: no rise, the outline alone says so */
-  .pick.chosen {
-    transform: none;
-  }
-
-  .pick.chosen::before {
-    opacity: 1;
-  }
-
-  .pick.other::before {
-    opacity: 0;
-  }
-
-  /* no pulse: the outlines light up fully and stay lit until a side is chosen */
-  .pick.nudge-a,
-  .pick.nudge-b {
+  .chevron {
     animation: none;
   }
 
-  .pick.nudge-a::before,
-  .pick.nudge-b::before {
-    animation: none;
+  /* no hop: once BET is pressed both outlines light up fully and stay lit */
+  .hud[data-next='side'] .pick::before {
     opacity: 1;
     filter: blur(0.35cqmin) drop-shadow(0 0 2.6cqmin rgba(90, 230, 110, 0.9));
+  }
+
+  .pick.waiting::before {
+    opacity: 0;
   }
 }

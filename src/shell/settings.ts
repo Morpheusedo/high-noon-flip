@@ -18,10 +18,21 @@ export interface Settings {
   sfxVolume: number;
   /** Music volume, 0 to 100. */
   musicVolume: number;
+  /**
+   * Rounds the player has started, counted only as far as the game needs: a new
+   * player's hints quiet down after the first few (`game/ui/guide.ts`).
+   */
+  roundsPlayed: number;
 }
 
 /** Quiet by default: a casino lobby is often open next to other games and streams. */
-export const DEFAULT_SETTINGS: Settings = { speed: 1, muted: false, sfxVolume: 15, musicVolume: 6 };
+export const DEFAULT_SETTINGS: Settings = {
+  speed: 1,
+  muted: false,
+  sfxVolume: 15,
+  musicVolume: 6,
+  roundsPlayed: 0,
+};
 
 const STORE_KEY = 'hnf.settings';
 
@@ -40,6 +51,10 @@ export function readSettings(saved: unknown): Settings {
     muted: typeof s.muted === 'boolean' ? s.muted : d.muted,
     sfxVolume: volume(s.sfxVolume, d.sfxVolume),
     musicVolume: volume(s.musicVolume, d.musicVolume),
+    roundsPlayed:
+      typeof s.roundsPlayed === 'number' && Number.isInteger(s.roundsPlayed) && s.roundsPlayed >= 0
+        ? s.roundsPlayed
+        : d.roundsPlayed,
   };
 }
 

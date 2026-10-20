@@ -4,9 +4,10 @@
  */
 import { render, h } from 'preact';
 import { MockServer, type MockServerOptions } from './server/mockServer';
-import type { GameServer } from './server/protocol';
+import { ServerError, type GameServer } from './server/protocol';
 import { isQaServer } from './server/qa';
 import { assetUrl } from './shell/assets';
+import { errorScreen, goToLobby } from './shell/errors';
 import { AudioManager } from './shell/audio/AudioManager';
 import { readLaunchParams, type LaunchParams } from './shell/launchParams';
 import { LoadProgress, loadFonts, loaderScreen, preloadImages } from './shell/loader';
@@ -41,6 +42,8 @@ const FONTS = [
 const loader = loaderScreen(byId('loader'));
 /** English until the player's language arrives: the loading error needs some text. */
 let text: Text = englishText();
+/** The operator's lobby, once the launch URL is read: a session error at load leads there. */
+let lobbyUrl: string | null = null;
 
 /** The test server's stakes for QA (`bets=levels`, `bets=wide`); the demo's own otherwise. */
 function qaStakes(bets: LaunchParams['qaBets']): MockServerOptions {
@@ -57,6 +60,7 @@ function qaStakes(bets: LaunchParams['qaBets']): MockServerOptions {
 
 async function boot(): Promise<void> {
   const params = readLaunchParams();
+  lobbyUrl = params.lobbyUrl;
   const progress = new LoadProgress((f) => loader.progress(f));
   // the provider adapter replaces MockServer here once its SDK is known
   const server: GameServer = new MockServer({
@@ -171,6 +175,19 @@ function byId(id: string): HTMLElement {
 }
 
 boot().catch((err: unknown) => {
+  // a server that refused the session says why, with its way out; anything else is the connection
+  if (err instanceof ServerError && err.code !== 'NETWORK') {
+    console.warn('The server refused the session', err);
+    const { kind, actions } = errorScreen(err.code, true, lobbyUrl !== null);
+    const lobby = actions[0] === 'lobby' ? lobbyUrl : null;
+    loader.fail(
+      text.t(`error.${kind}.title`),
+      `${text.t(`error.${kind}.body`)} ${text.t('error.code', { code: err.code })}`,
+      text.t(lobby ? 'error.lobby' : 'error.reload'),
+      () => (lobby ? goToLobby(lobby) : location.reload()),
+    );
+    return;
+  }
   console.error(err);
   loader.fail(text.t('loader.failed'), text.t('loader.failedHint'), text.t('loader.reload'), () =>
     location.reload(),

@@ -25,10 +25,18 @@ export function englishText(): Text {
   return createTranslator<TextKey>('en', {}, base);
 }
 
-/** The text for the language the operator asked for, or English if we do not have it. */
+/**
+ * The text for the language the operator asked for, or English if we do not have
+ * it or it fails to arrive (offline, or a chunk gone after a redeploy).
+ */
 export async function loadText(requested: string): Promise<Text> {
   const lang = pickLanguage(requested, LANGUAGES);
   const load = others[`./${lang}.json`];
   if (!load) return englishText();
-  return createTranslator<TextKey>(lang, await load(), base);
+  try {
+    return createTranslator<TextKey>(lang, await load(), base);
+  } catch (err) {
+    console.warn(`The game falls back to English: ${lang} did not load`, err);
+    return englishText();
+  }
 }

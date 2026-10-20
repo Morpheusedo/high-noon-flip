@@ -681,6 +681,30 @@ test('recovers a round whose answer was lost (NETWORK)', async ({ page }) => {
   expect(after.client).toBe(after.server);
 });
 
+test('names an expired session at load and leads back to the lobby', async ({ page }) => {
+  // the QA handles appear before init: arm the failure the moment they do
+  await page.addInitScript(() => {
+    let handles: Window['hnf'];
+    Object.defineProperty(window, 'hnf', {
+      configurable: true,
+      get: () => handles,
+      set: (value: Window['hnf']) => {
+        handles = value;
+        value?.server.failNext('SESSION_EXPIRED');
+      },
+    });
+  });
+  await page.route('https://casino.example/**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<title>Lobby</title>' }),
+  );
+  await page.goto('./?debug=1&lobbyUrl=https://casino.example/lobby');
+  const error = page.locator('.loader-error');
+  await expect(error).toContainText('Session expired');
+  await expect(error).toContainText('SESSION_EXPIRED');
+  await error.getByRole('button', { name: 'Back to the lobby' }).click();
+  await expect(page).toHaveURL('https://casino.example/lobby');
+});
+
 test('resumes an open run after a reload', async ({ page }) => {
   await openGame(page);
   await page.evaluate(() => {

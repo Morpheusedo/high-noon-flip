@@ -95,7 +95,15 @@ export class AudioManager {
   async load(url: (file: string) => string, manifestFile = 'audio.json'): Promise<void> {
     const ctx = this.ctx;
     if (!ctx) return;
-    const manifest = (await (await fetch(url(manifestFile))).json()) as AudioManifest;
+    let manifest: AudioManifest;
+    try {
+      const response = await fetch(url(manifestFile));
+      if (!response.ok) throw new Error(`${manifestFile}: ${response.status}`);
+      manifest = (await response.json()) as AudioManifest;
+    } catch (err) {
+      console.warn('Audio not loaded:', err);
+      return;
+    }
     const decode = async (file: string | null) => {
       if (!file) throw new Error('No audio format this browser can play');
       const response = await fetch(url(file));

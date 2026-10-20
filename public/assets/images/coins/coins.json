@@ -14,7 +14,7 @@
       "sheriff": "silver-sheriff.webp",
       "outlaw": "silver-outlaw.webp",
       "icon": "silver-icon.webp",
-      "rim": ["#83878e", "#c3c8cf", "#f4f6fa"],
+      "rim": ["#7b736e", "#969392", "#d0cfcd"],
       "unlock": { "flips": 50 }
     },
     {
@@ -22,7 +22,7 @@
       "sheriff": "rusty-sheriff.webp",
       "outlaw": "rusty-outlaw.webp",
       "icon": "rusty-icon.webp",
-      "rim": ["#5e2e14", "#8a4a26", "#c98a5c"],
+      "rim": ["#824a34", "#8d5d47", "#a6806d"],
       "unlock": { "rung": 3, "runs": 3 }
     },
     {
@@ -30,7 +30,7 @@
       "sheriff": "holed-sheriff.webp",
       "outlaw": "holed-outlaw.webp",
       "icon": "holed-icon.webp",
-      "rim": ["#a46c34", "#c68a46", "#f2bc86"],
+      "rim": ["#b06433", "#bc8b5c", "#d2c8a0"],
       "unlock": { "cashout": 4 }
     },
     {
@@ -38,7 +38,7 @@
       "sheriff": "gold-sheriff.webp",
       "outlaw": "gold-outlaw.webp",
       "icon": "gold-icon.webp",
-      "rim": ["#a87a1e", "#dcae3e", "#fff0b0"],
+      "rim": ["#b16118", "#c29144", "#d2d2a2"],
       "unlock": { "rung": 5 }
     },
     {
@@ -46,7 +46,7 @@
       "sheriff": "lucky-sheriff.webp",
       "outlaw": "lucky-outlaw.webp",
       "icon": "lucky-icon.webp",
-      "rim": ["#2c7438", "#4c9e56", "#b8f0b0"],
+      "rim": ["#5c422d", "#7d6549", "#cab592"],
       "unlock": { "rung": "top" }
     }
   ]

@@ -260,7 +260,7 @@ describe('coin art', () => {
     const faces = await new CoinArt(manifest, load).faces('silver');
     expect(faces.id).toBe('silver');
     expect(faces.sheriff).toEqual({ url: expect.stringContaining('coins/silver-sheriff.webp') });
-    expect(faces.rim[1]).toBe(0xc3c8cf);
+    expect(faces.rim[1]).toBe(0x969392);
   });
 
   it('shows the classic coin with a warning when a skin’s art is missing', async () => {

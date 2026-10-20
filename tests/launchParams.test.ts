@@ -30,6 +30,9 @@ describe('readLaunchParams', () => {
 
   it('refuses a lobby URL that would run script', () => {
     expect(readLaunchParams('?lobbyUrl=javascript:alert(1)').lobbyUrl).toBeNull();
+    expect(readLaunchParams('?lobbyUrl=data:text/html,hi').lobbyUrl).toBeNull();
+    // plain http could be changed on the way
+    expect(readLaunchParams('?lobbyUrl=http://casino.example/lobby').lobbyUrl).toBeNull();
   });
 
   it('never enables the debug panel in a real-money session', () => {

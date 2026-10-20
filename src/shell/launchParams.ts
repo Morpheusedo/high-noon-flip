@@ -35,7 +35,7 @@ export function readLaunchParams(search: string = location.search): LaunchParams
     token: q.get('token') ?? '',
     lang: safeLang(q.get('lang')),
     mode,
-    lobbyUrl: safeHttpUrl(q.get('lobbyUrl')),
+    lobbyUrl: safeHttpsUrl(q.get('lobbyUrl')),
     debug,
     qaBets: debug ? qaBets(q.get('bets')) : null,
   };
@@ -54,12 +54,16 @@ function safeLang(value: string | null): string {
   }
 }
 
-/** Only http(s) links: a "javascript:" lobby URL would run code when the player taps home. */
-function safeHttpUrl(value: string | null): string | null {
+/**
+ * Only https links: a "javascript:" lobby URL would run code when the player taps
+ * home, and a plain http one could be changed on the way. Which hosts may be a
+ * lobby is the operator's list, checked once the provider's launch contract names it.
+ */
+function safeHttpsUrl(value: string | null): string | null {
   if (!value) return null;
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+    return url.protocol === 'https:' ? url.href : null;
   } catch {
     return null;
   }

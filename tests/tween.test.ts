@@ -74,4 +74,18 @@ describe('Tweens', () => {
     expect(o.x).toBe(10);
     expect(settled).toBe(2);
   });
+
+  it('keeps a kept wait running through a rebuild', async () => {
+    const tweens = new Tweens();
+    let done = false;
+    void tweens.wait(1000, true).then(() => (done = true));
+    tweens.update(400);
+    tweens.finishAll();
+    tweens.update(599);
+    await Promise.resolve();
+    expect(done).toBe(false);
+    tweens.update(1);
+    await Promise.resolve();
+    expect(done).toBe(true);
+  });
 });

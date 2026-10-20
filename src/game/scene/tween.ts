@@ -53,7 +53,7 @@ interface Running {
 
 export class Tweens {
   private running: Running[] = [];
-  private timers: { at: number; done: () => void }[] = [];
+  private timers: { at: number; done: () => void; keep: boolean }[] = [];
   private now = 0;
 
   /**
@@ -90,9 +90,12 @@ export class Tweens {
     });
   }
 
-  /** Resolves after `ms` of scene time. */
-  wait(ms: number): Promise<void> {
-    return new Promise((done) => this.timers.push({ at: this.now + ms, done }));
+  /**
+   * Resolves after `ms` of scene time. A wait that `keep`s runs its full time
+   * through a rebuild: the round's pauses, which no part of the scene ends.
+   */
+  wait(ms: number, keep = false): Promise<void> {
+    return new Promise((done) => this.timers.push({ at: this.now + ms, done, keep }));
   }
 
   update(dtMs: number): void {
@@ -118,10 +121,11 @@ export class Tweens {
     }
   }
 
-  /** Ends everything at once (on a rebuild): every waiting promise resolves. */
+  /** Ends everything at once (on a rebuild): every waiting promise resolves, but the kept waits. */
   finishAll(): void {
     const running = this.running.splice(0);
-    const timers = this.timers.splice(0);
+    const timers = this.timers.filter((tm) => !tm.keep);
+    this.timers = this.timers.filter((tm) => tm.keep);
     for (const tw of running) {
       if (tw.over) continue;
       Object.assign(tw.target, tw.to);

@@ -151,9 +151,12 @@ export class GameScene implements Presenter {
     this.parts?.effects.lose();
   }
 
-  /** Resolves after `ms` of scene time: pauses with the scene when the tab is hidden. */
+  /**
+   * Resolves after `ms` of scene time: pauses with the scene when the tab is hidden,
+   * and runs its full time through a rotation or resize, which rebuilds the scene.
+   */
   wait(ms: number): Promise<void> {
-    return this.tweens.wait(ms);
+    return this.tweens.wait(ms, true);
   }
 
   /* ---------- building ---------- */

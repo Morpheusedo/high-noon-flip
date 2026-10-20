@@ -45,7 +45,6 @@ export class Coin {
   private readonly spec: Sprite;
   private readonly sheen: Sprite;
   private readonly blur = new BlurFilter({ strengthX: 0, strengthY: 0 });
-  private readonly faceScale: number;
   private readonly radius: number;
   private readonly restY: number;
   private readonly shadowWidth: number;
@@ -83,8 +82,6 @@ export class Coin {
 
     this.face = new Sprite(art.coin.sheriff);
     this.face.anchor.set(0.5);
-    this.face.width = this.face.height = r * 2;
-    this.faceScale = this.face.scale.x;
 
     this.mask = new Graphics().circle(0, 0, r * layout.coin.faceInset).fill(0xffffff);
 
@@ -213,7 +210,9 @@ export class Coin {
     const r = this.radius;
     const k = Math.max(Math.abs(c), 0.02);
     this.face.texture = c >= 0 ? art.coin.sheriff : art.coin.outlaw;
-    this.face.scale.set(this.faceScale, this.faceScale * k);
+    // scaled from the texture in use: skins differ in size, and `setCoin` swaps them in place
+    const scale = (r * 2) / this.face.texture.width;
+    this.face.scale.set(scale, scale * k);
 
     // light comes from the sky above and in front: leaning back the face catches it,
     // leaning forward it falls into shade; e runs smoothly from 0 (shaded) to 1 (lit)

@@ -129,6 +129,47 @@ describe('recovery and failures', () => {
     expect(init.openRun).toEqual(first.openRun);
   });
 
+  it('starts fresh from a saved session that does not hold up', async () => {
+    const run = { roundId: 'r1', bet: 1000, step: 2, prize: 3960 };
+    const broken = [
+      '5',
+      '[]',
+      '{}',
+      'not json',
+      JSON.stringify({ balance: 'abc', openRun: null }),
+      JSON.stringify({ balance: -100, openRun: null }),
+      JSON.stringify({ balance: 1.5, openRun: null }),
+      JSON.stringify({ balance: 5000 }),
+      JSON.stringify({ balance: 5000, openRun: { ...run, bet: 1 } }),
+      JSON.stringify({ balance: 5000, openRun: { ...run, step: 8 } }),
+      JSON.stringify({ balance: 5000, openRun: { ...run, prize: 999_999 } }),
+      JSON.stringify({ balance: 5000, openRun: { ...run, roundId: 7 } }),
+    ];
+    for (const saved of broken) {
+      const store = memoryStore();
+      store.setItem('hnf.mock-server', saved);
+      const server = new MockServer({ store, balance: 100_000 });
+      expect(await server.init(), saved).toMatchObject({ balance: 100_000, openRun: null });
+      server.forceOutcomes('outlaw');
+      await expect(server.play({ bet: 1000, pick: 'sheriff' })).resolves.toMatchObject({
+        balance: 99_000,
+      });
+    }
+
+    const store = memoryStore();
+    store.setItem('hnf.mock-server', JSON.stringify({ balance: 5000, openRun: run }));
+    expect(await new MockServer({ store }).init()).toMatchObject({ balance: 5000, openRun: run });
+  });
+
+  it('pays by the ladder in its config', async () => {
+    const server = new MockServer({ balance: 100_000, config: { ladder: [1.5, 2.5] } });
+    server.forceOutcomes('win', 'win');
+    const first = await server.play({ bet: 1000, pick: 'sheriff' });
+    expect(first.openRun).toMatchObject({ step: 1, prize: 1500 });
+    const top = await server.action({ type: 'pick', roundId: first.roundId, pick: 'sheriff' });
+    expect(top).toMatchObject({ win: 2500, openRun: null, balance: 101_500 });
+  });
+
   it('changes nothing when a request fails', async () => {
     const server = new MockServer({ balance: 100_000 });
     server.failNext('NETWORK');

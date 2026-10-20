@@ -28,9 +28,8 @@ import { readJson, writeJson, type KeyValueStore } from '../shell/storage';
 
 export type { KeyValueStore };
 
-/** Payouts in hundredths, so the math stays in whole numbers. 198 = x1.98.
- * Each correct pick doubles the prize; every rung keeps the 99% return. */
-const LADDER_HUNDREDTHS = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => 198 * 2 ** i);
+/** The default ladder: x1.98, and each correct pick doubles the prize; every rung keeps the 99% return. */
+const LADDER = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (198 * 2 ** i) / 100);
 
 const DEFAULT_CONFIG: GameConfig = {
   currency: { code: 'FUN', decimals: 2 },
@@ -39,7 +38,7 @@ const DEFAULT_CONFIG: GameConfig = {
   defaultBet: 500,
   // typed stakes for the demo: 5.00 to 100.00 in steps of 0.05
   customBet: { min: 500, max: 10_000, step: 5 },
-  ladder: LADDER_HUNDREDTHS.map((h) => h / 100),
+  ladder: LADDER,
   rtp: 0.99,
   // a fair coin
   winChance: 0.5,
@@ -76,6 +75,8 @@ export class MockServer implements GameServer, QaServer {
   private readonly storeKey: string;
   private readonly startBalance: Minor;
   private readonly flipCoin: () => Side;
+  /** The config's ladder in hundredths, so payouts stay in whole numbers. */
+  private readonly ladder: readonly number[];
   private readonly listeners = new Set<() => void>();
 
   private state: SavedState;
@@ -92,6 +93,7 @@ export class MockServer implements GameServer, QaServer {
     this.startBalance = options.balance ?? 100_000;
     this.latencyMs = options.latencyMs ?? 0;
     this.flipCoin = options.flip ?? fairFlip;
+    this.ladder = this.config.ladder.map((m) => Math.round(m * 100));
     this.state = this.load() ?? { balance: this.startBalance, openRun: null };
   }
 
@@ -149,17 +151,17 @@ export class MockServer implements GameServer, QaServer {
 
   openRunAt(step: number, bet: Minor): void {
     // the top rung is never an open run: it pays out by itself
-    if (!Number.isInteger(step) || step < 1 || step >= LADDER_HUNDREDTHS.length) {
-      throw new RangeError(`A run can stay open at steps 1 to ${LADDER_HUNDREDTHS.length - 1}`);
+    if (!Number.isInteger(step) || step < 1 || step >= this.ladder.length) {
+      throw new RangeError(`A run can stay open at steps 1 to ${this.ladder.length - 1}`);
     }
     const open = this.state.openRun;
     if (open) {
-      this.state.openRun = { ...open, step, prize: rungPrize(open.bet, step) };
+      this.state.openRun = { ...open, step, prize: this.rungPrize(open.bet, step) };
     } else {
       if (!isValidBet(this.config, bet)) throw new ServerError('INVALID_BET');
       if (bet > this.state.balance) throw new ServerError('INSUFFICIENT_FUNDS');
       this.state.balance -= bet;
-      this.state.openRun = { roundId: newRoundId(), bet, step, prize: rungPrize(bet, step) };
+      this.state.openRun = { roundId: newRoundId(), bet, step, prize: this.rungPrize(bet, step) };
     }
     this.save();
   }
@@ -195,7 +197,7 @@ export class MockServer implements GameServer, QaServer {
     const flip = this.flip(request.pick);
 
     const openRun: OpenRun | null = flip.won
-      ? { roundId, bet: request.bet, step: 1, prize: rungPrize(request.bet, 1) }
+      ? { roundId, bet: request.bet, step: 1, prize: this.rungPrize(request.bet, 1) }
       : null;
     return this.finish({ roundId, flip, win: 0, openRun });
   }
@@ -213,9 +215,9 @@ export class MockServer implements GameServer, QaServer {
     if (!flip.won) return this.finish({ roundId: run.roundId, flip, win: 0, openRun: null });
 
     const step = run.step + 1;
-    const prize = rungPrize(run.bet, step);
+    const prize = this.rungPrize(run.bet, step);
     // the top rung pays out by itself: there is nothing left to climb
-    if (step === LADDER_HUNDREDTHS.length) {
+    if (step === this.ladder.length) {
       return this.finish({ roundId: run.roundId, flip, win: prize, openRun: null });
     }
     return this.finish({ roundId: run.roundId, flip, win: 0, openRun: { ...run, step, prize } });
@@ -256,8 +258,38 @@ export class MockServer implements GameServer, QaServer {
     throw new ServerError(code);
   }
 
+  /** What a cash out at `step` pays on `bet`. */
+  private rungPrize(bet: Minor, step: number): Minor {
+    const hundredths = this.ladder[step - 1];
+    if (hundredths === undefined) throw new ServerError('INTERNAL', `No ladder rung ${step}`);
+    return payout(bet, hundredths);
+  }
+
+  /** The saved session, or null when there is none or it does not hold up: then the session starts fresh. */
   private load(): SavedState | null {
-    return readJson(this.store, this.storeKey) as SavedState | null;
+    const saved = readJson(this.store, this.storeKey);
+    if (typeof saved !== 'object' || saved === null) return null;
+    const { balance, openRun } = saved as Record<string, unknown>;
+    if (!Number.isSafeInteger(balance) || (balance as number) < 0) return null;
+    if (openRun === null) return { balance: balance as Minor, openRun: null };
+    return this.isOpenRun(openRun) ? { balance: balance as Minor, openRun } : null;
+  }
+
+  /** Whether `value` is a run this server could have left open. */
+  private isOpenRun(value: unknown): value is OpenRun {
+    if (typeof value !== 'object' || value === null) return false;
+    const { roundId, bet, step, prize } = value as Record<string, unknown>;
+    return (
+      typeof roundId === 'string' &&
+      roundId !== '' &&
+      typeof bet === 'number' &&
+      isValidBet(this.config, bet) &&
+      typeof step === 'number' &&
+      Number.isInteger(step) &&
+      step >= 1 &&
+      step < this.ladder.length &&
+      prize === this.rungPrize(bet, step)
+    );
   }
 
   /** Every change to the session goes through here, so the QA panel hears of it. */
@@ -274,12 +306,6 @@ export class MockServer implements GameServer, QaServer {
 /** Win amounts round down to the minor unit, as servers do. */
 function payout(bet: Minor, hundredths: number): Minor {
   return Math.floor((bet * hundredths) / 100);
-}
-
-function rungPrize(bet: Minor, step: number): Minor {
-  const hundredths = LADDER_HUNDREDTHS[step - 1];
-  if (hundredths === undefined) throw new ServerError('INTERNAL', `No ladder rung ${step}`);
-  return payout(bet, hundredths);
 }
 
 function other(side: Side): Side {
